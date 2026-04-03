@@ -1,0 +1,16 @@
+[project]
+name = "comfyui-pipedream"
+version = "0.1.0"
+description = "Production pipeline utility nodes for ComfyUI — output naming, network paths, shot tokens, wedge iteration, and multi-input switching."
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Aaron Dabelow" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/theonlyaaron/comfyui-pipedream"
+
+[tool.comfy]
+PublisherId = "pipedream"
+DisplayName = "Pipedream"
+Icon = ""
