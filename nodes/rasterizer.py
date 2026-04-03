@@ -9,6 +9,7 @@ and displays an iteration preview table.
 import itertools
 import sys
 
+from ..core.display import display_name
 from ..core.tokens import resolve_tokens
 
 
@@ -18,7 +19,7 @@ _MAX_PREVIEW_LINES = 50
 class PDRasterizer:
     """Preview wedge iteration table without running a full render."""
 
-    DISPLAY_NAME = "PD Rasterizer"
+    DISPLAY_NAME = display_name("PD Rasterizer")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     RETURN_TYPES = ("INT", "STRING")

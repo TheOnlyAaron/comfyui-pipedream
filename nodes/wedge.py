@@ -18,10 +18,13 @@ import urllib.error
 _SERVER_URL = os.environ.get("COMFYUI_SERVER_URL", "http://127.0.0.1:8188")
 
 
+from ..core.display import display_name
+
+
 class PDWedge:
     """Iteration/wedging node that emits one value per execution."""
 
-    DISPLAY_NAME = "PD Wedge"
+    DISPLAY_NAME = display_name("PD Wedge")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     RETURN_TYPES = ("WEDGE", "STRING", "INT")
