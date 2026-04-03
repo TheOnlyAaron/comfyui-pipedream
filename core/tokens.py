@@ -73,3 +73,22 @@ def resolve_tokens(template: str, context: dict, frame_padding: int = 4) -> str:
         return match.group(0)
 
     return re.sub(r"\{(\w+)\}", _replace, template)
+
+
+def format_token_reference(context: dict, frame_padding: int = 4) -> str:
+    """Build a human-readable summary of available tokens and their current values."""
+    now = datetime.now()
+    lines = ["Available tokens:"]
+
+    for key, val in sorted(context.items()):
+        token = "{" + key + "}"
+        lines.append(f"  {token:<18} = \"{val}\"")
+
+    # Auto-resolved tokens (show current value)
+    if "date" not in context:
+        lines.append(f"  {{date}}            = {now.strftime('%Y%m%d')} (auto)")
+    if "time" not in context:
+        lines.append(f"  {{time}}            = {now.strftime('%H%M%S')} (auto)")
+    lines.append(f"  {{frame}}           = {'#' * frame_padding} (auto)")
+
+    return "\n".join(lines)

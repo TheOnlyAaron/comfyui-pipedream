@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-pipedream"
-version = "0.1.0"
+version = "0.2.0"
 description = "Production pipeline utility nodes for ComfyUI — output naming, network paths, shot tokens, wedge iteration, and multi-input switching."
 license = "MIT"
 requires-python = ">=3.10"

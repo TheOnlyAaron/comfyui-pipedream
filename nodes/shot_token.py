@@ -5,13 +5,14 @@ Lightweight alternative to PD Project Context when you only need shot-level
 tokens injected into a single string template.
 """
 
+from ..core.display import display_name
 from ..core.tokens import resolve_tokens
 
 
 class PDShotToken:
     """Resolve a token template using inline widget values."""
 
-    DISPLAY_NAME = "PD Shot Token"
+    DISPLAY_NAME = display_name("PD Shot Token")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     RETURN_TYPES = ("STRING",)
