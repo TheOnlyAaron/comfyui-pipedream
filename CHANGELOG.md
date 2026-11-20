@@ -12,6 +12,7 @@
 - PD Switch: simplified to single-channel with auto-growing inputs (2–8)
 - Added 💭 emoji prefix to all node display names (with Windows fallback)
 - Consolidated JS extensions into single web/pipedream.js
+- New node: PD Render Complete Sound (browser chime when the queue drains, with optional error tone; JS in web/pd_sound.js)
 
 ## 0.1.0
 
