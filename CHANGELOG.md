@@ -4,7 +4,10 @@
 
 - PD Project Context: added optional context input for override chaining
 - PD Project Context: added auto_increment_version (persistent, like seed)
-- New node: PD Custom Context (5 user-defined key/value token pairs)
+- New node: PD Custom Context (user-defined key/value token pairs)
+- PD Custom Context: pairs auto-expand as names are filled, up to 10 (#7);
+  all pairs are optional inputs and workflows saved with the old 5 fixed pairs
+  load with their values intact
 - Replaced PD Output Namer + PD Network Output with:
   - PD Output Relative (saves to ComfyUI output dir)
   - PD Output Absolute (saves to absolute/UNC path)
