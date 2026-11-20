@@ -29,6 +29,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
+| **💭 PD Render Complete Sound** | Plays a chime in the browser when the queue finishes. Drop it anywhere in the graph, no connections needed. Volume, built-in synth sounds or a custom URL, optional error tone, and a test button. |
 
 ## Token Reference
 
