@@ -13,7 +13,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional Python dependencies are required. Writing video from PD Output needs the `ffmpeg` binary on your `PATH`.
+No additional Python dependencies are required. Writing video or EXR from PD Output needs the `ffmpeg` binary on your `PATH` (for EXR, the `OpenEXR` Python package or an EXR-enabled OpenCV also work if installed).
 
 ## Nodes
 
@@ -67,13 +67,14 @@ PD Project Context (base: project=DITC, sequence=sq010)
 | `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
 | `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
 | `fps`, `crf` | Video only. `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
-| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp and the ComfyUI prompt. The workflow is not embedded in the image files. |
+| `exr_precision`, `exr_compression` | EXR only. `half` (default) or `float`; compression `zip` (default), `zips`, `rle` or `none`. EXR keeps the linear float values (no clipping to 0–1) and writes alpha when the image has 4 channels. |
+| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp, the ComfyUI prompt and the EXR/video settings. The workflow is not embedded in the image files. |
 | `written_path` (output) | Path of the first file written. |
 | `images` (output) | The input images, passed through for downstream nodes. |
 
 A preview of what was written appears under the node. Files inside ComfyUI's output directory are shown directly; EXR, video and absolute paths outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video).
 
-Video is encoded by piping frames to the `ffmpeg` binary, which must be on your `PATH` (no Python package is needed). If it is missing, the node raises an error telling you so.
+Video is encoded by piping frames to the `ffmpeg` binary, which must be on your `PATH` (no Python package is needed). If it is missing, the node raises an error telling you so. EXR files are written by ffmpeg too, falling back to the `OpenEXR` package and then OpenCV when ffmpeg is absent; if none is available the node raises an error. The legacy output nodes also have the `exr_precision` and `exr_compression` options.
 
 ## Compatibility
 

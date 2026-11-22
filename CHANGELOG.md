@@ -26,6 +26,10 @@
     timestamp, ComfyUI prompt), toggled by `save_metadata` (#6)
   - Show a preview of what was written under the node (#8)
   - New `images` passthrough output after `written_path` (#9)
+  - EXR output now works (#16): linear float RGB/RGBA written via `ffmpeg`
+    (fallbacks: OpenEXR, OpenCV), with `exr_precision` (half/float) and
+    `exr_compression` (zip/zips/rle/none) options recorded in the sidecar;
+    a missing writer raises an error instead of silently writing nothing
 
 ## 0.1.0
 

@@ -1,9 +1,10 @@
 """
 Media helpers for Pipedream output nodes.
 
-Video encoding (frames piped to the ``ffmpeg`` binary on PATH), preview
-image generation for the ComfyUI node UI, and sidecar metadata writing.
-Only numpy and PIL are used; no extra pip dependencies.
+Video and EXR encoding (frames piped to the ``ffmpeg`` binary on PATH),
+preview image generation for the ComfyUI node UI, and sidecar metadata
+writing.  Only numpy and PIL are required; OpenEXR or OpenCV are used as
+EXR fallbacks when they happen to be installed.
 """
 
 import json
@@ -20,6 +21,9 @@ BROWSER_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 PREVIEW_MAX_SIZE = 512
 
+EXR_PRECISIONS = ("half", "float")
+EXR_COMPRESSIONS = ("zip", "zips", "rle", "none")
+
 _VIDEO_CODECS = {
     "mp4": "h264",
     "mov": "prores_hq",
@@ -33,11 +37,16 @@ def video_codec(fmt: str) -> str:
 
 
 def frames_to_uint8(images):
-    """Convert an IMAGE tensor ``(B, H, W, C)`` in ``[0, 1]`` to a uint8 RGB array."""
+    """
+    Convert an IMAGE tensor ``(B, H, W, C)`` to a uint8 RGB array.
+
+    Values are clipped to ``[0, 1]`` (NaN/inf made finite) and alpha is
+    dropped, so HDR data is only clipped for previews and 8-bit outputs.
+    """
     import numpy as np
 
     arr = images.cpu().numpy() if hasattr(images, "cpu") else np.asarray(images)
-    arr = (arr * 255.0).clip(0, 255).astype(np.uint8)
+    arr = (np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0) * 255.0).clip(0, 255).astype(np.uint8)
     if arr.ndim == 3:
         arr = arr[..., None]
     channels = arr.shape[-1]
@@ -46,6 +55,46 @@ def frames_to_uint8(images):
     elif channels > 3:
         arr = arr[..., :3]
     return np.ascontiguousarray(arr)
+
+
+def find_ffmpeg(purpose: str) -> str:
+    """
+    Return the path of the ``ffmpeg`` binary on PATH.
+
+    Raises ``RuntimeError`` naming *purpose* (e.g. "'mp4' video") when
+    ffmpeg is not installed.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            f"[Pipedream] ffmpeg was not found on PATH. Install ffmpeg to write "
+            f"{purpose}, or choose another format."
+        )
+    return ffmpeg
+
+
+def _run_ffmpeg(cmd: list[str], chunks, full_path: str) -> None:
+    """Run *cmd*, write each bytes chunk to its stdin, and raise on failure."""
+    with tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=err)
+        try:
+            for chunk in chunks:
+                proc.stdin.write(chunk)
+        except (BrokenPipeError, OSError):
+            pass
+        finally:
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+        code = proc.wait()
+        if code != 0:
+            err.seek(0)
+            detail = err.read().decode("utf-8", "replace").strip()
+            raise RuntimeError(
+                f"[Pipedream] ffmpeg failed writing '{full_path}' "
+                f"(exit {code}): {detail}"
+            )
 
 
 def _ffmpeg_codec_args(fmt: str, crf: int) -> list[str]:
@@ -74,12 +123,7 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
     Returns ``[full_path]`` on success, or ``[]`` when the file exists and
     *overwrite* is disabled.
     """
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg:
-        raise RuntimeError(
-            "[Pipedream] ffmpeg was not found on PATH. Install ffmpeg to write "
-            f"'{fmt}' video, or choose an image format (png/exr/jpg/webp)."
-        )
+    ffmpeg = find_ffmpeg(f"'{fmt}' video")
 
     if not overwrite and os.path.exists(full_path):
         print(
@@ -101,28 +145,152 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
         full_path,
     ]
 
-    with tempfile.TemporaryFile() as err:
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=err)
-        try:
-            for frame in frames:
-                proc.stdin.write(frame.tobytes())
-        except (BrokenPipeError, OSError):
-            pass
-        finally:
-            try:
-                proc.stdin.close()
-            except OSError:
-                pass
-        code = proc.wait()
-        if code != 0:
-            err.seek(0)
-            detail = err.read().decode("utf-8", "replace").strip()
-            raise RuntimeError(
-                f"[Pipedream] ffmpeg failed writing '{full_path}' "
-                f"(exit {code}): {detail}"
-            )
-
+    _run_ffmpeg(cmd, (frame.tobytes() for frame in frames), full_path)
     return [full_path]
+
+
+# --------------------------------------------------------------------------
+# EXR
+# --------------------------------------------------------------------------
+
+_FFMPEG_EXR_COMPRESSION = {"zip": "zip16", "zips": "zip1", "rle": "rle", "none": "none"}
+_CV2_EXR_COMPRESSION = {"none": 0, "rle": 1, "zips": 2, "zip": 3}
+_OPENEXR_COMPRESSION = {"zip": "ZIP_COMPRESSION", "zips": "ZIPS_COMPRESSION",
+                        "rle": "RLE_COMPRESSION", "none": "NO_COMPRESSION"}
+
+
+def exr_frame(image):
+    """
+    Return one IMAGE item ``(H, W, C)`` as a float32 RGB or RGBA array.
+
+    Values stay linear and unclipped.  One channel is expanded to RGB, two
+    channels are read as luminance + alpha, and extra channels beyond four
+    are dropped.
+    """
+    import numpy as np
+
+    arr = image.cpu().numpy() if hasattr(image, "cpu") else np.asarray(image)
+    arr = np.asarray(arr, dtype=np.float32)
+    if arr.ndim == 2:
+        arr = arr[..., None]
+    channels = arr.shape[-1]
+    if channels == 1:
+        arr = np.repeat(arr, 3, axis=-1)
+    elif channels == 2:
+        arr = np.concatenate([np.repeat(arr[..., :1], 3, axis=-1), arr[..., 1:]], axis=-1)
+    elif channels > 4:
+        arr = arr[..., :4]
+    return np.ascontiguousarray(arr)
+
+
+def _write_exr_ffmpeg(ffmpeg: str, rgb, path: str, precision: str, compression: str):
+    import numpy as np
+
+    height, width, channels = rgb.shape
+    pix_fmt = "gbrapf32le" if channels == 4 else "gbrpf32le"
+    order = [1, 2, 0, 3] if channels == 4 else [1, 2, 0]
+    planar = np.ascontiguousarray(rgb.transpose(2, 0, 1)[order].astype("<f4"))
+    cmd = [
+        ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", f"{width}x{height}",
+        "-i", "-",
+        "-frames:v", "1", "-c:v", "exr", "-pix_fmt", pix_fmt,
+        "-format", precision, "-compression", _FFMPEG_EXR_COMPRESSION[compression],
+        "-f", "image2", "-update", "1",
+        path,
+    ]
+    _run_ffmpeg(cmd, [planar.tobytes()], path)
+
+
+def _write_exr_openexr(openexr, rgb, path: str, precision: str, compression: str):
+    import numpy as np
+
+    names = "RGBA"[: rgb.shape[-1]]
+    dtype = np.float16 if precision == "half" else np.float32
+    channels = {n: np.ascontiguousarray(rgb[..., i].astype(dtype)) for i, n in enumerate(names)}
+    if hasattr(openexr, "File"):
+        header = {"compression": getattr(openexr, _OPENEXR_COMPRESSION[compression]),
+                  "type": openexr.scanlineimage}
+        with openexr.File(header, channels) as exr:
+            exr.write(path)
+        return
+
+    import Imath  # type: ignore[import-not-found]
+
+    pixel = Imath.PixelType(Imath.PixelType.HALF if precision == "half" else Imath.PixelType.FLOAT)
+    header = openexr.Header(rgb.shape[1], rgb.shape[0])
+    header["channels"] = {n: Imath.Channel(pixel) for n in names}
+    header["compression"] = Imath.Compression(getattr(Imath.Compression, _OPENEXR_COMPRESSION[compression]))
+    out = openexr.OutputFile(path, header)
+    try:
+        out.writePixels({n: c.tobytes() for n, c in channels.items()})
+    finally:
+        out.close()
+
+
+def _write_exr_cv2(cv2, rgb, path: str, precision: str, compression: str):
+    bgr = rgb[..., [2, 1, 0, 3]] if rgb.shape[-1] == 4 else rgb[..., ::-1]
+    params = [cv2.IMWRITE_EXR_TYPE, 1 if precision == "half" else 2]
+    if hasattr(cv2, "IMWRITE_EXR_COMPRESSION"):
+        params += [cv2.IMWRITE_EXR_COMPRESSION, _CV2_EXR_COMPRESSION[compression]]
+    if not cv2.imwrite(path, bgr.copy(), params):
+        raise RuntimeError(f"OpenCV could not write '{path}'")
+
+
+def exr_writer():
+    """
+    Pick an EXR writer.  Returns ``(name, write)`` where ``write`` takes
+    ``(rgb, path, precision, compression)``.
+
+    Order: the ``ffmpeg`` binary first, since PD Output already relies on
+    it for video and its behaviour does not depend on the Python
+    environment; then the OpenEXR bindings (the reference implementation);
+    then OpenCV, last because EXR support must be enabled through
+    ``OPENCV_IO_ENABLE_OPENEXR`` before cv2 is first imported, which another
+    node may already have done.  Raises ``RuntimeError`` if none is usable.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        return "ffmpeg", lambda *a: _write_exr_ffmpeg(ffmpeg, *a)
+    try:
+        import OpenEXR  # type: ignore[import-not-found]
+        return "OpenEXR", lambda *a: _write_exr_openexr(OpenEXR, *a)
+    except ImportError:
+        pass
+    os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
+    try:
+        import cv2  # type: ignore[import-not-found]
+        if not hasattr(cv2, "haveImageWriter") or cv2.haveImageWriter(".exr"):
+            return "opencv", lambda *a: _write_exr_cv2(cv2, *a)
+    except ImportError:
+        pass
+    raise RuntimeError(
+        "[Pipedream] No EXR writer available. Install ffmpeg on PATH (recommended) "
+        "or the 'OpenEXR' Python package (OpenCV with EXR support also works), "
+        "or choose another format."
+    )
+
+
+def save_exr(rgb, path: str, precision: str = "half", compression: str = "zip") -> str:
+    """
+    Write one float RGB/RGBA array ``(H, W, 3|4)`` to *path* as OpenEXR.
+
+    *precision* is ``half`` or ``float``; *compression* is one of
+    ``EXR_COMPRESSIONS``.  Data is written as-is (linear, no clipping).
+    Returns the writer name.  Raises ``RuntimeError`` on failure.
+    """
+    if precision not in EXR_PRECISIONS:
+        raise ValueError(f"[Pipedream] Unknown EXR precision: '{precision}'")
+    if compression not in EXR_COMPRESSIONS:
+        raise ValueError(f"[Pipedream] Unknown EXR compression: '{compression}'")
+    name, write = exr_writer()
+    try:
+        write(rgb, path, precision, compression)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"[Pipedream] {name} failed writing '{path}': {exc}") from exc
+    return name
 
 
 def _downscale(img, max_size: int = PREVIEW_MAX_SIZE):
