@@ -35,9 +35,9 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
-| **💭 PD Video To Images** | Decodes a `VIDEO` to images, audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
-| **💭 PD Video Frame** | Grabs one frame from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
-| **💭 PD Image Frame** | Picks one image from a batch (first, last or index; negative counts from the end). |
+| **💭 PD Video To Images** | Decodes a `VIDEO` to images, mask (alpha), audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
+| **💭 PD Video Frame** | Grabs one frame and its mask (alpha) from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
+| **💭 PD Image Frame** | Picks one image from a batch (first, last or index; negative counts from the end), and the same frame of an optional mask. |
 | **💭 PD OCIO Transform** | Converts images between two OpenColorIO colorspaces, optionally through a look. See [OCIO](#ocio). |
 | **💭 PD OCIO Display** | Applies an OpenColorIO display/view transform (e.g. the ACES output transform for sRGB), or its inverse. See [OCIO](#ocio). |
 | **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
@@ -54,7 +54,10 @@ The video nodes live under **Pipedream/Video** and use ComfyUI's core `VIDEO` ty
 Notes:
 
 - Images come out as float32 RGB in 0–1. 8-bit sources are converted through `rgb24`, and 10/12-bit sources through `rgb48le`, so they keep their precision.
-- Alpha channels are dropped. Use core Get Video Components if you need a video's alpha.
+- **Alpha comes out as a MASK.** PD Video To Images and PD Video Frame have a `mask` output (1.0 = opaque). Streams with an alpha plane (ProRes 4444, which ffmpeg decodes as `yuva444p12le`, and other `yuva*`, `rgba` or `gbrap*` formats) are decoded through `rgba64le` (or `rgba` for 8-bit, `gbrapf32le` for float), so alpha keeps its full precision. It is decoded in the same pass as the images, with the same start frame, limit and step. Without alpha, the mask is full opacity at the same size and count, so a graph wired for alpha keeps working with any clip. See [Alpha and premultiplication](#alpha-and-premultiplication).
+- In-memory videos (from PD Images To Video, Create Video, ...) use the alpha they carry: the video's own alpha (recent ComfyUI) or the fourth channel of RGBA images. PD Images To Video has no alpha input, so its videos give full opacity. To write images with alpha, connect the images and the mask to PD Output directly.
+- PD Image Frame's optional `mask` input takes one frame (used for every image) or one per image, and the `mask` output is the same frame as `image`. Without a mask, it outputs the fourth channel of RGBA images, else full opacity.
+- PD Video Frame and PD Image Frame show the `index` widget only when `mode` is `index` (or when it is linked).
 - Out-of-range indices are clamped to the first or last frame. `frame_index` reports the frame that was actually used.
 - PD Video Frame's `frame_count` is exact for `last` and negative indices. For `first` and positive indices it comes from container metadata.
 - Seeking assumes a constant frame rate. On variable-frame-rate footage, frame indices are approximate.
@@ -121,7 +124,7 @@ PD Project Context's `version` widget is a prefix followed by a number, e.g. `v0
 
 **Reset buttons.** Each PD Project Context node has two buttons:
 
-- **reset version** — resets that node's version to its first version, keeping its prefix and padding (`v017` → `v001`, `take_0042` → `take_0001`). An empty or non-numeric version becomes `v001`.
+- **reset version** — resets that node's version to its first version, keeping its prefix and padding (`v017` → `v001`, `take_0042` → `take_0001`). An empty or non-numeric version becomes the configured default (`project.version` in the [facility/user settings](#facility--user-defaults), e.g. `take_0001`), or `v001` when none is set.
 - **reset all versions in graph** — after a confirmation, resets every PD Project Context in the workflow, including inside subgraphs.
 
 The global reset is also available from the canvas right-click menu as **Pipedream: reset all versions** (recent ComfyUI frontends only).
@@ -131,7 +134,7 @@ The global reset is also available from the canvas right-click menu as **Pipedre
 | Input / Output | Notes |
 |----------------|-------|
 | `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio. With an image format, its frames are written as an image sequence. |
-| `alpha` (input) | Optional. Takes an `IMAGE`, `MASK` or `VIDEO` (one socket typed `IMAGE,MASK,VIDEO`, so other types can't connect). A MASK is used as is. An IMAGE or a VIDEO's frames give their Rec.709 luminance, so a grey matte keeps its exact values. It needs one frame (used for every frame) or as many frames as the source, at the same size; anything else is an error. See [Alpha](#alpha). |
+| `alpha` (input) | Optional. Takes an `IMAGE`, `MASK` or `VIDEO` (one socket typed `IMAGE,MASK,VIDEO`, so other types can't connect). A MASK is used as is (1.0 = opaque; put an Invert Mask after core Load Image's mask). An IMAGE or a VIDEO's frames give their Rec.709 luminance, so a grey matte keeps its exact values. It needs one frame (used for every frame) or as many frames as the source, at the same size; anything else is an error. See [Alpha](#alpha). |
 | `path_mode` | `relative` writes under ComfyUI's output directory. `absolute` writes under `base_path` (an absolute or UNC path). |
 | `template` | The output path without an extension. `{frame}` sets where the frame number goes. See [Image sequences](#image-sequences). |
 | `format` | Images, one file per frame: `png`, `exr`, `jpg`, `webp`. Video, one file per batch: `mp4` (H.264), `mov` (ProRes), `webm` (VP9). |
@@ -141,7 +144,7 @@ The global reset is also available from the canvas right-click menu as **Pipedre
 | `exr_precision`, `exr_compression` | EXR only. Precision is `half` (default) or `float`. Compression is `zip` (default), `zips`, `rle` or `none`. EXR keeps float values unclipped. |
 | `exr_colorspace` | EXR only. `as is` (default) writes the values unchanged. `sRGB to linear` decodes sRGB-encoded images, which covers most generated and loaded images, to linear light with the piecewise sRGB curve: `v / 12.92` up to 0.04045, then `((v + 0.055) / 1.055) ^ 2.4`. The power segment carries on above 1.0 (2.0 becomes about 5.7), and negative values are mirrored. Alpha is never converted. This is plain math with no OCIO; for other colorspaces, put [PD OCIO Transform](#ocio) before PD Output and leave this on `as is`. |
 | `overwrite` | When off, nothing is written if the file, or any frame of the sequence, already exists. The console says so. This prevents a sequence that mixes old and new frames. |
-| `save_metadata` | Writes a sidecar `.json` next to the output, with the template, resolved tokens and context, written files, frame range and `#` pattern, alpha source, timestamp, the ComfyUI prompt and the EXR/video settings (`colorspace`, `prores_profile`). The workflow is not embedded in the image files. |
+| `save_metadata` | Writes a sidecar `.json` next to the output, with the template, resolved tokens and context, written files, frame range and `#` pattern, alpha (`written`, `source`, `premultiplied`), timestamp, the ComfyUI prompt and the EXR/video settings (`colorspace`, `prores_profile`). The workflow is not embedded in the image files. |
 | `path` (output) | The first file written (the first frame of a sequence), or the video file. |
 | `path_sidecar` (output) | The sidecar JSON path. Empty when `save_metadata` is off. |
 | `path_all` (output) | Every written file, one per line (every frame of a sequence). |
@@ -161,7 +164,7 @@ The sidecar of a sequence is named after the file name without the frame number 
 
 ### Alpha
 
-Alpha is written to `png` and `webp` (8-bit RGBA), `exr` (RGBA, with alpha written as is: linear, unclipped and never colour-converted) and `mov` as ProRes 4444 (`prores_ks` profile 4, `yuva444p10le`). When `alpha` is not connected, the fourth channel of 4-channel images is used as alpha.
+Alpha is written to `png` and `webp` (8-bit RGBA, straight), `exr` (RGBA, premultiplied; alpha itself is written as is: linear, unclipped and never colour-converted) and `mov` as ProRes 4444 (`prores_ks` profile 4, `yuva444p10le`, straight). When `alpha` is not connected, the fourth channel of 4-channel images is used as alpha. See [Alpha and premultiplication](#alpha-and-premultiplication) for why EXR differs.
 
 `jpg`, `mp4`, `webm` and ProRes 422 HQ can't store alpha. If `alpha` is connected anyway, the file is written without it, a warning is printed to the console, and the sidecar records `"alpha": {"written": false}`. A warning was chosen over an error so that switching to a review format (e.g. mp4) doesn't break a graph that also writes alpha.
 
@@ -173,6 +176,29 @@ A preview of what was written appears under the node, with one entry per frame f
 
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
 
+
+## Alpha and premultiplication
+
+Pipedream has no premultiplication setting. It uses fixed conventions, recorded in the PD Output sidecar (`"alpha": {"written": true, "source": "mask", "premultiplied": false}`).
+
+**Inside ComfyUI, IMAGE + MASK are straight (unpremultiplied).** RGB is the colour of the surface and the MASK says how opaque it is, with 1.0 = opaque and 0.0 = transparent. This is how ComfyUI images work (Load Image gives straight RGB from a PNG), so Pipedream never premultiplies or unpremultiplies inside the graph. Every Pipedream `mask` output and PD Output's `alpha` input use 1.0 = opaque.
+
+| Format | Written as | Why |
+|--------|-----------|-----|
+| PNG, WebP | Straight | The PNG and WebP specs define straight alpha. Written as is. |
+| ProRes 4444 (`mov`) | Straight | The ProRes bitstream has no reliable premultiplied/straight flag, and tools differ (After Effects asks on import, some exporters default to premultiplied). Pipedream picks straight: interpret Pipedream ProRes 4444 files as **straight** in After Effects, Nuke, Resolve and Final Cut Pro. |
+| EXR | Premultiplied | The OpenEXR spec defines RGBA as premultiplied (associated alpha), and Nuke and other compositors expect that. PD Output multiplies RGB by alpha. With `exr_colorspace` = `sRGB to linear`, the decode happens first, on the straight values, then RGB is multiplied. EXR without alpha is unchanged. |
+
+Reading: PD Video To Images and PD Video Frame assume ProRes 4444 (and any other video with alpha) is straight and pass RGB through unchanged, so a ProRes 4444 written by PD Output reads back with the same RGB and alpha. If a file was exported premultiplied, divide RGB by the mask yourself.
+
+PD Images To Video has no alpha input and makes RGB-only videos. Connect images and a mask to PD Output to write alpha.
+
+**Core ComfyUI uses the opposite mask polarity.** Core Load Image outputs its MASK as `1 - alpha` (1 = transparent), and core Split Image with Alpha does the same. Core Join Image with Alpha inverts its mask input (it stores `1 - mask` as alpha). Pipedream uses 1 = opaque, so:
+
+- Core Load Image's mask → Pipedream (PD Output `alpha`, PD Image Frame `mask`): put an **Invert Mask** in between.
+- A Pipedream `mask` → core Join Image with Alpha: also put an **Invert Mask** in between.
+- Core Load Image's image → Join Image with Alpha (with Load Image's own mask) → PD Output `images` is already correct: the fourth channel is the real alpha.
+- For an image without alpha, core Load Image outputs a 64×64 mask of zeros, not one the size of the image. PD Output rejects it for its size, so leave `alpha` unconnected in that case (or Invert Mask and resize it).
 
 ## Facility / user defaults
 

@@ -17,6 +17,8 @@ _INT_MAX = 0x7FFFFFFF
 
 _MODE_TOOLTIP = "first / last frame, or the frame at 'index'."
 _INDEX_TOOLTIP = "Frame index used when mode is 'index'. Negative values count from the end (-1 = last)."
+_MASK_TOOLTIP = ("Alpha of the same frames (1.0 = opaque, straight alpha). Full opacity when "
+                 "the video has no alpha.")
 
 
 class PDImagesToVideo:
@@ -62,8 +64,15 @@ class PDVideoToImages:
     )
     CATEGORY = _CATEGORY
     FUNCTION = "execute"
-    RETURN_TYPES = ("IMAGE", "AUDIO", "FLOAT", "INT")
-    RETURN_NAMES = ("images", "audio", "fps", "frame_count")
+    RETURN_TYPES = ("IMAGE", "MASK", "AUDIO", "FLOAT", "INT")
+    RETURN_NAMES = ("images", "mask", "audio", "fps", "frame_count")
+    OUTPUT_TOOLTIPS = (
+        "Decoded frames, float32 RGB.",
+        _MASK_TOOLTIP,
+        "Audio cut to the decoded time span (None when the video has none).",
+        "Source frame rate divided by step.",
+        "Number of decoded frames.",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -88,8 +97,8 @@ class PDVideoToImages:
         }
 
     def execute(self, video, start_frame=0, frame_limit=0, step=1):
-        images, audio, fps, count = read_frames(video, start_frame, frame_limit, step)
-        return (images, audio, fps, count)
+        images, mask, audio, fps, count = read_frames(video, start_frame, frame_limit, step)
+        return (images, mask, audio, fps, count)
 
 
 class PDVideoFrame:
@@ -102,8 +111,15 @@ class PDVideoFrame:
     )
     CATEGORY = _CATEGORY
     FUNCTION = "execute"
-    RETURN_TYPES = ("IMAGE", "INT", "INT", "FLOAT")
-    RETURN_NAMES = ("image", "frame_index", "frame_count", "fps")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "FLOAT")
+    RETURN_NAMES = ("image", "mask", "frame_index", "frame_count", "fps")
+    OUTPUT_TOOLTIPS = (
+        "The frame, float32 RGB.",
+        _MASK_TOOLTIP,
+        "Index of the frame that was used.",
+        "Frame count (exact for last / negative indices).",
+        "Source frame rate.",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -119,22 +135,30 @@ class PDVideoFrame:
         }
 
     def execute(self, video, mode, index):
-        image, frame_index, count, fps = read_frame(video, mode, index)
-        return (image, frame_index, count, fps)
+        image, mask, frame_index, count, fps = read_frame(video, mode, index)
+        return (image, mask, frame_index, count, fps)
 
 
 class PDImageFrame:
-    """Pick a single image (first, last or by index) from an IMAGE batch."""
+    """Pick a single image (first, last or by index) from an IMAGE batch, with its mask."""
 
     DISPLAY_NAME = display_name("PD Image Frame")
     DESCRIPTION = (
         "Pick one image from a batch: first, last or by index. "
-        "Negative index counts from the end (-1 = last)."
+        "Negative index counts from the end (-1 = last). The mask output "
+        "picks the same frame."
     )
     CATEGORY = _CATEGORY
     FUNCTION = "execute"
-    RETURN_TYPES = ("IMAGE", "INT", "INT")
-    RETURN_NAMES = ("image", "frame_index", "frame_count")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
+    RETURN_NAMES = ("image", "mask", "frame_index", "frame_count")
+    OUTPUT_TOOLTIPS = (
+        "The picked image.",
+        "The same frame of 'mask' (a single-frame mask is used for every frame). "
+        "Without a mask: channel 4 of RGBA images, else full opacity. 1.0 = opaque.",
+        "Index of the image that was used.",
+        "Number of images in the batch.",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -147,9 +171,42 @@ class PDImageFrame:
                     "tooltip": _INDEX_TOOLTIP,
                 }),
             },
+            "optional": {
+                "mask": ("MASK", {
+                    "tooltip": "Optional alpha to pick the same frame from (1.0 = opaque). "
+                               "One frame, or as many frames as 'images'.",
+                }),
+            },
         }
 
-    def execute(self, images, mode, index):
+    def execute(self, images, mode, index, mask=None):
         count = int(images.shape[0])
         idx = resolve_index(mode, index, count)
-        return (images[idx:idx + 1], idx, count)
+        return (images[idx:idx + 1], pick_mask(images, idx, mask), idx, count)
+
+
+def pick_mask(images, idx: int, mask=None):
+    """
+    Return the ``1xHxW`` mask for image *idx* of *images*.
+
+    A given *mask* (``NxHxW`` or ``HxW``) must have one frame (used for
+    every image) or one per image.  Without one, channel 4 of RGBA images
+    is used, else full opacity.
+    """
+    import torch
+
+    if mask is None:
+        if images.shape[-1] == 4:
+            return images[idx:idx + 1, ..., 3]
+        return torch.ones((1, *images.shape[1:3]), dtype=torch.float32, device=images.device)
+    if mask.dim() == 2:
+        mask = mask.unsqueeze(0)
+    frames = int(mask.shape[0])
+    if frames == 1:
+        return mask
+    if frames != int(images.shape[0]):
+        raise ValueError(
+            f"[Pipedream] PD Image Frame: mask has {frames} frames but images has "
+            f"{int(images.shape[0])}. Connect a mask with one frame or one per image."
+        )
+    return mask[idx:idx + 1]
