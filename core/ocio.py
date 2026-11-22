@@ -9,12 +9,15 @@ Configs are chosen with a ``config`` combo (:data:`CONFIG_CHOICES`) plus a
 ``config_path`` string used only for ``"custom file"``.  Loaded configs and
 CPU processors are cached; file-based configs are keyed by path and
 modification time, so an edited config file is picked up on the next run.
+
+Default choices (config, colorspaces, display, view) can be set in the
+``[ocio]`` settings table (``core/settings.py``).
 """
 
 import os
+import sys
 import threading
 
-import numpy as np
 
 CONFIG_ENV = "$OCIO environment"
 CONFIG_STUDIO = "ACES studio (built-in)"
@@ -53,6 +56,7 @@ _INSTALL_HINT = (
     "`python_embeded\\python.exe -m pip install opencolorio`), then restart ComfyUI."
 )
 
+_warned: set = set()
 _lock = threading.Lock()
 _configs: dict = {}
 _processors: dict = {}
@@ -152,7 +156,13 @@ def options(config: str, config_path: str = "") -> dict:
         aliases.update((alias, name) for alias in cs.getAliases())
     displays = list(cfg.getDisplays())
     views = {d: list(cfg.getViews(d)) for d in displays}
+    pref = _preferred()
     default_display = cfg.getDefaultDisplay() or (displays[0] if displays else "")
+    if pref["display"] in displays:
+        default_display = pref["display"]
+    default_view = cfg.getDefaultView(default_display) if default_display else ""
+    if pref["view"] in views.get(default_display, ()):
+        default_view = pref["view"]
     return {
         "colorspaces": colorspaces,
         "families": families,
@@ -163,29 +173,64 @@ def options(config: str, config_path: str = "") -> dict:
         "looks": [look.getName() for look in cfg.getLooks()],
         "roles": dict(cfg.getRoles()),
         "defaults": {
-            "in_colorspace": _first(cfg, ["ACEScg", OCIO.ROLE_SCENE_LINEAR], colorspaces),
+            "in_colorspace": _first(
+                cfg, [pref["in_colorspace"], "ACEScg", OCIO.ROLE_SCENE_LINEAR], colorspaces),
             "out_colorspace": _first(
                 cfg,
-                ["sRGB - Texture", OCIO.ROLE_COLOR_PICKING, OCIO.ROLE_TEXTURE_PAINT,
-                 OCIO.ROLE_MATTE_PAINT],
+                [pref["out_colorspace"], "sRGB - Texture", OCIO.ROLE_COLOR_PICKING,
+                 OCIO.ROLE_TEXTURE_PAINT, OCIO.ROLE_MATTE_PAINT],
                 colorspaces,
             ),
             "display": default_display,
-            "view": cfg.getDefaultView(default_display) if default_display else "",
+            "view": default_view,
         },
     }
 
 
-def default_options() -> dict:
-    """Options of the default config ($OCIO, else the built-in studio config).
+def _preferred() -> dict:
+    """The ``[ocio]`` default names from the settings (empty string = config default)."""
+    from . import settings
+    return {k: settings.get(f"ocio.{k}")
+            for k in ("in_colorspace", "out_colorspace", "display", "view")}
 
+
+def _warn_once(message: str) -> None:
+    if message not in _warned:
+        _warned.add(message)
+        print(f"[Pipedream] Settings warning: {message}", file=sys.stderr)
+
+
+def default_options() -> dict:
+    """Options of the default config: the ``ocio.config`` setting, else $OCIO.
+
+    $OCIO falls back to the built-in studio config.  Configured default
+    names that the config lacks warn once and use the config's defaults.
     Falls back to :data:`FALLBACK_OPTIONS` when OCIO is missing or the
     config cannot be loaded, so ``INPUT_TYPES`` never fails.
     """
-    try:
-        return options(CONFIG_ENV)
-    except Exception:
-        return FALLBACK_OPTIONS
+    from . import settings
+    config, path = settings.get("ocio.config"), settings.get("ocio.config_path")
+    opts = None
+    if config != CONFIG_ENV:
+        try:
+            opts = options(config, path)
+        except OCIOUnavailable:
+            return FALLBACK_OPTIONS
+        except Exception as exc:
+            _warn_once(f"ocio.config {config!r}: {exc}; listing the $OCIO config instead.")
+    if opts is None:
+        try:
+            opts = options(CONFIG_ENV)
+        except Exception:
+            return FALLBACK_OPTIONS
+    known = {*opts["colorspaces"], *opts["aliases"], *opts["roles"]}
+    for key, value in _preferred().items():
+        listed = known if key.endswith("colorspace") else (
+            opts["displays"] if key == "display" else {v for vs in opts["views"].values() for v in vs})
+        if value and value not in listed:
+            _warn_once(f"ocio.{key} {value!r} is not in the default OCIO config; "
+                       f"using {opts['defaults'][key]!r}.")
+    return opts
 
 
 def check_names(config: str, config_path: str = "", colorspaces=(), display=None,
@@ -269,12 +314,14 @@ def display_processor(config, config_path, in_colorspace, display, view, inverse
     return _cpu_processor(cfg_key, cfg, ("dv", in_colorspace, display, view, bool(inverse)), build)
 
 
-def apply_rgb(cpu, pixels: np.ndarray) -> np.ndarray:
+def apply_rgb(cpu, pixels):
     """Apply a CPU processor to the RGB channels of an ``(..., C)`` float array.
 
     Works on a contiguous float32 copy, so values outside 0–1 are kept.
     Channels beyond the first three (alpha) are passed through untouched.
     """
+    import numpy as np
+
     if pixels.shape[-1] < 3:
         raise ValueError(f"OCIO needs RGB images; got {pixels.shape[-1]} channel(s).")
     rgb = np.array(pixels[..., :3], dtype=np.float32, order="C", copy=True)

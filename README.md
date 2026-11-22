@@ -85,7 +85,7 @@ The OCIO nodes live under **Pipedream/Color** and use [OpenColorIO](https://open
 
 ## Token Reference
 
-Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token:
+Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token. The delimiters, the date/time formats and extra fixed tokens can be configured (see [Facility / user defaults](#facility--user-defaults)):
 
 | Token | Source |
 |-------|--------|
@@ -100,6 +100,7 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token:
 | `{wedge_idx}` | Current wedge iteration index |
 | `{wedge_<name>}` | Named wedge current value |
 | `{<custom>}` | Any key added via PD Custom Context |
+| `{<extra>}` | Any `[tokens.extra]` setting (context values override it) |
 
 ## Context Chaining
 
@@ -152,7 +153,7 @@ The global reset is also available from the canvas right-click menu as **Pipedre
 Image formats write one file per frame.
 
 - **With `{frame}`** in the template, the frame number goes there: `{shot}/{shot}_{version}.{frame}` writes `sh010_v001.1001.exr`, `sh010_v001.1002.exr`, and so on. `{frame}` can also appear in folder names.
-- **Without `{frame}`**, a batch of more than one frame gets the VFX-style `.1001` before the extension (`sh010_v001.1001.png`).
+- **Without `{frame}`**, a batch of more than one frame gets the VFX-style `.1001` before the extension (`sh010_v001.1001.png`). The separator can be set to `_` or `-` with `sequence.frame_separator`.
 - **A single image** (batch of 1) gets no frame number unless the template uses `{frame}`, in which case it is numbered `start_frame`.
 - **Video formats** ignore `{frame}`. It is removed along with one `.`, `_` or `-` just before it, so `clip.{frame}` writes `clip.mp4`.
 
@@ -172,6 +173,69 @@ A preview of what was written appears under the node, with one entry per frame f
 
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
 
+
+## Facility / user defaults
+
+A studio can deploy Pipedream with its own defaults (output template, network root, formats, frame numbering, token delimiters, OCIO config, ...) from a TOML file, without touching the code. Settings are layered, lowest to highest:
+
+1. **Built-in** defaults (what you get with no files).
+2. **User** file: `pipedream.toml` in the pack folder (`ComfyUI/custom_nodes/comfyui-pipedream/pipedream.toml`; ignored by git).
+3. **Facility** file: the path in the `PIPEDREAM_CONFIG` environment variable.
+
+A key only overrides when it is present and valid (right type, allowed value or range); missing keys fall through to the layer below. An invalid value, an unknown key (to catch typos), a TOML syntax error, or a `PIPEDREAM_CONFIG` that points at a missing file prints one `[Pipedream] Settings warning:` line in the ComfyUI console naming the file, key and problem, and that key (or file) is ignored.
+
+[`pipedream.example.toml`](pipedream.example.toml) lists every key with its built-in default commented out and a description: copy it, then uncomment and edit only the lines you want. For example:
+
+```toml
+[output]
+path_mode = "absolute"
+base_path = '\\server\shows'          # single quotes keep backslashes
+template = "{project}/{shot}/comp/{shot}_{version}"
+format = "exr"
+
+[sequence]
+start_frame = 1001
+frame_separator = "_"                 # name_1001.exr
+
+[tokens.extra]
+facility = "MAKE"
+show_root = "//nas/shows"
+
+[ocio]
+config = "custom file"
+config_path = '\\server\pipeline\ocio\config.ocio'
+```
+
+| Table | Keys |
+|-------|------|
+| `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps` (also PD Images To Video), `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
+| `[exr]` | `precision`, `compression`, `colorspace` |
+| `[sequence]` | `frame_padding` (also PD Shot Token and PD Rasterizer), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
+| `[tokens]` | `open`, `close` (token delimiters, default `{` `}`; non-empty, different, no letters/digits/`_`/spaces), `date_format`, `time_format` (strftime) |
+| `[tokens.extra]` | Any fixed tokens, available to every template. Context values (Project/Custom Context) override them. `frame` is reserved. |
+| `[shot_token]` | `template` (PD Shot Token) |
+| `[project]` | `version`, `auto_increment_version` (PD Project Context) |
+| `[ocio]` | `config`, `config_path`, `in_colorspace`, `out_colorspace`, `display`, `view`. Names the default config does not have warn once and fall back to the config's defaults. |
+| `[sound]` | `sound`, `volume`, `play_when` (PD Sound) |
+
+How the settings apply:
+
+- **Widget defaults.** New nodes start with the configured values. Nodes in saved workflows keep their saved values. Inputs left out of an API prompt also use the settings.
+- **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token, PD Rasterizer). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
+- **Traceability.** The PD Output token reference ends with the loaded files (`settings: facility \\server\pipeline\comfyui\pipedream.toml, user (none)`), and the sidecar JSON records them under `settings.sources`.
+- **Restart needed.** Files are read once, when ComfyUI starts. Restart ComfyUI after editing a file or changing `PIPEDREAM_CONFIG`.
+
+**Facility deployment (Windows).** Keep one file on the pipeline share and set the variable machine-wide on every workstation and render node, e.g. with a Group Policy Preference (Computer Configuration > Preferences > Windows Settings > Environment, a System variable) or from a deployment script:
+
+```bat
+setx PIPEDREAM_CONFIG "\\server\pipeline\comfyui\pipedream.toml" /M
+```
+
+ComfyUI started after that (a new session or service restart) picks it up. On Linux/macOS, export it in the environment that launches ComfyUI (`export PIPEDREAM_CONFIG=/mnt/pipeline/comfyui/pipedream.toml`). Artists can still keep personal tweaks in the user file; the facility file wins for every key it sets.
+
+TOML is read with Python's built-in `tomllib` (3.11+, which current ComfyUI uses), or the `tomli` package if installed on older Python; with neither, a warning is printed and the built-ins are used. No extra dependency.
+
+For maintainers: the schema in `core/settings.py` is the single source for validation, the docs above and the example file. After changing it, regenerate the example with `python -m core.settings > pipedream.example.toml` (from the pack folder) and run `python -m unittest discover -s tests`, which also checks the example is in sync.
 
 ## Compatibility
 

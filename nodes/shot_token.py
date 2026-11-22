@@ -4,9 +4,11 @@ PD Shot Token node.
 Resolves a token template to a plain string, e.g. for prompts, filenames
 or other nodes' path widgets.  Tokens come from an optional
 PROJECT_CONTEXT (PD Project Context / PD Custom Context) plus the
-automatic ``{date}``, ``{time}`` and ``{frame}`` tokens.
+automatic ``{date}``, ``{time}`` and ``{frame}`` tokens.  The default
+template and frame padding come from the settings (``core/settings.py``).
 """
 
+from ..core import settings
 from ..core.common import display_name
 from ..core.tokens import resolve_tokens
 
@@ -25,10 +27,11 @@ class PDShotToken:
         return {
             "required": {
                 "template": ("STRING", {
-                    "default": "{project}_{shot}_{version}",
+                    "default": settings.get("shot_token.template"),
                     "multiline": True,
                 }),
-                "frame_padding": ("INT", {"default": 4, "min": 1, "max": 8}),
+                "frame_padding": ("INT", {"default": settings.get("sequence.frame_padding"),
+                                           "min": 1, "max": 8}),
             },
             "optional": {
                 "context": ("PROJECT_CONTEXT",),

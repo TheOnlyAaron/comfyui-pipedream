@@ -14,6 +14,7 @@ read there at queue time, like seed's ``control_after_generate``, so each
 queued prompt carries its own version.  This node only passes the value on.
 """
 
+from ..core import settings
 from ..core.common import display_name
 
 
@@ -33,12 +34,14 @@ class PDProjectContext:
                 "project": ("STRING", {"default": ""}),
                 "sequence": ("STRING", {"default": ""}),
                 "shot": ("STRING", {"default": ""}),
-                "version": ("STRING", {"default": "v001"}),
+                "version": ("STRING", {"default": settings.get("project.version")}),
             },
             "optional": {
                 "context": ("PROJECT_CONTEXT",),
                 "artist": ("STRING", {"default": ""}),
-                "auto_increment_version": ("BOOLEAN", {"default": False}),
+                "auto_increment_version": ("BOOLEAN", {
+                    "default": settings.get("project.auto_increment_version"),
+                }),
             },
         }
 

@@ -12,7 +12,7 @@ from functools import partial
 
 import torch
 
-from ..core import ocio
+from ..core import ocio, settings
 from ..core.common import display_name
 
 _CATEGORY = "Pipedream/Color"
@@ -26,8 +26,10 @@ _PATH_TOOLTIP = "Path to a config.ocio file. Used only when config is 'custom fi
 
 def _config_inputs():
     return {
-        "config": (ocio.CONFIG_CHOICES, {"default": ocio.CONFIG_ENV, "tooltip": _CONFIG_TOOLTIP}),
-        "config_path": ("STRING", {"default": "", "tooltip": _PATH_TOOLTIP}),
+        "config": (ocio.CONFIG_CHOICES, {"default": settings.get("ocio.config"),
+                                         "tooltip": _CONFIG_TOOLTIP}),
+        "config_path": ("STRING", {"default": settings.get("ocio.config_path"),
+                                   "tooltip": _PATH_TOOLTIP}),
     }
 
 

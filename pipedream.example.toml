@@ -1,0 +1,132 @@
+# Pipedream facility / user defaults.
+#
+# Copy to pipedream.toml in the pack folder (user), or point the
+# PIPEDREAM_CONFIG environment variable at a copy (facility; wins over user).
+# Every key is optional: uncomment and edit only what you want to change.
+# New nodes get these defaults; saved workflows keep their values.
+# Restart ComfyUI after editing.
+#
+# Generated from core/settings.py: python -m core.settings > pipedream.example.toml
+
+[output]
+# PD Output path template, without extension.
+# template = "{project}/{sequence}/{shot}/{shot}_{version}_{date}"
+
+# PD Output: relative (ComfyUI output dir) or absolute (base_path). One of:
+# "relative", "absolute".
+# path_mode = "relative"
+
+# PD Output root folder for absolute mode, e.g. a facility network root. UNC
+# works: '\\server\shows' (single quotes keep backslashes) or
+# '//server/shows'.
+# base_path = ""
+
+# PD Output file format. One of: "png", "exr", "jpg", "webp", "mp4", "mov",
+# "webm".
+# format = "png"
+
+# Video frame rate (PD Output, PD Images To Video). Range 1.0..240.0.
+# fps = 24.0
+
+# mp4/webm quality, lower is better. Range 0..51.
+# crf = 18
+
+# Create missing output folders.
+# create_dirs = true
+
+# Replace existing files.
+# overwrite = false
+
+# Write a sidecar .json next to the output.
+# save_metadata = true
+
+# mov only: auto (4444 with alpha, else 422 HQ), 422 HQ or 4444. One of:
+# "auto", "422 HQ", "4444".
+# prores_profile = "auto"
+
+[exr]
+# EXR float precision. One of: "half", "float".
+# precision = "half"
+
+# EXR compression. One of: "zip", "zips", "rle", "none".
+# compression = "zip"
+
+# EXR: write values as is, or decode sRGB to linear. One of: "as is", "sRGB to
+# linear".
+# colorspace = "as is"
+
+[sequence]
+# Digits in frame numbers (PD Output, PD Shot Token, PD Rasterizer). Range
+# 1..8.
+# frame_padding = 4
+
+# First frame number of an image sequence. Range 0..9999999.
+# start_frame = 1001
+
+# Separator before the frame number when the template has no frame token
+# (name.1001.exr). One of: ".", "_", "-".
+# frame_separator = "."
+
+[tokens]
+# Token opening delimiter. The built-in templates follow the delimiters unless
+# set.
+# open = "{"
+
+# Token closing delimiter (must differ from open).
+# close = "}"
+
+# strftime format of the date token.
+# date_format = "%Y%m%d"
+
+# strftime format of the time token.
+# time_format = "%H%M%S"
+
+# Fixed tokens available to every template; context values override them.
+# Values are strings or numbers. 'frame' is reserved.
+# [tokens.extra]
+# facility = "MAKE"
+# show_root = "//nas/shows"
+
+[shot_token]
+# PD Shot Token default template.
+# template = "{project}_{shot}_{version}"
+
+[project]
+# PD Project Context default version.
+# version = "v001"
+
+# PD Project Context: bump the version after each queue.
+# auto_increment_version = false
+
+[ocio]
+# OCIO config choice. One of: "$OCIO environment", "ACES studio (built-in)",
+# "ACES cg (built-in)", "custom file".
+# config = "$OCIO environment"
+
+# config.ocio path, used when config is 'custom file'.
+# config_path = ""
+
+# Default input colorspace. Empty: the config's default (ACEScg or
+# scene_linear). Names not in the config fall back to that default.
+# in_colorspace = ""
+
+# PD OCIO Transform default output colorspace. Empty: sRGB - Texture or the
+# color_picking role.
+# out_colorspace = ""
+
+# PD OCIO Display default display. Empty: the config's default display.
+# display = ""
+
+# PD OCIO Display default view. Empty: the display's default view.
+# view = ""
+
+[sound]
+# PD Sound default sound. One of: "chime", "happy", "sad", "ding", "beeps",
+# "alert", "custom URL".
+# sound = "chime"
+
+# PD Sound default volume. Range 0.0..1.0.
+# volume = 0.6
+
+# PD Sound default trigger. One of: "node reached", "queue finished".
+# play_when = "node reached"
