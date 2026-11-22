@@ -49,7 +49,13 @@ export function getPairWidgets(node) {
 }
 
 function isLinked(node, widget) {
-    return !!node.inputs?.some(inp => inp.widget?.name === widget.name && inp.link != null);
+    return !!node.inputs?.some((inp, slot) => {
+        if (inp.widget?.name !== widget.name) return false;
+        // isInputConnected() is the current API; reading input.link logs a
+        // deprecation warning on recent (Nodes 2.0) frontends.
+        if (typeof node.isInputConnected === "function") return node.isInputConnected(slot);
+        return inp.link != null;
+    });
 }
 
 function setWidgetHidden(widget, hidden) {
