@@ -75,9 +75,13 @@ function findWidget(node, name) {
 
 /** True when the widget's input socket is connected to an upstream node. */
 function isWidgetLinked(node, name) {
-    return (node?.inputs ?? []).some(
-        inp => (inp.widget?.name === name || inp.name === name) && inp.link != null,
-    );
+    return (node?.inputs ?? []).some((inp, slot) => {
+        if (inp.widget?.name !== name && inp.name !== name) return false;
+        // isInputConnected() is the current API; reading input.link logs a
+        // deprecation warning on recent (Nodes 2.0) frontends.
+        if (typeof node.isInputConnected === "function") return node.isInputConnected(slot);
+        return inp.link != null;
+    });
 }
 
 function setVersion(node, value) {
