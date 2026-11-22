@@ -13,8 +13,8 @@ The workflows are numbered as an intentional learning path:
 
 | # | Workflow | What It Teaches |
 |---|---------|-----------------|
-| 01 | Basic Output Namer | Wire PD Output Namer with default tokens, feed into Save Image |
-| 02 | Network Output | Replace Save Image with PD Network Output, UNC path setup |
+| 01 | Basic Output Namer | PD Output in relative mode with default tokens, replacing Save Image |
+| 02 | Network Output | PD Output in absolute mode, UNC path setup |
 | 03 | Project Context + Tokens | Use PD Project Context as the token root; context flows downstream |
 | 04 | Switch Node | Single-channel and multi-channel switch; manual vs value-driven mode |
 | 05 | Single Wedge | One PD Wedge iterating over a prompt list; queue injection basics |

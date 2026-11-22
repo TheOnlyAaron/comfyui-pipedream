@@ -13,7 +13,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional dependencies are required.
+No additional dependencies are required. Video and EXR are written with PyAV (`av`), which ComfyUI already installs.
 
 ## Nodes
 
@@ -23,9 +23,12 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 |------|-------------|
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version. |
 | **💭 PD Custom Context** | Adds user-defined key/value token pairs to a context. Starts with one empty pair; a new pair appears as each name is filled (up to 10). Chain after Project Context for custom tokens like `{task}`, `{department}`. |
+| **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
+| **💭 PD Custom Context** | Adds up to 5 user-defined key/value token pairs to a context. Chain after Project Context for custom tokens like `{task}`, `{department}`. |
 | **💭 PD Shot Token** | Lightweight token resolver — takes a template string and inline widget values, outputs a resolved string. |
-| **💭 PD Output Relative** | Resolves a token template and saves images to ComfyUI's output directory. Shows available tokens after execution. |
-| **💭 PD Output Absolute** | Same as Output Relative but saves to an absolute or UNC network path. |
+| **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. |
+| **💭 PD Output Relative (legacy)** | Deprecated: use PD Output in `relative` mode. Kept so older workflows still load. |
+| **💭 PD Output Absolute (legacy)** | Deprecated: use PD Output in `absolute` mode. Kept so older workflows still load. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
@@ -56,8 +59,43 @@ PD Project Context accepts an optional incoming context. Non-empty widget values
 PD Project Context (base: project=DITC, sequence=sq010)
     → PD Project Context (override: shot=sh010)
         → PD Custom Context (task=comp, element=BG)
-            → PD Output Relative
+            → PD Output
 ```
+
+## Versioning
+
+PD Project Context's `version` widget is a prefix followed by a number, e.g. `v001`, `take_0042`. The number's zero-padding width is preserved (`v009` → `v010`, `v999` → `v1000`).
+
+**Auto-increment.** With `auto_increment_version` on, the version is bumped in the frontend at queue time, like seed's `control_after_generate`: each queued prompt uses the current version, then the widget advances by one. Queuing with batch count 5 from `v001` runs `v001`–`v005` and leaves the widget on `v006`. Versions without a trailing number are left as-is, and nothing is bumped while the `version` input is driven by a link.
+
+**Reset buttons.** Each PD Project Context node has two buttons:
+
+- **reset version** — resets that node's version to its first version, keeping its prefix and padding (`v017` → `v001`, `take_0042` → `take_0001`). An empty or non-numeric version becomes `v001`.
+- **reset all versions in graph** — after a confirmation, resets every PD Project Context in the workflow, including inside subgraphs.
+
+The global reset is also available from the canvas right-click menu as **Pipedream: reset all versions** (recent ComfyUI frontends only).
+
+## PD Output
+
+| Input / Output | Notes |
+|----------------|-------|
+| `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio; with an image format its frames are written as an image sequence. |
+| `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
+| `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
+| `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
+| `exr_precision`, `exr_compression` | EXR only. `half` (default) or `float`; compression `zip` (default), `zips`, `rle` or `none`. EXR keeps the linear float values (no clipping to 0–1) and writes alpha when the image has 4 channels. |
+| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp, the ComfyUI prompt and the EXR/video settings. The workflow is not embedded in the image files. |
+| `path` (output) | First file written, or the video file. |
+| `path_sidecar` (output) | The sidecar JSON path, empty when `save_metadata` is off. |
+| `path_all` (output) | Every written file, one per line. |
+| `images` (output) | The input images passed through (the VIDEO's frames when only a VIDEO is connected). |
+| `video` (output) | The written video as a ComfyUI VIDEO, for Save Video, Preview Video and other video nodes. Empty for image formats. |
+
+A preview of what was written appears under the node. Images and mp4/webm inside ComfyUI's output directory are shown directly; EXR, ProRes and files outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video). Widgets that do not apply to the chosen mode and format are hidden.
+
+Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install or extra package is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression).
+
+The legacy Relative/Absolute nodes share this implementation, have the same five outputs and also have the `exr_precision` and `exr_compression` options; `path` is the first output, so links from their old `written_path` output keep working.
 
 ## Compatibility
 

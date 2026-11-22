@@ -6,11 +6,13 @@ Other Pipedream nodes that accept tokens can receive a PROJECT_CONTEXT input
 from this node.
 
 Supports override chaining: an incoming PROJECT_CONTEXT provides base values,
-and any non-empty widget on this node overrides those values.  Also supports
-auto-incrementing the version string (persistent via widget state, like seed).
-"""
+and any non-empty widget on this node overrides those values.
 
-import re
+Version auto-increment and the version reset buttons live entirely in the
+frontend (``web/pd_version.js``).  The ``auto_increment_version`` widget is
+read there at queue time, like seed's ``control_after_generate``, so each
+queued prompt carries its own version.  This node only passes the value on.
+"""
 
 from ..core.display import display_name
 
@@ -46,6 +48,11 @@ class PDProjectContext:
 
     def execute(self, project, sequence, shot, version, context=None,
                 artist="", auto_increment_version=False, unique_id=None):
+        """Merge widget values over the incoming context and return it.
+
+        ``auto_increment_version`` is accepted for schema compatibility but
+        unused here; the frontend bumps the version widget after queueing.
+        """
         # Start from incoming context or empty dict
         ctx = dict(context) if context else {}
 
@@ -58,24 +65,4 @@ class PDProjectContext:
             elif key not in ctx:
                 ctx[key] = val
 
-        # Auto-increment: use the current version, return next for the widget
-        ui_update = {}
-        if auto_increment_version:
-            current = ctx.get("version", "v001")
-            next_ver = self._increment_version(current)
-            ui_update["version"] = [next_ver]
-
-        if ui_update:
-            return {"ui": ui_update, "result": (ctx,)}
         return (ctx,)
-
-    @staticmethod
-    def _increment_version(version: str) -> str:
-        """Increment a version string like 'v001' → 'v002'."""
-        match = re.match(r"^([a-zA-Z]*)(\d+)$", version)
-        if match:
-            prefix = match.group(1)
-            num = int(match.group(2))
-            width = len(match.group(2))
-            return f"{prefix}{num + 1:0{width}d}"
-        return version
