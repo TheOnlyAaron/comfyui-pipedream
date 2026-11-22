@@ -194,9 +194,15 @@ def wedge_preview(request: dict, path_mode, base_path, template, file_format,
         repeat *= max(1, int(axis.get("length", 1)))
     queued = int(request.get("total", len(rows) * repeat) or 1)
 
+    groups = {}
+    for a in (wedge or {}).get("axes", []):
+        key = a.get("group") or id(a)
+        entry = groups.setdefault(key, {"tokens": [], "rows": len(a["rows"]), "solo": False})
+        entry["tokens"].append(a["token"])
+        entry["solo"] = entry["solo"] or bool(a.get("solo"))
     axes = " x ".join(
-        f"{a['token']} {1 if a.get('solo') else len(a['rows'])}" + (" (solo)" if a.get("solo") else "")
-        for a in (wedge or {}).get("axes", [])
+        f"{'+'.join(g['tokens'])} " + ("1 (solo)" if g["solo"] else str(g["rows"]))
+        for g in groups.values()
     )
     lines = [f"Wedge preview: {len(rows)} output{'s' if len(rows) != 1 else ''}"
              + (f" ({axes})" if axes else "") + ", nothing written.",
