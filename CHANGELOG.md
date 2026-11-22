@@ -72,6 +72,18 @@
     (zip/zips/rle/none) options recorded in the sidecar; write failures
     raise an error instead of silently writing nothing
 
+- New OCIO nodes under Pipedream/Color, using OpenColorIO (`opencolorio>=2.3`,
+  Pipedream's first dependency, in requirements.txt; imported lazily so the
+  other nodes still load without it):
+  - PD OCIO Transform (colorspace to colorspace, optional look / inverse look)
+  - PD OCIO Display (display/view transform, optional inverse)
+  - Config choice: $OCIO environment (built-in ACES studio config when
+    unset), built-in ACES studio / cg configs, or a custom config file
+  - Float processing keeps values outside 0–1; alpha passes through
+  - Dropdowns follow the selected config (web/pd_ocio.js, served by
+    `GET /pipedream/ocio/options`); names are validated against the selected
+    config at queue time
+
 ## 0.1.0
 
 - Initial release

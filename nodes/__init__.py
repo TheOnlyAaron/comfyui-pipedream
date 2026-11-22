@@ -12,6 +12,7 @@ from .wedge import PDWedge
 from .rasterizer import PDRasterizer
 from .video import PDImagesToVideo, PDVideoToImages, PDVideoFrame, PDImageFrame
 from .sound import PDSound
+from .ocio import PDOCIOTransform, PDOCIODisplay
 
 ALL_NODES: list = [
     PDProjectContext,
@@ -26,4 +27,6 @@ ALL_NODES: list = [
     PDVideoToImages,
     PDVideoFrame,
     PDImageFrame,
+    PDOCIOTransform,
+    PDOCIODisplay,
 ]
