@@ -2,8 +2,9 @@
  * Shared helpers for the Pipedream frontend extensions.
  *
  * Written for the Nodes 2.0 (Vue) renderer first: ``widget.hidden`` is
- * reactive there and nodes lay themselves out.  The classic canvas skips
- * hidden widgets too; it only needs the node refitted afterwards.
+ * reactive there.  Both renderers size the node from ``node.size``, so
+ * after hiding widgets the node is refitted to ``computeSize()``, with
+ * hidden widgets collapsed to no height.
  *
  * ComfyUI loads every file in the web directory, so this module registers
  * nothing; the extensions import it.
@@ -29,12 +30,28 @@ export function chain(object, method, after) {
     };
 }
 
-/** Refit the node height to its visible widgets (classic canvas only) and redraw. */
+/** Refit the node height to its visible widgets and redraw. */
 export function refit(node) {
-    if (!globalThis.LiteGraph?.vueNodesMode && node.computeSize && node.setSize) {
+    if (node.computeSize && node.setSize) {
         node.setSize([node.size[0], node.computeSize()[1]]);
     }
     node.setDirtyCanvas?.(true, true);
+}
+
+/** Hide or show a widget, collapsing its height while hidden. */
+export function setHidden(widget, hidden) {
+    if (hidden === !!widget.hidden) return false;
+    if (hidden) {
+        widget._pdComputeSize = widget.computeSize;
+        widget.computeSize = () => [0, -4];
+    } else if (widget._pdComputeSize) {
+        widget.computeSize = widget._pdComputeSize;
+    } else {
+        delete widget.computeSize;
+    }
+    if (!hidden) delete widget._pdComputeSize;
+    widget.hidden = hidden;
+    return true;
 }
 
 /**
@@ -50,10 +67,7 @@ export function showWidgets(node, rules) {
     for (const [name, shown] of Object.entries(rules)) {
         const widget = findWidget(node, name);
         if (!widget) continue;
-        const hidden = !shown && !isInputLinked(node, name);
-        if (!!widget.hidden === hidden) continue;
-        widget.hidden = hidden;
-        changed = true;
+        if (setHidden(widget, !shown && !isInputLinked(node, name))) changed = true;
     }
     if (changed) refit(node);
     return changed;

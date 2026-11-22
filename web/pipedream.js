@@ -59,10 +59,7 @@ function syncSwitchSlots(node) {
         node.removeInput(idx);
     }
 
-    if (switchSlots(node).length !== before && node.computeSize && node.setSize) {
-        node.setSize([node.size[0], node.computeSize()[1]]);
-    }
-    refit(node);
+    if (switchSlots(node).length !== before) refit(node);
 }
 
 app.registerExtension({

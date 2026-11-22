@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { chain, isInputLinked, refit } from "./pd_common.js";
+import { chain, isInputLinked, refit, setHidden } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.CustomContext — auto-expanding key/value pairs          */
@@ -69,10 +69,7 @@ export function syncPairs(node) {
     pairs.forEach((p, i) => {
         const hide = i >= count;
         for (const w of [p.name, p.value]) {
-            if (!!w.hidden !== hide) {
-                w.hidden = hide;
-                changed = true;
-            }
+            if (setHidden(w, hide)) changed = true;
         }
     });
 
