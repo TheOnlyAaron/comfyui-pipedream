@@ -1,31 +1,62 @@
 import { app } from "../../scripts/app.js";
 
 /* ------------------------------------------------------------------ */
-/*  Pipedream.Output — dim widgets that do not apply to the current    */
-/*  path_mode / format (base_path in relative mode, fps/crf for        */
-/*  image formats, crf for ProRes).                                    */
+/*  Pipedream.Output — hide widgets that do not apply to the current   */
+/*  path_mode / format: base_path in relative mode, fps/crf for image  */
+/*  formats, crf for ProRes, fps when a VIDEO input is connected (the  */
+/*  video keeps its own frame rate).                                   */
+/*                                                                     */
+/*  Written for the Nodes 2.0 (Vue) renderer first: widget.hidden is   */
+/*  reactive there and the node re-lays itself out.  The classic       */
+/*  canvas honours it too; we only resize the node there.  A widget    */
+/*  whose input socket is linked is never hidden.                      */
 /* ------------------------------------------------------------------ */
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
+const VIDEO_EXTS = /\.(mp4|webm|mov|mkv)$/i;
 
 function findWidget(node, name) {
     return node.widgets?.find(w => w.name === name);
 }
 
-function setActive(widget, active) {
-    if (!widget) return;
-    widget.disabled = !active;
+function inputLinked(node, name) {
+    return node.inputs?.some(i => (i.name === name || i.widget?.name === name) && i.link != null);
+}
+
+function setShown(node, name, shown) {
+    const widget = findWidget(node, name);
+    if (!widget) return false;
+    const hidden = !shown && !inputLinked(node, name);
+    if (!!widget.hidden === hidden) return false;
+    widget.hidden = hidden;
+    return true;
 }
 
 function syncWidgets(node) {
     const mode = findWidget(node, "path_mode")?.value;
     const format = findWidget(node, "format")?.value;
     const isVideo = VIDEO_FORMATS.includes(format);
+    const hasVideoInput = inputLinked(node, "video");
 
-    setActive(findWidget(node, "base_path"), mode === "absolute");
-    setActive(findWidget(node, "fps"), isVideo);
-    setActive(findWidget(node, "crf"), isVideo && format !== "mov");
+    let changed = false;
+    changed = setShown(node, "base_path", mode === "absolute") || changed;
+    changed = setShown(node, "fps", isVideo && !hasVideoInput) || changed;
+    changed = setShown(node, "crf", isVideo && format !== "mov") || changed;
+    if (!changed) return;
+
+    if (!globalThis.LiteGraph?.vueNodesMode && node.computeSize && node.setSize) {
+        node.setSize([node.size[0], node.computeSize()[1]]);
+    }
     node.setDirtyCanvas?.(true, true);
+}
+
+function chain(object, method, after) {
+    const original = object[method];
+    object[method] = function (...args) {
+        const result = original?.apply(this, args);
+        after.apply(this, args);
+        return result;
+    };
 }
 
 app.registerExtension({
@@ -36,21 +67,19 @@ app.registerExtension({
 
         for (const name of ["path_mode", "format"]) {
             const widget = findWidget(node, name);
-            if (!widget) continue;
-            const origCallback = widget.callback;
-            widget.callback = function (...args) {
-                const result = origCallback?.apply(this, args);
-                syncWidgets(node);
-                return result;
-            };
+            if (widget) chain(widget, "callback", () => syncWidgets(node));
         }
+        chain(node, "onConfigure", () => syncWidgets(node));
+        chain(node, "onConnectionsChange", () => syncWidgets(node));
 
-        const origOnConfigure = node.onConfigure;
-        node.onConfigure = function (...args) {
-            const result = origOnConfigure?.apply(this, args);
-            syncWidgets(node);
-            return result;
-        };
+        // The frontend previews nodes with a VIDEO input as video unless
+        // previewMediaType says otherwise; our previews are usually images.
+        node.previewMediaType = "image";
+        chain(node, "onExecuted", function (output) {
+            const isVideo = output?.animated?.some(Boolean) &&
+                output?.images?.some(i => VIDEO_EXTS.test(i?.filename ?? ""));
+            this.previewMediaType = isVideo ? "video" : "image";
+        });
 
         syncWidgets(node);
     },

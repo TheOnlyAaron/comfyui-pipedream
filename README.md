@@ -13,7 +13,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional Python dependencies are required. Writing video from PD Output needs the `ffmpeg` binary on your `PATH`.
+No additional dependencies are required. Video is written with PyAV (`av`), which ComfyUI already installs.
 
 ## Nodes
 
@@ -64,16 +64,22 @@ PD Project Context (base: project=DITC, sequence=sq010)
 
 | Input / Output | Notes |
 |----------------|-------|
+| `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio; with an image format its frames are written as an image sequence. |
 | `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
 | `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
-| `fps`, `crf` | Video only. `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
+| `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
 | `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp and the ComfyUI prompt. The workflow is not embedded in the image files. |
-| `written_path` (output) | Path of the first file written. |
-| `images` (output) | The input images, passed through for downstream nodes. |
+| `path` (output) | First file written, or the video file. |
+| `path_sidecar` (output) | The sidecar JSON path, empty when `save_metadata` is off. |
+| `path_all` (output) | Every written file, one per line. |
+| `images` (output) | The input images passed through (the VIDEO's frames when only a VIDEO is connected). |
+| `video` (output) | The written video as a ComfyUI VIDEO, for Save Video, Preview Video and other video nodes. Empty for image formats. |
 
-A preview of what was written appears under the node. Files inside ComfyUI's output directory are shown directly; EXR, video and absolute paths outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video).
+A preview of what was written appears under the node. Images and mp4/webm inside ComfyUI's output directory are shown directly; EXR, ProRes and files outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video). Widgets that do not apply to the chosen mode and format are hidden.
 
-Video is encoded by piping frames to the `ffmpeg` binary, which must be on your `PATH` (no Python package is needed). If it is missing, the node raises an error telling you so.
+Video is encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the codecs need.
+
+The legacy Relative/Absolute nodes share this implementation and have the same five outputs; `path` is the first output, so links from their old `written_path` output keep working.
 
 ## Compatibility
 
