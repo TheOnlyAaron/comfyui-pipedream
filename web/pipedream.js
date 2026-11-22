@@ -2,12 +2,10 @@ import { app } from "../../scripts/app.js";
 import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Read-only text panels: Rasterizer iteration table, PD Output       */
-/*  token reference                                                    */
+/*  Read-only text panels: PD Output token reference                   */
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
-    PDRasterizer: ["preview_display", "Iteration table appears after execution...", "preview_table", 100],
     PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 140],
 };
 

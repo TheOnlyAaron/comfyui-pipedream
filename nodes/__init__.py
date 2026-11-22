@@ -9,7 +9,6 @@ from .shot_token import PDShotToken
 from .output import PDOutput
 from .switch import PDSwitch
 from .wedge import PDWedge
-from .rasterizer import PDRasterizer
 from .video import PDImagesToVideo, PDVideoToImages, PDVideoFrame, PDImageFrame
 from .sound import PDSound
 from .ocio import PDOCIOTransform, PDOCIODisplay
@@ -22,7 +21,6 @@ ALL_NODES: list = [
     PDSwitch,
     PDSound,
     PDWedge,
-    PDRasterizer,
     PDImagesToVideo,
     PDVideoToImages,
     PDVideoFrame,

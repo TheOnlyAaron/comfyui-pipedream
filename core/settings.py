@@ -122,7 +122,7 @@ SCHEMA: dict[str, Setting] = {
         str, "as is", "EXR: write values as is, or decode sRGB to linear.",
         choices=EXR_COLORSPACES),
     "sequence.frame_padding": Setting(
-        int, 4, "Digits in frame numbers (PD Output, PD Shot Token, PD Rasterizer).",
+        int, 4, "Digits in frame numbers (PD Output, PD Shot Token).",
         min=1, max=8),
     "sequence.start_frame": Setting(int, 1001, "First frame number of an image sequence.",
                                     min=0, max=9999999),
