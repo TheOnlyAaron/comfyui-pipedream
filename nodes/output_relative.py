@@ -8,7 +8,7 @@ has the same outputs (path, path_sidecar, path_all, images, video).
 """
 
 from ..core.display import display_name
-from .output import PDOutputBase, DEFAULT_TEMPLATE
+from .output import PDOutputBase, DEFAULT_TEMPLATE, EXR_INPUTS
 
 
 class PDOutputRelative(PDOutputBase):
@@ -31,15 +31,18 @@ class PDOutputRelative(PDOutputBase):
                 "create_dirs": ("BOOLEAN", {"default": True}),
                 "overwrite": ("BOOLEAN", {"default": False}),
                 "save_metadata": ("BOOLEAN", {"default": True}),
+                **EXR_INPUTS,
             },
             "hidden": {"prompt": "PROMPT"},
         }
 
     def execute(self, images, template, frame_padding, extension,
                 context=None, create_dirs=True, overwrite=False,
-                save_metadata=True, prompt=None):
+                save_metadata=True, prompt=None, exr_precision="half",
+                exr_compression="zip"):
         return self.write_outputs(
             images, "relative", "", template, frame_padding, extension,
             context=context, create_dirs=create_dirs, overwrite=overwrite,
             save_metadata=save_metadata, prompt=prompt,
+            exr_precision=exr_precision, exr_compression=exr_compression,
         )

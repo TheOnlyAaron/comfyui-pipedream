@@ -1,9 +1,9 @@
 """
 Media helpers for Pipedream output nodes.
 
-Video encoding through PyAV (the ``av`` package that ships with ComfyUI),
-preview image generation for the ComfyUI node UI, and sidecar metadata
-writing.  No dependencies beyond what ComfyUI already installs.
+Video and EXR encoding through PyAV (the ``av`` package that ships with
+ComfyUI), preview image generation for the ComfyUI node UI, and sidecar
+metadata writing.  No dependencies beyond what ComfyUI already installs.
 """
 
 import json
@@ -226,6 +226,70 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
         ) from exc
 
     return [full_path]
+
+
+EXR_PRECISIONS = ("half", "float")
+EXR_COMPRESSIONS = ("zip", "zips", "rle", "none")
+_EXR_COMPRESSION = {"zip": "zip16", "zips": "zip1", "rle": "rle", "none": "none"}
+
+
+def exr_frame(image):
+    """
+    Return one IMAGE item ``(H, W, C)`` as a float32 RGB or RGBA array.
+
+    Values stay linear and unclipped.  One channel is expanded to RGB, two
+    channels are read as luminance + alpha, and extra channels beyond four
+    are dropped.
+    """
+    import numpy as np
+
+    arr = np.asarray(to_numpy(image), dtype=np.float32)
+    if arr.ndim == 2:
+        arr = arr[..., None]
+    channels = arr.shape[-1]
+    if channels == 1:
+        arr = np.repeat(arr, 3, axis=-1)
+    elif channels == 2:
+        arr = np.concatenate([np.repeat(arr[..., :1], 3, axis=-1), arr[..., 1:]], axis=-1)
+    elif channels > 4:
+        arr = arr[..., :4]
+    return np.ascontiguousarray(arr)
+
+
+def save_exr(rgb, path: str, precision: str = "half", compression: str = "zip") -> str:
+    """
+    Write one float RGB/RGBA array ``(H, W, 3|4)`` to *path* as OpenEXR.
+
+    Uses PyAV's ``exr`` encoder (gbrpf32le / gbrapf32le input) directly,
+    without a muxer: an EXR frame is the whole file.  *precision* is
+    ``half`` or ``float`` (the encoder's ``format`` option); *compression*
+    is ``zip`` (16 scanlines), ``zips`` (1 scanline), ``rle`` or ``none``.
+    Data is written as-is (linear, no clipping); 4 channels write alpha.
+
+    Returns *path*.  Raises ``RuntimeError`` when PyAV is missing or the
+    encode fails.
+    """
+    if precision not in EXR_PRECISIONS:
+        raise ValueError(f"[Pipedream] Unknown EXR precision: '{precision}'")
+    if compression not in EXR_COMPRESSIONS:
+        raise ValueError(f"[Pipedream] Unknown EXR compression: '{compression}'")
+    av = import_av()
+
+    height, width, channels = rgb.shape
+    pix_fmt = "gbrapf32le" if channels == 4 else "gbrpf32le"
+    try:
+        ctx = av.CodecContext.create("exr", "w")
+        ctx.width, ctx.height, ctx.pix_fmt = width, height, pix_fmt
+        ctx.time_base = Fraction(1, 24)
+        ctx.options = {"format": precision, "compression": _EXR_COMPRESSION[compression]}
+        frame = av.VideoFrame.from_ndarray(rgb, format=pix_fmt)
+        packets = list(ctx.encode(frame)) + list(ctx.encode(None))
+        with open(path, "wb") as fh:
+            for packet in packets:
+                fh.write(bytes(packet))
+    except Exception as exc:
+        raise RuntimeError(f"[Pipedream] Failed to write EXR '{path}': {exc}") from exc
+    return path
 
 
 def _downscale(img, max_size: int = PREVIEW_MAX_SIZE):

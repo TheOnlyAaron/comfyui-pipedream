@@ -33,6 +33,10 @@
     (every written file, newline-separated), `images` passthrough (#9) and
     `video` (a ComfyUI VIDEO of the written file); `path` stays in slot 0 so
     old `written_path` links keep working
+  - EXR output now works (#16): linear float RGB/RGBA written with PyAV's EXR
+    encoder, with `exr_precision` (half/float) and `exr_compression`
+    (zip/zips/rle/none) options recorded in the sidecar; write failures
+    raise an error instead of silently writing nothing
 
 ## 0.1.0
 

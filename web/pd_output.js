@@ -4,7 +4,9 @@ import { app } from "../../scripts/app.js";
 /*  Pipedream.Output — hide widgets that do not apply to the current   */
 /*  path_mode / format: base_path in relative mode, fps/crf for image  */
 /*  formats, crf for ProRes, fps when a VIDEO input is connected (the  */
-/*  video keeps its own frame rate).                                   */
+/*  video keeps its own frame rate), exr_* for non-EXR formats.  The   */
+/*  legacy Output Relative/Absolute nodes only get the exr_* handling, */
+/*  driven by their "extension" widget.                                */
 /*                                                                     */
 /*  Written for the Nodes 2.0 (Vue) renderer first: widget.hidden is   */
 /*  reactive there and the node re-lays itself out.  The classic       */
@@ -12,6 +14,7 @@ import { app } from "../../scripts/app.js";
 /*  whose input socket is linked is never hidden.                      */
 /* ------------------------------------------------------------------ */
 
+const NODE_CLASSES = ["PDOutput", "PDOutputRelative", "PDOutputAbsolute"];
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
 const VIDEO_EXTS = /\.(mp4|webm|mov|mkv)$/i;
 
@@ -47,14 +50,18 @@ function setShown(node, name, shown) {
 
 function syncWidgets(node) {
     const mode = findWidget(node, "path_mode")?.value;
-    const format = findWidget(node, "format")?.value;
+    const format = (findWidget(node, "format") ?? findWidget(node, "extension"))?.value;
     const isVideo = VIDEO_FORMATS.includes(format);
     const hasVideoInput = inputLinked(node, "video");
 
     let changed = false;
-    changed = setShown(node, "base_path", mode === "absolute") || changed;
+    if (mode !== undefined) {
+        changed = setShown(node, "base_path", mode === "absolute") || changed;
+    }
     changed = setShown(node, "fps", isVideo && !hasVideoInput) || changed;
     changed = setShown(node, "crf", isVideo && format !== "mov") || changed;
+    changed = setShown(node, "exr_precision", format === "exr") || changed;
+    changed = setShown(node, "exr_compression", format === "exr") || changed;
     if (!changed) return;
 
     if (!globalThis.LiteGraph?.vueNodesMode && node.computeSize && node.setSize) {
@@ -76,9 +83,9 @@ app.registerExtension({
     name: "Pipedream.Output",
 
     async nodeCreated(node) {
-        if (node.comfyClass !== "PDOutput") return;
+        if (!NODE_CLASSES.includes(node.comfyClass)) return;
 
-        for (const name of ["path_mode", "format"]) {
+        for (const name of ["path_mode", "format", "extension"]) {
             const widget = findWidget(node, name);
             if (widget) chain(widget, "callback", () => syncWidgets(node));
         }

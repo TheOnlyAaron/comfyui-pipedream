@@ -13,7 +13,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional dependencies are required. Video is written with PyAV (`av`), which ComfyUI already installs.
+No additional dependencies are required. Video and EXR are written with PyAV (`av`), which ComfyUI already installs.
 
 ## Nodes
 
@@ -68,7 +68,8 @@ PD Project Context (base: project=DITC, sequence=sq010)
 | `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
 | `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
 | `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
-| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp and the ComfyUI prompt. The workflow is not embedded in the image files. |
+| `exr_precision`, `exr_compression` | EXR only. `half` (default) or `float`; compression `zip` (default), `zips`, `rle` or `none`. EXR keeps the linear float values (no clipping to 0–1) and writes alpha when the image has 4 channels. |
+| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp, the ComfyUI prompt and the EXR/video settings. The workflow is not embedded in the image files. |
 | `path` (output) | First file written, or the video file. |
 | `path_sidecar` (output) | The sidecar JSON path, empty when `save_metadata` is off. |
 | `path_all` (output) | Every written file, one per line. |
@@ -77,9 +78,9 @@ PD Project Context (base: project=DITC, sequence=sq010)
 
 A preview of what was written appears under the node. Images and mp4/webm inside ComfyUI's output directory are shown directly; EXR, ProRes and files outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video). Widgets that do not apply to the chosen mode and format are hidden.
 
-Video is encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the codecs need.
+Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install or extra package is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression).
 
-The legacy Relative/Absolute nodes share this implementation and have the same five outputs; `path` is the first output, so links from their old `written_path` output keep working.
+The legacy Relative/Absolute nodes share this implementation, have the same five outputs and also have the `exr_precision` and `exr_compression` options; `path` is the first output, so links from their old `written_path` output keep working.
 
 ## Compatibility
 

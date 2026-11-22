@@ -27,6 +27,8 @@ from datetime import datetime
 
 from ..core.display import display_name
 from ..core.media import (
+    EXR_COMPRESSIONS,
+    EXR_PRECISIONS,
     IMAGE_FORMATS,
     VIDEO_FORMATS,
     audio_codec,
@@ -46,6 +48,19 @@ except ImportError:
 
 DEFAULT_TEMPLATE = "{project}/{sequence}/{shot}/{shot}_{version}_{date}"
 PATH_MODES = ("relative", "absolute")
+
+# Optional EXR widgets shared by PD Output and the legacy nodes (appended
+# last so saved widget values keep their positions).
+EXR_INPUTS = {
+    "exr_precision": (list(EXR_PRECISIONS), {
+        "default": "half",
+        "tooltip": "EXR only: half (16-bit float) or float (32-bit float).",
+    }),
+    "exr_compression": (list(EXR_COMPRESSIONS), {
+        "default": "zip",
+        "tooltip": "EXR only: zip (16 scanlines), zips (1 scanline), rle or none.",
+    }),
+}
 
 
 def get_output_directory() -> str:
@@ -111,7 +126,8 @@ class PDOutputBase:
     def write_outputs(self, images, path_mode, base_path, template,
                       frame_padding, file_format, context=None, fps=24.0,
                       crf=18, create_dirs=True, overwrite=False,
-                      save_metadata=True, prompt=None, video=None):
+                      save_metadata=True, prompt=None, video=None,
+                      exr_precision="half", exr_compression="zip"):
         audio = None
         if video is not None:
             frames, audio, fps = video_source(video)
@@ -165,7 +181,9 @@ class PDOutputBase:
             written = save_video(frames, full_path, file_format, fps=fps,
                                  crf=crf, overwrite=overwrite, audio=audio)
         else:
-            written = save_image_batch(frames, full_path, overwrite=overwrite)
+            written = save_image_batch(frames, full_path, overwrite=overwrite,
+                                       exr_precision=exr_precision,
+                                       exr_compression=exr_compression)
         final = written[0] if written else full_path
 
         sidecar = ""
@@ -200,6 +218,11 @@ class PDOutputBase:
                     "crf": None if file_format == "mov" else crf,
                     "audio": audio_codec(file_format) if has_audio else None,
                     "sample_rate": int(audio.get("sample_rate", 0)) if has_audio else None,
+                }
+            elif file_format == "exr":
+                metadata["exr"] = {
+                    "precision": exr_precision,
+                    "compression": exr_compression,
                 }
             sidecar = write_sidecar(os.path.splitext(full_path)[0] + ".json", metadata) or ""
 
@@ -266,6 +289,7 @@ class PDOutput(PDOutputBase):
                 "overwrite": ("BOOLEAN", {"default": False}),
                 "save_metadata": ("BOOLEAN", {"default": True,
                                               "tooltip": "Write a sidecar .json next to the output."}),
+                **EXR_INPUTS,
             },
             "hidden": {"prompt": "PROMPT"},
         }
@@ -273,10 +297,11 @@ class PDOutput(PDOutputBase):
     def execute(self, path_mode, base_path, template, frame_padding, format,
                 images=None, context=None, video=None, fps=24.0, crf=18,
                 create_dirs=True, overwrite=False, save_metadata=True,
-                prompt=None):
+                prompt=None, exr_precision="half", exr_compression="zip"):
         return self.write_outputs(
             images, path_mode, base_path, template, frame_padding, format,
             context=context, fps=fps, crf=crf, create_dirs=create_dirs,
             overwrite=overwrite, save_metadata=save_metadata, prompt=prompt,
-            video=video,
+            video=video, exr_precision=exr_precision,
+            exr_compression=exr_compression,
         )
