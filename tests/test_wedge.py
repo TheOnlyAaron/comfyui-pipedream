@@ -78,6 +78,22 @@ class ChainCase(unittest.TestCase):
         with self.assertRaises(wedge.WedgeError):
             wedge.chain_axes(first, self.axis("product", ["b"]))
 
+    def test_chain_jobs(self):
+        value = {"axes": [self.axis("product", ["red", "blue"]),
+                          self.axis("look", ["day", "night"], group="g"),
+                          self.axis("prompt", ["sun", "moon"], group="g"),
+                          self.axis("seed", ["1", "2", "3"])]}
+        names = [(t["product"], t["look"], t["prompt"], t["seed"], t["wedge_idx"])
+                 for t in wedge.chain_jobs(value)]
+        self.assertEqual(len(names), 12)
+        self.assertEqual(names[:3], [("red", "day", "sun", "1", "000"),
+                                     ("blue", "day", "sun", "1", "001"),
+                                     ("red", "night", "moon", "1", "002")])
+        self.assertEqual(names[-1], ("blue", "night", "moon", "3", "011"))
+        value["axes"][3].update(row=1, solo=True)
+        self.assertEqual({t["seed"] for t in wedge.chain_jobs(value)}, {"2"})
+        self.assertEqual(wedge.chain_jobs(None), [{}])
+
     def test_no_wedge(self):
         self.assertEqual(wedge.wedge_tokens(None), {})
         self.assertIsNone(wedge.wedge_metadata(None))
@@ -167,6 +183,30 @@ class PlanCase(unittest.TestCase):
         self.assertEqual(wedge.job_state(out["20"]["inputs"]), (2, 7, 9))
         self.assertEqual(wedge.job_state(out["30"]["inputs"]), (1, 7, 9))
         self.assertNotIn(wedge.ROW_KEY, prompt["20"]["inputs"])
+
+    def test_solo_pins_axis(self):
+        prompt = self.prompt()
+        prompt["20"]["inputs"]["solo"] = 3
+        plan = wedge.plan(prompt, ["40"])
+        self.assertEqual(plan["total"], 3)
+        self.assertEqual({r["20"] for r in wedge.jobs(plan)}, {2})
+        self.assertEqual([r["30"] for r in wedge.jobs(plan)], [0, 1, 2])
+
+    def test_solo_pins_group(self):
+        prompt = self.prompt()
+        prompt["60"] = wedge_node("prompt", ["a", "b", "c"], group="look")
+        prompt["30"]["inputs"].update(group="look", solo=2)
+        prompt["40"]["inputs"]["extra"] = ["60", 0]
+        rows = wedge.jobs(wedge.plan(prompt, ["40"]))
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(all(r["30"] == r["60"] == 1 for r in rows))
+
+    def test_solo_empty_row(self):
+        prompt = self.prompt()
+        prompt["20"]["inputs"]["solo"] = 7
+        with self.assertRaisesRegex(wedge.WedgeError, "solo row 7") as caught:
+            wedge.plan(prompt, ["40"])
+        self.assertEqual((caught.exception.node_id, caught.exception.input_name), ("20", "solo"))
 
     def test_subgraph_ids_sort(self):
         self.assertLess(wedge._id_key("5:3"), wedge._id_key("12"))
