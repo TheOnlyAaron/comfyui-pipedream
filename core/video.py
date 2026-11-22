@@ -14,7 +14,12 @@ sequential scan from the start.
 
 All images are returned as float32 RGB in 0-1.  8-bit sources go through
 ``rgb24`` and higher bit depths (10/12-bit) through ``rgb48le``, so no
-precision is lost.  Alpha channels are dropped.
+precision is lost.  Sources with an alpha plane (ProRes 4444
+``yuva444p10le/12le``, other ``yuva*``, ``rgba``, ``gbrap*``, ...) go
+through ``rgba``, ``rgba64le`` or ``gbrapf32le`` instead, and the alpha is
+split off into a ComfyUI MASK (1.0 = opaque, straight alpha: RGB is passed
+through unchanged).  Sources without alpha get a full-opacity mask, so the
+mask always matches the images in count and size.
 
 ``comfy_api``, ``torch``, ``numpy`` and ``av`` are imported lazily so this
 module can be imported outside ComfyUI.
@@ -109,23 +114,31 @@ def is_file_backed(video) -> bool:
 # Frame conversion
 # ---------------------------------------------------------------------------
 
-def _frame_to_array(frame, crop=None):
+def has_alpha(frame) -> bool:
+    """True when an ``av.VideoFrame``'s pixel format carries alpha (``pal8`` may too)."""
+    fmt = frame.format
+    return fmt.name == "pal8" or any(c.is_alpha for c in fmt.components)
+
+
+def _frame_to_array(frame, crop=None, alpha=False):
     """
-    Convert an ``av.VideoFrame`` to an ``HxWx3`` numpy array.
+    Convert an ``av.VideoFrame`` to an ``HxWx3`` numpy array, or ``HxWx4``
+    (RGBA) when *alpha* is True.
 
     Returns ``uint8`` for 8-bit sources, ``uint16`` for higher bit depths
-    and ``float32`` for float pixel formats.  Rotation metadata and the
-    optional ``(x, y, w, h)`` crop are applied like core ComfyUI does.
+    and ``float32`` for float pixel formats, so alpha keeps the precision of
+    the source.  Rotation metadata and the optional ``(x, y, w, h)`` crop
+    are applied like core ComfyUI does.
     """
     import numpy as np
 
     name = frame.format.name
     if "f16" in name or "f32" in name:
-        arr = frame.to_ndarray(format="gbrpf32le")
+        arr = frame.to_ndarray(format="gbrapf32le" if alpha else "gbrpf32le")
     elif any(c.bits > 8 for c in frame.format.components):
-        arr = frame.to_ndarray(format="rgb48le")
+        arr = frame.to_ndarray(format="rgba64le" if alpha else "rgb48le")
     else:
-        arr = frame.to_ndarray(format="rgb24")
+        arr = frame.to_ndarray(format="rgba" if alpha else "rgb24")
 
     rotation = getattr(frame, "rotation", 0) or 0
     quadrant = int(round(rotation // 90)) % 4
@@ -151,19 +164,45 @@ def _array_to_float(arr):
 
 def _stack_arrays(arrays):
     """
-    Stack frame arrays into one ``NxHxWx3`` float32 tensor.
+    Stack frame arrays into ``(images, mask)``: an ``NxHxWx3`` float32
+    IMAGE and an ``NxHxW`` float32 MASK.
 
-    The output is preallocated and filled frame by frame, so peak memory
-    is the integer frames plus one float copy rather than two float copies.
+    RGBA arrays are split into RGB and alpha; RGB arrays get a
+    full-opacity mask.  The outputs are preallocated and filled frame by
+    frame, so peak memory is the integer frames plus one float copy rather
+    than two float copies.
     """
     import torch
 
     h, w, c = arrays[0].shape
-    out = torch.empty((len(arrays), h, w, c), dtype=torch.float32)
+    images = torch.empty((len(arrays), h, w, 3), dtype=torch.float32)
+    mask = torch.ones((len(arrays), h, w), dtype=torch.float32)
     for i in range(len(arrays)):
-        out[i] = _array_to_float(arrays[i])
+        frame = _array_to_float(arrays[i])
+        images[i] = frame[..., :3]
+        if c == 4:
+            mask[i] = frame[..., 3]
         arrays[i] = None
-    return out
+    return images, mask
+
+
+def components_mask(components, select: slice):
+    """
+    Return the MASK for frames *select* of in-memory VIDEO components.
+
+    Uses the components' ``alpha`` (``NxHxWx1``, present on newer ComfyUI
+    builds), else the fourth channel of RGBA images, else full opacity.
+    """
+    import torch
+
+    images = components.images[select]
+    alpha = getattr(components, "alpha", None)
+    if alpha is not None:
+        alpha = alpha[select]
+        return alpha[..., 0] if alpha.dim() == 4 else alpha
+    if images.shape[-1] == 4:
+        return images[..., 3]
+    return torch.ones(images.shape[:3], dtype=torch.float32, device=images.device)
 
 
 # ---------------------------------------------------------------------------
@@ -445,9 +484,11 @@ def read_frame(video, mode: str = "first", index: int = 0):
     """
     Decode a single frame from a VIDEO.
 
-    Returns ``(image, frame_index, frame_count, fps)`` where *image* is a
-    ``1xHxWx3`` float32 tensor and *frame_index* is the resolved absolute
-    index.  Only the needed frame is decoded for file-backed videos.
+    Returns ``(image, mask, frame_index, frame_count, fps)`` where *image*
+    is a ``1xHxWx3`` float32 tensor, *mask* its ``1xHxW`` alpha (full
+    opacity when the source has none) and *frame_index* the resolved
+    absolute index.  Only the needed frame is decoded for file-backed
+    videos.
 
     *frame_count* is exact when the end of the video had to be located
     (``last`` or negative indices); otherwise it comes from container
@@ -458,7 +499,8 @@ def read_frame(video, mode: str = "first", index: int = 0):
         images = comps.images
         count = int(images.shape[0])
         idx = resolve_index(mode, index, count)
-        return images[idx:idx + 1, ..., :3], idx, count, float(comps.frame_rate)
+        mask = components_mask(comps, slice(idx, idx + 1))
+        return images[idx:idx + 1, ..., :3], mask, idx, count, float(comps.frame_rate)
 
     with _Reader(video) as reader:
         needs_end = mode == "last" or (mode == "index" and index < 0)
@@ -482,8 +524,8 @@ def read_frame(video, mode: str = "first", index: int = 0):
         idx, frame = found
         if count is None:
             count = max(reader.reported_count() or 0, idx + 1)
-        image = _array_to_float(_frame_to_array(frame, reader.crop)).unsqueeze(0)
-        return image, int(idx), int(count), reader.fps
+        image, mask = _stack_arrays([_frame_to_array(frame, reader.crop, has_alpha(frame))])
+        return image, mask, int(idx), int(count), reader.fps
 
 
 def read_frames(video, start_frame: int = 0, frame_limit: int = 0, step: int = 1):
@@ -492,8 +534,10 @@ def read_frames(video, start_frame: int = 0, frame_limit: int = 0, step: int = 1
 
     Selects every *step*-th frame starting at *start_frame*, up to
     *frame_limit* frames (0 = until the end).  Returns
-    ``(images, audio, fps, frame_count)``; *fps* is the source rate divided
-    by *step* so images and audio stay in sync.  Audio covers the full
+    ``(images, mask, audio, fps, frame_count)``; *mask* holds the alpha of
+    the same frames (full opacity when the source has none), decoded in the
+    same pass.  *fps* is the source rate divided by *step* so images and
+    audio stay in sync.  Audio covers the full
     time span of the selection, or is None if the video has none.
     """
     start_frame = max(int(start_frame), 0)
@@ -507,20 +551,23 @@ def read_frames(video, start_frame: int = 0, frame_limit: int = 0, step: int = 1
             raise ValueError(f"start_frame {start_frame} is past the end of the video ({total} frames).")
         end = total if not frame_limit else min(total, start_frame + frame_limit * step)
         images = comps.images[start_frame:end:step, ..., :3]
+        mask = components_mask(comps, slice(start_frame, end, step))
         rate = Fraction(comps.frame_rate)
         span_end = min(total, start_frame + images.shape[0] * step)
         audio = _slice_audio(comps.audio, float(start_frame / rate), float(span_end / rate))
-        return images, audio, float(rate) / step, int(images.shape[0])
+        return images, mask, audio, float(rate) / step, int(images.shape[0])
 
     with _Reader(video) as reader:
-        arrays, last_seen = [], None
+        arrays, last_seen, alpha = [], None, None
         stop = start_frame + frame_limit * step if frame_limit else None
         for idx, frame in reader.indexed(start_frame):
             if stop is not None and idx >= stop:
                 break
             last_seen = idx
             if (idx - start_frame) % step == 0:
-                arrays.append(_frame_to_array(frame, reader.crop))
+                if alpha is None:
+                    alpha = has_alpha(frame)
+                arrays.append(_frame_to_array(frame, reader.crop, alpha))
         if not arrays:
             raise ValueError(f"start_frame {start_frame} is past the end of the video.")
 
@@ -532,8 +579,8 @@ def read_frames(video, start_frame: int = 0, frame_limit: int = 0, step: int = 1
             span = min(len(arrays) * step, last_seen + 1 - start_frame)
             t1 = t0 + float(span / rate)
         audio = _decode_audio(reader, t0, t1)
-        images = _stack_arrays(arrays)
-        return images, audio, float(rate) / step, int(images.shape[0])
+        images, mask = _stack_arrays(arrays)
+        return images, mask, audio, float(rate) / step, int(images.shape[0])
 
 
 def images_to_video(images, fps: float, audio=None):
@@ -541,7 +588,7 @@ def images_to_video(images, fps: float, audio=None):
     Wrap an IMAGE batch (and optional AUDIO) as an in-memory core VIDEO.
 
     Returns a ``VideoFromComponents``; nothing is encoded or written.
-    Alpha channels are dropped.
+    Alpha channels are dropped (PD Images To Video has no alpha input).
     """
     _, _, video_from_components, video_components = comfy_video_api()
     if video_from_components is None:
