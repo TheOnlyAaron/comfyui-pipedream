@@ -1,5 +1,5 @@
 # 02 — Network Output
 
-Replaces the built-in Save Image node with PD Network Output. Shows how to configure a UNC base path and enable directory creation.
+Uses PD Output in `absolute` mode instead of the built-in Save Image node. Shows how to configure a UNC `base_path` and enable directory creation.
 
-**Nodes used:** PD Output Namer, PD Network Output, KSampler, CLIP Text Encode, CheckpointLoaderSimple
+**Nodes used:** PD Output, KSampler, CLIP Text Encode, CheckpointLoaderSimple
