@@ -4,7 +4,7 @@ PD Output Absolute node (legacy).
 Deprecated in favour of PD Output with ``path_mode = absolute``.  Kept
 registered so saved workflows still load; it shares PD Output's
 implementation, so it also writes sidecar metadata, shows a preview and
-passes the images through.
+has the same outputs (path, path_sidecar, path_all, images, video).
 """
 
 from ..core.display import display_name
