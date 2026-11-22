@@ -171,6 +171,20 @@ def wedge_tokens(wedge: dict | None) -> dict:
     return tokens
 
 
+def wedge_metadata(wedge: dict | None) -> dict | None:
+    """Sidecar summary of a WEDGE value: job, total and each axis's row."""
+    if not wedge:
+        return None
+    return {
+        "job": wedge.get("job", 0),
+        "total": wedge.get("total", 1),
+        "axes": [
+            {"token": a["token"], "group": a["group"], "row": a["row"],
+             "value": a["rows"][a["row"]], "rows": len(a["rows"])}
+            for a in wedge.get("axes", [])
+        ],
+    }
+
 # ---------------------------------------------------------------------------
 # Queue expansion: one prompt in, one job per combination of wedge rows out.
 # ---------------------------------------------------------------------------

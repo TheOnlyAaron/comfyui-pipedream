@@ -99,7 +99,7 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token. The
 | `{date}` | Auto: YYYYMMDD |
 | `{time}` | Auto: HHMMSS |
 | `{frame}` | Frame number in PD Output image sequences (`start_frame`, `frame_padding`); `####` in PD Shot Token |
-| `{<token>}`, `{<token>_idx}` | PD Wedge: the selected row's text and its position (`000`, `001`...) |
+| `{<token>}`, `{<token>_idx}` | PD Wedge (via PD Output's `wedge` input): the selected row's text and its position (`000`, `001`...) |
 | `{wedge_idx}`, `{wedge_total}` | PD Wedge: the job number and the number of jobs |
 | `{<custom>}` | Any key added via PD Custom Context |
 | `{<extra>}` | Any `[tokens.extra]` setting (context values override it) |

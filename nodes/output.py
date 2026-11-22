@@ -14,8 +14,12 @@ default, with the ``sequence.frame_separator`` setting before the number).  An o
 channel of the images, is written to png/webp/exr and ProRes 4444
 (straight, except EXR, which is premultiplied as its spec requires).
 
+A connected PD Wedge chain adds its tokens (``{<token>}``,
+``{<token>_idx}``, ``{wedge_idx}``, ``{wedge_total}``) over the context.
+
 Each write can produce a sidecar JSON with the resolved tokens, template,
-written paths, frame range, alpha convention and the ComfyUI prompt.  The
+written paths, frame range, alpha convention, wedge job and the ComfyUI
+prompt.  The
 node shows a preview of what was written, returns the written paths,
 passes the images through, returns a VIDEO for written video, and feeds
 the token reference panel in ``web/pipedream.js``.
@@ -55,6 +59,7 @@ from ..core.media import (
 )
 from ..core.tokens import auto_tokens, format_token_reference, resolve_tokens, with_extra, wrap
 from ..core.video import comfy_video_api
+from ..core.wedge import wedge_metadata, wedge_tokens
 
 # ComfyUI's folder_paths is available at runtime inside custom nodes.
 try:
@@ -180,6 +185,11 @@ class PDOutput:
                 "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'. "
                                                 "A fourth channel is written as alpha."}),
                 "context": ("PROJECT_CONTEXT",),
+                "wedge": ("WEDGE", {
+                    "tooltip": "Last PD Wedge of a chain: adds {<token>} and {<token>_idx} "
+                               "for each wedge, plus {wedge_idx} and {wedge_total}. "
+                               "Wedge tokens override context tokens of the same name.",
+                }),
                 "video": ("VIDEO", {
                     "tooltip": "Optional VIDEO to write instead of 'images', with its "
                                "own frame rate and audio. With an image format its "
@@ -232,7 +242,7 @@ class PDOutput:
     def execute(self, path_mode, base_path, template, format,
                 start_frame=settings.get("sequence.start_frame"),
                 frame_padding=settings.get("sequence.frame_padding"),
-                images=None, context=None, video=None, fps=settings.get("output.fps"),
+                images=None, context=None, wedge=None, video=None, fps=settings.get("output.fps"),
                 crf=settings.get("output.crf"),
                 prores_profile=settings.get("output.prores_profile"),
                 create_dirs=settings.get("output.create_dirs"),
@@ -285,6 +295,7 @@ class PDOutput:
             matte = None
 
         ctx = dict(context) if context else {}
+        ctx.update(wedge_tokens(wedge))
         now = datetime.now()
         numbered = not is_video and (count > 1 or wrap("frame") in template)
         first, last = start_frame, start_frame + count - 1
@@ -367,6 +378,7 @@ class PDOutput:
                 "source": "video" if video is not None else "images",
                 "context": ctx,
                 "tokens": tokens,
+                "wedge": wedge_metadata(wedge),
                 "files": written,
                 "image": {
                     "count": count,
