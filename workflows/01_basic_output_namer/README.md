@@ -1,5 +1,5 @@
 # 01 — Basic Output Namer
 
-Demonstrates wiring PD Output Namer with default tokens and feeding the resolved path into ComfyUI's built-in Save Image node.
+Demonstrates PD Output in `relative` mode with default tokens, replacing ComfyUI's built-in Save Image node. The images passthrough output can feed further nodes downstream.
 
-**Nodes used:** PD Output Namer, Save Image, KSampler, CLIP Text Encode, CheckpointLoaderSimple
+**Nodes used:** PD Output, KSampler, CLIP Text Encode, CheckpointLoaderSimple
