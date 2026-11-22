@@ -4,7 +4,7 @@
 
 ### Facility / user defaults
 - New TOML settings: built-in defaults, then `pipedream.toml` in the pack
-  folder (user, git-ignored), then the file in `PIPEDREAM_CONFIG` (facility).
+  folder (user, git-ignored), then the file in `PIPEDREAM_COMFYUI_CONFIG` (facility).
   Keys override only when present and valid; invalid values, unknown keys,
   bad TOML and a missing facility file warn once in the console. Read with
   `tomllib` (or `tomli`), no new dependency. Restart ComfyUI after edits

@@ -180,9 +180,9 @@ A studio can deploy Pipedream with its own defaults (output template, network ro
 
 1. **Built-in** defaults (what you get with no files).
 2. **User** file: `pipedream.toml` in the pack folder (`ComfyUI/custom_nodes/comfyui-pipedream/pipedream.toml`; ignored by git).
-3. **Facility** file: the path in the `PIPEDREAM_CONFIG` environment variable.
+3. **Facility** file: the path in the `PIPEDREAM_COMFYUI_CONFIG` environment variable.
 
-A key only overrides when it is present and valid (right type, allowed value or range); missing keys fall through to the layer below. An invalid value, an unknown key (to catch typos), a TOML syntax error, or a `PIPEDREAM_CONFIG` that points at a missing file prints one `[Pipedream] Settings warning:` line in the ComfyUI console naming the file, key and problem, and that key (or file) is ignored.
+A key only overrides when it is present and valid (right type, allowed value or range); missing keys fall through to the layer below. An invalid value, an unknown key (to catch typos), a TOML syntax error, or a `PIPEDREAM_COMFYUI_CONFIG` that points at a missing file prints one `[Pipedream] Settings warning:` line in the ComfyUI console naming the file, key and problem, and that key (or file) is ignored.
 
 [`pipedream.example.toml`](pipedream.example.toml) lists every key with its built-in default commented out and a description: copy it, then uncomment and edit only the lines you want. For example:
 
@@ -223,15 +223,15 @@ How the settings apply:
 - **Widget defaults.** New nodes start with the configured values. Nodes in saved workflows keep their saved values. Inputs left out of an API prompt also use the settings.
 - **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token, PD Rasterizer). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
 - **Traceability.** The PD Output token reference ends with the loaded files (`settings: facility \\server\pipeline\comfyui\pipedream.toml, user (none)`), and the sidecar JSON records them under `settings.sources`.
-- **Restart needed.** Files are read once, when ComfyUI starts. Restart ComfyUI after editing a file or changing `PIPEDREAM_CONFIG`.
+- **Restart needed.** Files are read once, when ComfyUI starts. Restart ComfyUI after editing a file or changing `PIPEDREAM_COMFYUI_CONFIG`.
 
 **Facility deployment (Windows).** Keep one file on the pipeline share and set the variable machine-wide on every workstation and render node, e.g. with a Group Policy Preference (Computer Configuration > Preferences > Windows Settings > Environment, a System variable) or from a deployment script:
 
 ```bat
-setx PIPEDREAM_CONFIG "\\server\pipeline\comfyui\pipedream.toml" /M
+setx PIPEDREAM_COMFYUI_CONFIG "\\server\pipeline\comfyui\pipedream.toml" /M
 ```
 
-ComfyUI started after that (a new session or service restart) picks it up. On Linux/macOS, export it in the environment that launches ComfyUI (`export PIPEDREAM_CONFIG=/mnt/pipeline/comfyui/pipedream.toml`). Artists can still keep personal tweaks in the user file; the facility file wins for every key it sets.
+ComfyUI started after that (a new session or service restart) picks it up. On Linux/macOS, export it in the environment that launches ComfyUI (`export PIPEDREAM_COMFYUI_CONFIG=/mnt/pipeline/comfyui/pipedream.toml`). Artists can still keep personal tweaks in the user file; the facility file wins for every key it sets.
 
 TOML is read with Python's built-in `tomllib` (3.11+, which current ComfyUI uses), or the `tomli` package if installed on older Python; with neither, a warning is printed and the built-ins are used. No extra dependency.
 
