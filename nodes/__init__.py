@@ -13,6 +13,7 @@ from .output_absolute import PDOutputAbsolute
 from .switch import PDSwitch
 from .wedge import PDWedge
 from .rasterizer import PDRasterizer
+from .video import PDImagesToVideo, PDVideoToImages, PDVideoFrame, PDImageFrame
 
 ALL_NODES: list = [
     PDProjectContext,
@@ -23,6 +24,10 @@ ALL_NODES: list = [
     PDSwitch,
     PDWedge,
     PDRasterizer,
+    PDImagesToVideo,
+    PDVideoToImages,
+    PDVideoFrame,
+    PDImageFrame,
 ]
 
 # Backward compatibility aliases for saved workflows

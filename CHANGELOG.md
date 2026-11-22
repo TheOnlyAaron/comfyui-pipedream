@@ -12,6 +12,11 @@
 - PD Switch: simplified to single-channel with auto-growing inputs (2–8)
 - Added 💭 emoji prefix to all node display names (with Windows fallback)
 - Consolidated JS extensions into single web/pipedream.js
+- New video nodes (Pipedream/Video, core `VIDEO` type, PyAV decode helpers in core/video.py):
+  - PD Images To Video (in-memory video from images + optional audio)
+  - PD Video To Images (range / every-Nth decode with matching audio)
+  - PD Video Frame (first / last / index with keyframe seeking)
+  - PD Image Frame (first / last / index for image batches)
 
 ## 0.1.0
 
