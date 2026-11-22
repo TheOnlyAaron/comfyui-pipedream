@@ -49,8 +49,14 @@ def resolve_tokens(template: str, context: dict, frame_padding: int = 4) -> str:
     return re.sub(r"\{(\w+)\}", _replace, template)
 
 
-def format_token_reference(context: dict, frame_padding: int = 4) -> str:
-    """Build a human-readable summary of available tokens and their current values."""
+def format_token_reference(context: dict, frame_padding: int = 4,
+                           frame_info: str | None = None) -> str:
+    """
+    Build a human-readable summary of available tokens and their current values.
+
+    *frame_info* describes what ``{frame}`` resolved to (e.g. the written
+    frame range); by default it shows the ``#`` placeholder.
+    """
     now = datetime.now()
     lines = ["Available tokens:"]
 
@@ -63,6 +69,6 @@ def format_token_reference(context: dict, frame_padding: int = 4) -> str:
         lines.append(f"  {{date}}            = {now.strftime('%Y%m%d')} (auto)")
     if "time" not in context:
         lines.append(f"  {{time}}            = {now.strftime('%H%M%S')} (auto)")
-    lines.append(f"  {{frame}}           = {'#' * frame_padding} (auto)")
+    lines.append(f"  {{frame}}           = {frame_info or '#' * frame_padding + ' (auto)'}")
 
     return "\n".join(lines)
