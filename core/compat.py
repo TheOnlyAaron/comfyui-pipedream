@@ -143,6 +143,8 @@ def wrap_as_v3(legacy_cls):
             instance = _legacy_cls()
             ordered = [kwargs.get(p) for p in _param_names]
             result = getattr(instance, _func_name)(*ordered)
+            if isinstance(result, dict):
+                return io.NodeOutput(*result.get("result", ()), ui=result.get("ui"))
             if isinstance(result, tuple):
                 return io.NodeOutput(*result)
             return io.NodeOutput(result)

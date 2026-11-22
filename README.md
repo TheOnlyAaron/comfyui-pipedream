@@ -29,7 +29,18 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
-| **💭 PD Render Complete Sound** | Plays a chime in the browser when the queue finishes. Drop it anywhere in the graph, no connections needed. Volume, built-in synth sounds or a custom URL, optional error tone, and a test button. |
+| **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
+
+## PD Sound
+
+Wire anything through the `value` input; the `value` output is the same object, untouched. The node is an output node, so it also runs when left dangling.
+
+- **play_when = node reached** (default): plays when this node executes, so several PD Sound nodes along a graph each announce their own stage with their own sound. A node with nothing connected has no place in the flow, so it waits for the queue to finish instead.
+- **play_when = queue finished**: plays once the queue drains, like a render-complete chime. If any prompt failed it plays the error tone instead (`error_tone`); nothing plays after an interrupt.
+- **Caching**: a cached node does not execute, and PD Sound never forces it to (that would re-run everything downstream). Turn on `when_cached` to also play when the node is skipped as cached; those sounds play as the prompt starts, because cached work is already done.
+- **Errors**: in node reached mode, an execution error plays the error tone straight away (unless `error_tone` is off).
+- **Sounds**: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` are synthesized in the browser (no audio files). `custom URL` plays a file: absolute URL, root-relative path, or a path relative to this pack's `web/` folder. Each node picks its own sound and volume; the test buttons preview them.
+- Sounds play in the browser tab that queued the prompt. Changing a PD Sound widget changes its inputs, so nodes downstream of an inline PD Sound re-run on the next queue, as with any other widget edit.
 
 ## Token Reference
 
