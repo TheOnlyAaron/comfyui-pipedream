@@ -7,6 +7,7 @@ type so they interoperate with Load Video, Save Video and other packs.
 Decoding helpers live in ``core/video.py``.
 """
 
+from ..core import settings
 from ..core.common import display_name
 from ..core.video import images_to_video, read_frame, read_frames, resolve_index
 
@@ -37,7 +38,7 @@ class PDImagesToVideo:
             "required": {
                 "images": ("IMAGE",),
                 "fps": ("FLOAT", {
-                    "default": 24.0, "min": 0.01, "max": 1000.0, "step": 0.001,
+                    "default": settings.get("output.fps"), "min": 0.01, "max": 1000.0, "step": 0.001,
                     "tooltip": "Frame rate. NTSC rates like 23.976 snap to 24000/1001.",
                 }),
             },

@@ -9,11 +9,8 @@ payload so the frontend receives an ``executed`` event for this node.
 All audio is handled by ``web/pd_sound.js``.
 """
 
-from ..core.common import ANY, display_name
-
-
-SOUNDS = ["chime", "happy", "sad", "ding", "beeps", "alert", "custom URL"]
-PLAY_WHEN = ["node reached", "queue finished"]
+from ..core import settings
+from ..core.common import ANY, PLAY_WHEN, SOUNDS, display_name
 
 
 class PDSound:
@@ -49,10 +46,10 @@ class PDSound:
         return {
             "required": {
                 "enabled": ("BOOLEAN", {"default": True}),
-                "play_when": (PLAY_WHEN, {"default": "node reached"}),
-                "sound": (SOUNDS, {"default": "chime"}),
+                "play_when": (PLAY_WHEN, {"default": settings.get("sound.play_when")}),
+                "sound": (SOUNDS, {"default": settings.get("sound.sound")}),
                 "volume": ("FLOAT", {
-                    "default": 0.6, "min": 0.0, "max": 1.0, "step": 0.05,
+                    "default": settings.get("sound.volume"), "min": 0.0, "max": 1.0, "step": 0.05,
                 }),
                 "custom_url": ("STRING", {"default": ""}),
                 "when_cached": ("BOOLEAN", {

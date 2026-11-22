@@ -4,9 +4,14 @@ Small helpers shared by every Pipedream node module.
 ``display_name`` adds the 💭 prefix to node display names, falling back to
 no prefix on consoles that cannot encode emoji (e.g. Windows cp1252/cp932).
 ``ANY`` is the wildcard socket type used by PD Switch and PD Sound.
+``SOUNDS`` and ``PLAY_WHEN`` are PD Sound's choices (also used by the
+settings schema).
 """
 
 import sys
+
+SOUNDS = ["chime", "happy", "sad", "ding", "beeps", "alert", "custom URL"]
+PLAY_WHEN = ["node reached", "queue finished"]
 
 _EMOJI_PREFIX = "\U0001F4AD "  # 💭
 

@@ -34,7 +34,10 @@ _PRORES_SPECS = {
     "422 HQ": ("prores_hq", "3", "yuv422p10le", None),
     "4444": ("prores_4444", "4", "yuv444p10le", "yuva444p10le"),
 }
+PRORES_CHOICES = ("auto",) + PRORES_PROFILES
 ALPHA_FORMATS = ("png", "exr", "webp", "mov")
+PATH_MODES = ("relative", "absolute")
+EXR_COLORSPACES = ("as is", "sRGB to linear")
 
 # Rec.709 luma weights, used to turn an RGB image or video into a matte.
 _LUMA = (0.2126, 0.7152, 0.0722)
