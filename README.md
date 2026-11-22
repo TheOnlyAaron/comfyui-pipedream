@@ -61,7 +61,7 @@ PD Project Context (base: project=DITC, sequence=sq010)
 
 ## Compatibility
 
-Pipedream supports both the legacy ComfyUI node API and the Nodes 2.0 (V3) API. The compatibility layer detects which API is available at import time and registers nodes accordingly.
+Pipedream registers its nodes through the legacy `NODE_CLASS_MAPPINGS` API, which current ComfyUI loads alongside V3 (`comfy_api`) nodes. There is no V3 wrapper; a future move to V3 would port the nodes directly.
 
 **Note:** Node display names use a 💭 emoji prefix. On Windows systems with legacy console codepages (cp1252, cp932), the emoji is automatically omitted to prevent encoding errors.
 

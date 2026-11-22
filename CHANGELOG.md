@@ -12,6 +12,7 @@
 - PD Switch: simplified to single-channel with auto-growing inputs (2–8)
 - Added 💭 emoji prefix to all node display names (with Windows fallback)
 - Consolidated JS extensions into single web/pipedream.js
+- Removed the unused V3 wrapper (`wrap_as_v3`); nodes register via `NODE_CLASS_MAPPINGS` only (#17)
 
 ## 0.1.0
 
