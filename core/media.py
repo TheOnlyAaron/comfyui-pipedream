@@ -1,9 +1,10 @@
 """
 Media and file helpers for PD Output.
 
-Path normalization, image batch writing, video and EXR encoding through
-PyAV (the ``av`` package that ships with ComfyUI), preview image
-generation for the node UI, and sidecar metadata writing.  No dependencies beyond what ComfyUI already installs.
+Path normalization, alpha and colour helpers, image sequence writing,
+video and EXR encoding through PyAV (the ``av`` package that ships with
+ComfyUI), preview image generation for the node UI, and sidecar metadata
+writing.  No dependencies beyond what ComfyUI already installs.
 """
 
 import json
@@ -27,16 +28,36 @@ _VIDEO_SPECS = {
     "webm": ("vp9", "libvpx-vp9", "yuv420p", "libopus"),
 }
 
+# ProRes profile -> (label, prores_ks profile, pixel format without / with alpha)
+PRORES_PROFILES = ("422 HQ", "4444")
+_PRORES_SPECS = {
+    "422 HQ": ("prores_hq", "3", "yuv422p10le", None),
+    "4444": ("prores_4444", "4", "yuv444p10le", "yuva444p10le"),
+}
+ALPHA_FORMATS = ("png", "exr", "webp", "mov")
+
+# Rec.709 luma weights, used to turn an RGB image or video into a matte.
+_LUMA = (0.2126, 0.7152, 0.0722)
+
 # BT.709 matrix/primaries, sRGB transfer, limited range (how ComfyUI tags SDR video).
 _BT709 = 1
 _SRGB_TRC = 13
 _MPEG_RANGE = 1
 
 
-def video_codec(fmt: str) -> str:
+def video_codec(fmt: str, prores_profile: str = "422 HQ") -> str:
     """Return a short codec label for a video *fmt* (used in metadata)."""
+    if fmt == "mov":
+        return _PRORES_SPECS[prores_profile][0]
     spec = _VIDEO_SPECS.get(fmt)
     return spec[0] if spec else ""
+
+
+def supports_alpha(fmt: str, prores_profile: str = "4444") -> bool:
+    """True when *fmt* can carry an alpha channel (mov only as ProRes 4444)."""
+    if fmt == "mov":
+        return prores_profile == "4444"
+    return fmt in ALPHA_FORMATS
 
 
 def audio_codec(fmt: str) -> str:
@@ -97,22 +118,110 @@ def frames_to_uint8(images):
     return np.ascontiguousarray(arr)
 
 
-def _frames_for_encoder(images, high_bit_depth: bool):
+def srgb_to_linear(rgb):
     """
-    Return ``(frames, av_format)`` for PyAV: RGB padded to even dimensions
-    (4:2:0 and 4:2:2 chroma need them), 16-bit when *high_bit_depth*
-    (ProRes is 10-bit), 8-bit otherwise.
+    Decode sRGB-encoded values to linear light with the piecewise sRGB EOTF.
+
+    ``v <= 0.04045`` maps to ``v / 12.92``; above that
+    ``((v + 0.055) / 1.055) ** 2.4``.  The power segment is simply
+    continued above 1.0 (2.0 becomes about 5.7), so overbright values stay
+    monotonic and finite, and negative values are mirrored
+    (``-f(-v)``).  NaN/inf are made finite first.  Returns float32.
+    """
+    import numpy as np
+
+    v = np.nan_to_num(np.asarray(rgb, dtype=np.float32), nan=0.0, posinf=1.0, neginf=0.0)
+    a = np.abs(v)
+    lin = np.where(a <= 0.04045, a / 12.92, ((a + 0.055) / 1.055) ** 2.4)
+    return (np.sign(v) * lin).astype(np.float32)
+
+
+def rgb_frame(image):
+    """
+    Return one IMAGE item ``(H, W, C)`` as a float32 RGB array ``(H, W, 3)``.
+
+    One channel is expanded to grey RGB, two channels (luminance + alpha)
+    use the first, and channels beyond three are dropped; alpha is handled
+    separately (see ``alpha_matte``).  Values are not clipped.
+    """
+    import numpy as np
+
+    arr = np.asarray(to_numpy(image), dtype=np.float32)
+    if arr.ndim == 2:
+        arr = arr[..., None]
+    if arr.shape[-1] < 3:
+        arr = np.repeat(arr[..., :1], 3, axis=-1)
+    return np.ascontiguousarray(arr[..., :3])
+
+
+def alpha_matte(source):
+    """
+    Turn an alpha source into a float32 matte of shape ``(N, H, W)``.
+
+    *source* is a ComfyUI MASK (``(N, H, W)`` or ``(H, W)``) used as is,
+    or an IMAGE batch ``(N, H, W, C)``: one channel is used directly and
+    three or more channels are reduced to Rec.709 luminance
+    (``0.2126 R + 0.7152 G + 0.0722 B``), so a grey matte keeps its exact
+    values.  A VIDEO is unpacked by the caller into its IMAGE frames.
+    Values are returned unclipped.
+    """
+    import numpy as np
+
+    arr = np.asarray(to_numpy(source), dtype=np.float32)
+    if arr.ndim == 2:
+        return arr[None]
+    if arr.ndim == 3:
+        return arr
+    if arr.ndim != 4:
+        raise ValueError(f"[Pipedream] Unsupported alpha shape {tuple(arr.shape)}.")
+    if arr.shape[-1] < 3:
+        return np.ascontiguousarray(arr[..., 0])
+    return np.ascontiguousarray(arr[..., 0] * _LUMA[0] + arr[..., 1] * _LUMA[1] + arr[..., 2] * _LUMA[2])
+
+
+def match_alpha(alpha, count: int, height: int, width: int):
+    """
+    Check that matte *alpha* ``(N, H, W)`` fits a source of *count* frames
+    of ``height x width``.  N must equal *count* or be 1 (one matte for
+    every frame).  Raises ``ValueError`` with both shapes otherwise.
+    """
+    n, h, w = alpha.shape
+    if n not in (1, count):
+        raise ValueError(
+            f"[Pipedream] Alpha has {n} frames but the source has {count}. "
+            "Connect an alpha with the same frame count, or a single frame "
+            "to use for every frame."
+        )
+    if (h, w) != (height, width):
+        raise ValueError(
+            f"[Pipedream] Alpha is {w}x{h} but the source is {width}x{height}. "
+            "Resize the alpha to match (e.g. with an Upscale/Resize node)."
+        )
+    return alpha
+
+
+def _alpha_at(alpha, index: int):
+    """Return frame *index* of matte *alpha*, broadcasting a single frame."""
+    return alpha[index if alpha.shape[0] > 1 else 0]
+
+
+def _frames_for_encoder(images, high_bit_depth: bool, alpha=None):
+    """
+    Return ``(frames, av_format)`` for PyAV: RGB (or RGBA with matte
+    *alpha*) padded to even dimensions (4:2:0 and 4:2:2 chroma need them),
+    16-bit when *high_bit_depth* (ProRes is 10-bit), 8-bit otherwise.
+    Alpha is only supported at high bit depth.
     """
     import numpy as np
 
     if high_bit_depth:
-        arr = to_numpy(images).astype(np.float32)
-        if arr.ndim == 3:
-            arr = arr[..., None]
-        if arr.shape[-1] == 1:
-            arr = np.repeat(arr, 3, axis=-1)
-        arr = np.nan_to_num(arr[..., :3], nan=0.0, posinf=1.0, neginf=0.0) * 65535.0
-        frames, av_format = arr.clip(0, 65535).astype(np.uint16), "rgb48le"
+        arr = np.stack([rgb_frame(f) for f in images])
+        if alpha is not None:
+            mattes = np.stack([_alpha_at(alpha, i) for i in range(arr.shape[0])])
+            arr = np.concatenate([arr, mattes[..., None]], axis=-1)
+        arr = np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0) * 65535.0
+        av_format = "rgba64le" if alpha is not None else "rgb48le"
+        frames = arr.clip(0, 65535).astype(np.uint16)
     else:
         frames, av_format = frames_to_uint8(images), "rgb24"
     _, height, width, _ = frames.shape
@@ -160,16 +269,20 @@ def _add_audio_stream(av, container, audio, fmt: str, frame_count: int, rate: Fr
 
 
 def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
-               crf: int = 18, overwrite: bool = False, audio=None) -> list[str]:
+               crf: int = 18, overwrite: bool = False, audio=None,
+               alpha=None, prores_profile: str = "422 HQ") -> list[str]:
     """
     Encode an IMAGE batch as a single video file with PyAV.
 
-    ``mp4`` uses H.264 (yuv420p), ``mov`` uses ProRes 422 HQ (10-bit) and
-    ``webm`` uses VP9 (yuv420p), tagged BT.709.  *crf* applies to H.264
-    and VP9; ProRes ignores it.  Odd frame sizes are padded to even by
-    repeating the last row/column.  *audio* is an optional ComfyUI AUDIO
-    dict (``{"waveform": (B, C, S), "sample_rate": int}``), muxed as AAC
-    for mp4/mov and Opus for webm.
+    ``mp4`` uses H.264 (yuv420p), ``mov`` uses ProRes (10-bit) and
+    ``webm`` uses VP9 (yuv420p), tagged BT.709.  *prores_profile* is
+    ``422 HQ`` (yuv422p10le) or ``4444`` (yuv444p10le, or yuva444p10le
+    with an alpha channel when matte *alpha* ``(1|N, H, W)`` is given).
+    *alpha* is ignored by every other format/profile.  *crf* applies to
+    H.264 and VP9; ProRes ignores it.  Odd frame sizes are padded to even
+    by repeating the last row/column.  *audio* is an optional ComfyUI
+    AUDIO dict (``{"waveform": (B, C, S), "sample_rate": int}``), muxed as
+    AAC for mp4/mov and Opus for webm.
 
     Returns ``[full_path]`` on success, or ``[]`` when the file exists and
     *overwrite* is disabled.  Raises ``RuntimeError`` when PyAV is missing
@@ -188,7 +301,18 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
         return []
 
     _, encoder, pix_fmt, _ = _VIDEO_SPECS[fmt]
-    frames, av_format = _frames_for_encoder(images, high_bit_depth=(fmt == "mov"))
+    profile = "3"
+    if fmt == "mov":
+        if prores_profile not in _PRORES_SPECS:
+            raise ValueError(f"[Pipedream] Unknown ProRes profile: '{prores_profile}'")
+        _, profile, pix_fmt, alpha_pix_fmt = _PRORES_SPECS[prores_profile]
+        if alpha is not None and alpha_pix_fmt:
+            pix_fmt = alpha_pix_fmt
+        else:
+            alpha = None
+    else:
+        alpha = None
+    frames, av_format = _frames_for_encoder(images, high_bit_depth=(fmt == "mov"), alpha=alpha)
     count, height, width, _ = frames.shape
     rate = Fraction(round(float(fps) * 1000), 1000)
     options = {"movflags": "+faststart"} if fmt in ("mp4", "mov") else {}
@@ -200,7 +324,7 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
             if fmt == "mp4":
                 stream.options = {"crf": str(int(crf)), "preset": "medium"}
             elif fmt == "mov":
-                stream.options = {"profile": "3", "vendor": "apl0"}
+                stream.options = {"profile": profile, "vendor": "apl0"}
             else:
                 stream.bit_rate = 0
                 stream.options = {"crf": str(min(int(crf), 63)), "row-mt": "1"}
@@ -231,29 +355,6 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
 EXR_PRECISIONS = ("half", "float")
 EXR_COMPRESSIONS = ("zip", "zips", "rle", "none")
 _EXR_COMPRESSION = {"zip": "zip16", "zips": "zip1", "rle": "rle", "none": "none"}
-
-
-def exr_frame(image):
-    """
-    Return one IMAGE item ``(H, W, C)`` as a float32 RGB or RGBA array.
-
-    Values stay linear and unclipped.  One channel is expanded to RGB, two
-    channels are read as luminance + alpha, and extra channels beyond four
-    are dropped.
-    """
-    import numpy as np
-
-    arr = np.asarray(to_numpy(image), dtype=np.float32)
-    if arr.ndim == 2:
-        arr = arr[..., None]
-    channels = arr.shape[-1]
-    if channels == 1:
-        arr = np.repeat(arr, 3, axis=-1)
-    elif channels == 2:
-        arr = np.concatenate([np.repeat(arr[..., :1], 3, axis=-1), arr[..., 1:]], axis=-1)
-    elif channels > 4:
-        arr = arr[..., :4]
-    return np.ascontiguousarray(arr)
 
 
 def save_exr(rgb, path: str, precision: str = "half", compression: str = "zip") -> str:
@@ -322,6 +423,7 @@ def build_preview(images, written: list[str], is_video: bool, fps: float,
     """
     Build the ``ui["images"]`` list showing what an output node wrote.
 
+    *written* holds one path per frame of *images* for image formats.
     Browser-viewable images, and mp4/webm video, inside ComfyUI's output
     directory are referenced directly.  Anything else (EXR, ProRes, files
     outside the output dir) gets a downscaled PNG, or an animated WebP for
@@ -367,10 +469,9 @@ def build_preview(images, written: list[str], is_video: bool, fps: float,
             if entry is None and temp_dir:
                 if frames is None:
                     frames = frames_to_uint8(images)
-                idx = min(_batch_index(path, len(written), i), len(frames) - 1)
                 os.makedirs(temp_dir, exist_ok=True)
                 name = f"{prefix}_{i:04d}.png"
-                _downscale(Image.fromarray(frames[idx])).save(
+                _downscale(Image.fromarray(frames[min(i, len(frames) - 1)])).save(
                     os.path.join(temp_dir, name), compress_level=1
                 )
                 entry = {"filename": name, "subfolder": "", "type": "temp"}
@@ -380,15 +481,6 @@ def build_preview(images, written: list[str], is_video: bool, fps: float,
         print(f"[Pipedream] Warning: failed to build preview: {exc}", file=sys.stderr)
 
     return entries, False
-
-
-def _batch_index(path: str, count: int, fallback: int) -> int:
-    """Recover the batch index from a ``name_0003.ext`` path written by save_image_batch."""
-    if count <= 1:
-        return 0
-    stem = os.path.splitext(os.path.basename(path))[0]
-    tail = stem.rsplit("_", 1)[-1]
-    return int(tail) if tail.isdigit() else fallback
 
 
 def write_sidecar(path: str, data: dict) -> str | None:
@@ -441,67 +533,59 @@ def ensure_directory(path: str, create: bool = True) -> str:
     return directory
 
 
-def save_image_batch(images, full_path: str, overwrite: bool = False,
-                     exr_precision: str = "half",
-                     exr_compression: str = "zip") -> list[str]:
+def existing_files(paths: list[str]) -> list[str]:
+    """Return the entries of *paths* that already exist on disk."""
+    return [p for p in paths if os.path.exists(p)]
+
+
+def save_image_sequence(images, paths: list[str], alpha=None,
+                        exr_precision: str = "half", exr_compression: str = "zip",
+                        exr_linearize: bool = False) -> list[str]:
     """
-    Save a batch of ComfyUI IMAGE tensors to disk.
+    Write IMAGE batch *images* ``(B, H, W, C)`` as one file per frame.
 
-    *images* is a tensor of shape ``(B, H, W, C)`` with float32 values in
-    ``[0, 1]``.  When the batch size is greater than one, a zero-padded
-    index is appended before the extension (e.g. ``name_0001.png``).
+    *paths* gives the output path of each frame (``len(paths) == B``);
+    the extension picks the format.  *alpha* is an optional matte
+    ``(1|B, H, W)`` written as the alpha channel of png/webp (8-bit RGBA)
+    and exr; jpg has no alpha and ignores it.
 
-    png/jpg/webp are written 8-bit with Pillow.  ``.exr`` keeps the float
-    data linear and unclipped, including alpha, and is written by
-    ``save_exr`` with *exr_precision* (``half``/``float``) and
-    *exr_compression*; EXR write failures (including no available writer)
-    raise ``RuntimeError`` instead of being skipped.
+    png/jpg/webp are written 8-bit with Pillow, clipped to 0-1.  ``.exr``
+    keeps the float data unclipped and is written by ``save_exr`` with
+    *exr_precision* and *exr_compression*; with *exr_linearize* the RGB
+    channels are decoded from sRGB to linear first (``srgb_to_linear``),
+    alpha is always written as is.  EXR failures raise ``RuntimeError``;
+    other per-file failures are printed and skipped.  Callers handle the
+    overwrite policy (see ``existing_files``).
 
-    Returns a list of successfully written file paths.
+    Returns the paths that were written.
     """
     import numpy as np
     from PIL import Image
 
-    ext = os.path.splitext(full_path)[1].lower()
-    batch_size = images.shape[0]
     written: list[str] = []
-
-    for i in range(batch_size):
-        if batch_size > 1:
-            base, extension = os.path.splitext(full_path)
-            out_path = f"{base}_{i:04d}{extension}"
-        else:
-            out_path = full_path
-
-        if not overwrite and os.path.exists(out_path):
-            print(
-                f"[Pipedream] Error: file already exists and overwrite is "
-                f"disabled: '{out_path}'",
-                file=sys.stderr,
-            )
-            continue
+    for i, out_path in enumerate(paths):
+        ext = os.path.splitext(out_path)[1].lower()
+        rgb = rgb_frame(images[i])
+        matte = _alpha_at(alpha, i) if alpha is not None else None
 
         if ext == ".exr":
-            save_exr(exr_frame(images[i]), out_path, exr_precision, exr_compression)
+            if exr_linearize:
+                rgb = srgb_to_linear(rgb)
+            if matte is not None:
+                rgb = np.concatenate([rgb, np.asarray(matte, np.float32)[..., None]], axis=-1)
+            save_exr(np.ascontiguousarray(rgb), out_path, exr_precision, exr_compression)
             written.append(out_path)
             continue
 
-        img_array = (to_numpy(images[i]) * 255).clip(0, 255).astype(np.uint8)
-        img = Image.fromarray(img_array)
-
-        save_kwargs: dict = {}
-        if ext in (".jpg", ".jpeg"):
-            save_kwargs["quality"] = 95
-        elif ext == ".webp":
-            save_kwargs["quality"] = 95
-
+        if matte is not None and ext in (".png", ".webp"):
+            rgb = np.concatenate([rgb, np.asarray(matte, np.float32)[..., None]], axis=-1)
+        pixels = (np.nan_to_num(rgb, nan=0.0, posinf=1.0, neginf=0.0) * 255.0 + 0.5)
+        img = Image.fromarray(pixels.clip(0, 255).astype(np.uint8))
+        save_kwargs = {"quality": 95} if ext in (".jpg", ".jpeg", ".webp") else {}
         try:
             img.save(out_path, **save_kwargs)
             written.append(out_path)
         except Exception as exc:
-            print(
-                f"[Pipedream] Error: failed to write '{out_path}': {exc}",
-                file=sys.stderr,
-            )
+            print(f"[Pipedream] Error: failed to write '{out_path}': {exc}", file=sys.stderr)
 
     return written

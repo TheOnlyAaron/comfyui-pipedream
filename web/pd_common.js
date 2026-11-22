@@ -73,6 +73,71 @@ export function showWidgets(node, rules) {
     return changed;
 }
 
+/** Type and tooltip of input or output ``name`` from the node's Python definition. */
+function slotSpec(node, kind, name) {
+    const def = node.constructor?.nodeData;
+    if (!def) return null;
+    if (kind === "input") {
+        const spec = def.input?.required?.[name] ?? def.input?.optional?.[name];
+        return spec ? { type: spec[0], extra: { tooltip: spec[1]?.tooltip } } : null;
+    }
+    const index = def.output_name?.indexOf(name) ?? -1;
+    if (index < 0) return null;
+    return { type: def.output[index], extra: { tooltip: def.output_tooltips?.[index] } };
+}
+
+/**
+ * Show or hide input or output sockets by removing and re-adding them.
+ *
+ * Frontend 1.59 has no per-slot "hidden" flag: the Vue renderer draws every
+ * output and every input without a widget, and the classic canvas draws
+ * every slot.  Removing a slot is the only way to hide it.
+ *
+ * Inputs are sent to the backend by name, and ``removeInput`` shifts the
+ * links of later inputs, so any socket input (one without a widget) can be
+ * listed; a shown input is appended, which keeps it after the other socket
+ * inputs in both renderers.  Outputs are addressed by index, so only the
+ * outputs declared last in the Python definition may be listed (in
+ * declared order): removing them shifts nothing and re-adding restores
+ * their index.  A linked slot is never removed.  Saved workflows omit a
+ * hidden slot; the extension shows it again after loading if it applies.
+ *
+ * @param {"input"|"output"} kind
+ * @param {Record<string, boolean>} rules slot name to "should be shown".
+ * @returns {boolean} true if any slot changed.
+ */
+export function showSlots(node, kind, rules) {
+    const isInput = kind === "input";
+    const slots = () => (isInput ? node.inputs : node.outputs) ?? [];
+    let changed = false;
+    if (isInput) {
+        for (let i = slots().length - 1; i >= 0; i--) {
+            const name = slots()[i].name;
+            if (name in rules && !rules[name] && !node.isInputConnected(i)) {
+                node.removeInput(i);
+                changed = true;
+            }
+        }
+    } else {
+        for (let i = slots().length - 1; i >= 0; i--) {
+            const name = slots()[i].name;
+            if (!(name in rules) || rules[name] || node.isOutputConnected(i)) break;
+            node.removeOutput(i);
+            changed = true;
+        }
+    }
+    for (const [name, shown] of Object.entries(rules)) {
+        if (!shown || slots().some(s => s.name === name)) continue;
+        const spec = slotSpec(node, kind, name);
+        if (!spec) continue;
+        if (isInput) node.addInput(name, spec.type, spec.extra);
+        else node.addOutput(name, spec.type, spec.extra);
+        changed = true;
+    }
+    if (changed) refit(node);
+    return changed;
+}
+
 /**
  * Add a read-only, non-serialized multiline text display.
  *

@@ -8,16 +8,20 @@ directory (relative mode) or to an absolute/UNC path (absolute mode).
 
 The source is an IMAGE batch or a ComfyUI VIDEO.  A VIDEO is written with
 its own frame rate and audio, or as an image sequence when an image
-format is chosen.
+format is chosen.  Image formats write one file per frame, numbered from
+``start_frame`` at ``{frame}`` in the template (or ``name.1001.ext`` by
+default).  An optional alpha (IMAGE, MASK or VIDEO), or the fourth
+channel of the images, is written to png/webp/exr and ProRes 4444.
 
 Each write can produce a sidecar JSON with the resolved tokens, template,
-written paths and the ComfyUI prompt.  The node shows a preview of what was
-written, returns the written paths, passes the images through, returns a
-VIDEO for written video, and feeds the token reference panel in
-``web/pipedream.js``.
+written paths, frame range and the ComfyUI prompt.  The node shows a
+preview of what was written, returns the written paths, passes the images
+through, returns a VIDEO for written video, and feeds the token reference
+panel in ``web/pipedream.js``.
 """
 
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -26,13 +30,19 @@ from ..core.media import (
     EXR_COMPRESSIONS,
     EXR_PRECISIONS,
     IMAGE_FORMATS,
+    PRORES_PROFILES,
     VIDEO_FORMATS,
+    alpha_matte,
     audio_codec,
     build_preview,
     ensure_directory,
+    existing_files,
+    match_alpha,
     normalize_path,
-    save_image_batch,
+    save_image_sequence,
     save_video,
+    supports_alpha,
+    to_numpy,
     video_codec,
     write_sidecar,
 )
@@ -47,6 +57,14 @@ except ImportError:
 
 DEFAULT_TEMPLATE = "{project}/{sequence}/{shot}/{shot}_{version}_{date}"
 PATH_MODES = ("relative", "absolute")
+EXR_COLORSPACES = ("as is", "sRGB to linear")
+PRORES_CHOICES = ("auto",) + PRORES_PROFILES
+ALPHA_TYPES = "IMAGE,MASK,VIDEO"
+
+# Stands in for {frame} while the path is built; replaced per frame.
+_FRAME_MARK = "@@PDFRAME@@"
+_FRAME_WITH_SEP = re.compile(r"[._-]?" + re.escape(_FRAME_MARK))
+
 
 def get_output_directory() -> str:
     """Return ComfyUI's output directory, with a cwd fallback outside ComfyUI."""
@@ -66,6 +84,22 @@ def get_temp_directory() -> str | None:
     if folder_paths is not None:
         return folder_paths.get_temp_directory()
     return None
+
+
+def strip_frame(text: str) -> str:
+    """Remove the {frame} placeholder from *text*, with one separator before it."""
+    return _FRAME_WITH_SEP.sub("", text)
+
+
+def alpha_source(alpha) -> tuple:
+    """
+    Return ``(matte_input, kind)`` for an ``alpha`` input value.
+
+    *kind* is ``video`` (its frames are used), ``mask`` or ``image``.
+    """
+    if hasattr(alpha, "get_components"):
+        return alpha.get_components().images, "video"
+    return alpha, ("mask" if len(alpha.shape) <= 3 else "image")
 
 
 def video_source(video) -> tuple:
@@ -90,15 +124,17 @@ class PDOutput:
     RETURN_TYPES = ("STRING", "STRING", "STRING", "IMAGE", "VIDEO")
     RETURN_NAMES = ("path", "path_sidecar", "path_all", "images", "video")
     OUTPUT_TOOLTIPS = (
-        "First file written, or the video file.",
+        "First file written (the first frame of a sequence), or the video file.",
         "Sidecar JSON path (empty when save_metadata is off).",
         "Every written file, one per line.",
         "The input images (or the VIDEO's frames when only a VIDEO is connected).",
-        "The written video as a ComfyUI VIDEO (empty for image formats).",
+        "The written video as a ComfyUI VIDEO (video formats only).",
     )
 
     @classmethod
     def INPUT_TYPES(cls):
+        # 'video' must stay the last output: the frontend removes it for
+        # image formats, which is only index-safe for a trailing output.
         return {
             "required": {
                 "path_mode": (list(PATH_MODES), {
@@ -110,17 +146,31 @@ class PDOutput:
                     "default": "",
                     "tooltip": "Root folder for absolute mode. Ignored in relative mode.",
                 }),
-                "template": ("STRING", {"default": DEFAULT_TEMPLATE, "multiline": False}),
-                "frame_padding": ("INT", {"default": 4, "min": 1, "max": 8}),
+                "template": ("STRING", {
+                    "default": DEFAULT_TEMPLATE, "multiline": False,
+                    "tooltip": "Output path without extension. Put {frame} where the frame "
+                               "number goes (e.g. {shot}.{frame}); without it, sequences "
+                               "get '.1001' before the extension.",
+                }),
                 "format": (list(IMAGE_FORMATS + VIDEO_FORMATS), {
                     "default": "png",
-                    "tooltip": "Images: png/exr/jpg/webp. Video: mp4 = H.264, "
-                               "mov = ProRes 422 HQ, webm = VP9 (audio from a "
+                    "tooltip": "Images (one file per frame): png/exr/jpg/webp. Video: "
+                               "mp4 = H.264, mov = ProRes, webm = VP9 (audio from a "
                                "connected VIDEO is kept).",
+                }),
+                "start_frame": ("INT", {
+                    "default": 1001, "min": 0, "max": 9999999,
+                    "tooltip": "Number of the first frame of an image sequence "
+                               "(1001 is the usual VFX start, leaving room for handles).",
+                }),
+                "frame_padding": ("INT", {
+                    "default": 4, "min": 1, "max": 8,
+                    "tooltip": "Digits in image sequence frame numbers (4: 1001, 0042).",
                 }),
             },
             "optional": {
-                "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'."}),
+                "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'. "
+                                                "A fourth channel is written as alpha."}),
                 "context": ("PROJECT_CONTEXT",),
                 "video": ("VIDEO", {
                     "tooltip": "Optional VIDEO to write instead of 'images', with its "
@@ -133,8 +183,17 @@ class PDOutput:
                 "crf": ("INT", {"default": 18, "min": 0, "max": 51,
                                 "tooltip": "Video quality for mp4/webm (lower = better). "
                                            "Ignored for ProRes."}),
+                "prores_profile": (list(PRORES_CHOICES), {
+                    "default": "auto",
+                    "tooltip": "mov only. auto: 4444 with alpha when there is an alpha, "
+                               "otherwise 422 HQ. 4444 without alpha is 4:4:4 10-bit.",
+                }),
                 "create_dirs": ("BOOLEAN", {"default": True}),
-                "overwrite": ("BOOLEAN", {"default": False}),
+                "overwrite": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Replace existing files. When off, nothing is written if "
+                               "the file (or any frame of the sequence) already exists.",
+                }),
                 "save_metadata": ("BOOLEAN", {"default": True,
                                               "tooltip": "Write a sidecar .json next to the output."}),
                 "exr_precision": (list(EXR_PRECISIONS), {
@@ -145,15 +204,28 @@ class PDOutput:
                     "default": "zip",
                     "tooltip": "EXR only: zip (16 scanlines), zips (1 scanline), rle or none.",
                 }),
+                "exr_colorspace": (list(EXR_COLORSPACES), {
+                    "default": "as is",
+                    "tooltip": "EXR only. as is: write the values unchanged. sRGB to "
+                               "linear: decode sRGB-encoded images (most generated "
+                               "images) to linear light. Alpha is never converted.",
+                }),
+                "alpha": (ALPHA_TYPES, {
+                    "tooltip": "Optional alpha for png/webp/exr and mov (ProRes 4444): a "
+                               "MASK, an IMAGE (its luminance) or a VIDEO (its frames' "
+                               "luminance). One frame, or as many frames as the source.",
+                }),
             },
             "hidden": {"prompt": "PROMPT"},
         }
 
-    def execute(self, path_mode, base_path, template, frame_padding, format,
-                images=None, context=None, video=None, fps=24.0, crf=18,
-                create_dirs=True, overwrite=False, save_metadata=True,
-                prompt=None, exr_precision="half", exr_compression="zip"):
+    def execute(self, path_mode, base_path, template, format, start_frame=1001,
+                frame_padding=4, images=None, context=None, video=None, fps=24.0,
+                crf=18, prores_profile="auto", create_dirs=True, overwrite=False,
+                save_metadata=True, exr_precision="half", exr_compression="zip",
+                exr_colorspace="as is", alpha=None, prompt=None):
         file_format = format
+        is_video = file_format in VIDEO_FORMATS
         audio = None
         if video is not None:
             frames, audio, fps = video_source(video)
@@ -165,20 +237,53 @@ class PDOutput:
             )
         if frames is None or len(frames.shape) < 3 or int(frames.shape[0]) == 0:
             raise ValueError("[Pipedream] PD Output got no frames to write.")
+        count, height, width = (int(x) for x in frames.shape[:3])
+
+        matte, matte_kind = None, None
+        if alpha is not None:
+            source, matte_kind = alpha_source(alpha)
+            matte = match_alpha(alpha_matte(source), count, height, width)
+        elif len(frames.shape) == 4 and int(frames.shape[-1]) == 4:
+            matte, matte_kind = to_numpy(frames[..., 3]), "images channel 4"
+
+        profile = None
+        if file_format == "mov":
+            profile = prores_profile
+            if profile == "auto":
+                profile = "4444" if matte is not None else "422 HQ"
+        if matte is not None and not supports_alpha(file_format, profile or ""):
+            if alpha is not None:
+                target = f"ProRes {profile}" if file_format == "mov" else file_format
+                print(
+                    f"[Pipedream] Warning: PD Output: {target} cannot store alpha, so the "
+                    "connected alpha is ignored. Use png, webp, exr, or mov with "
+                    "prores_profile auto/4444 to keep it.",
+                    file=sys.stderr,
+                )
+            matte = None
 
         ctx = dict(context) if context else {}
         now = datetime.now()
+        numbered = not is_video and (count > 1 or "{frame}" in template)
+        first, last = start_frame, start_frame + count - 1
+        frame_label = f"{first:0{frame_padding}d}"
+        if count > 1:
+            frame_label += f"-{last:0{frame_padding}d}"
 
         tokens = {
             "date": now.strftime("%Y%m%d"),
             "time": now.strftime("%H%M%S"),
-            "frame": "#" * frame_padding,
         }
         tokens.update(ctx)
+        resolved = resolve_tokens(template, {**tokens, "frame": _FRAME_MARK},
+                                  frame_padding=frame_padding)
+        if not numbered:
+            resolved = strip_frame(resolved)
+        elif _FRAME_MARK not in resolved:
+            resolved = f"{resolved}.{_FRAME_MARK}"
+        tokens["frame"] = frame_label if numbered else ""
 
-        resolved = resolve_tokens(template, tokens, frame_padding=frame_padding)
         output_dir = get_output_directory()
-
         if path_mode == "relative":
             root = output_dir
         else:
@@ -189,59 +294,85 @@ class PDOutput:
                 )
             root = base_path.strip()
 
-        full_path = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
-
+        pattern = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
         if path_mode == "relative":
             out_abs = os.path.abspath(output_dir)
-            if os.path.commonpath([os.path.abspath(full_path), out_abs]) != out_abs:
+            if os.path.commonpath([os.path.abspath(pattern), out_abs]) != out_abs:
                 raise ValueError(
                     f"[Pipedream] Resolved path escapes the output directory: "
-                    f"'{full_path}'. Use absolute path mode for other locations."
+                    f"'{strip_frame(pattern)}'. Use absolute path mode for other locations."
                 )
 
-        if create_dirs:
-            ensure_directory(full_path, create=True)
-
-        is_video = file_format in VIDEO_FORMATS
-        if is_video:
-            written = save_video(frames, full_path, file_format, fps=fps,
-                                 crf=crf, overwrite=overwrite, audio=audio)
+        if numbered:
+            paths = [pattern.replace(_FRAME_MARK, f"{start_frame + i:0{frame_padding}d}")
+                     for i in range(count)]
         else:
-            written = save_image_batch(frames, full_path, overwrite=overwrite,
-                                       exr_precision=exr_precision,
-                                       exr_compression=exr_compression)
-        final = written[0] if written else full_path
+            paths = [pattern]
+        if create_dirs:
+            for path in {os.path.dirname(p): p for p in paths}.values():
+                ensure_directory(path, create=True)
+
+        if is_video:
+            written = save_video(frames, paths[0], file_format, fps=fps, crf=crf,
+                                 overwrite=overwrite, audio=audio, alpha=matte,
+                                 prores_profile=profile or "422 HQ")
+        else:
+            clash = [] if overwrite else existing_files(paths)
+            if clash:
+                print(
+                    f"[Pipedream] Error: {len(clash)} of {len(paths)} file(s) already "
+                    f"exist and overwrite is disabled, nothing written: '{clash[0]}'",
+                    file=sys.stderr,
+                )
+                written = []
+            else:
+                written = save_image_sequence(
+                    frames, paths, alpha=matte, exr_precision=exr_precision,
+                    exr_compression=exr_compression,
+                    exr_linearize=exr_colorspace == "sRGB to linear",
+                )
+        final = written[0] if written else paths[0]
+        hashes = "#" * frame_padding
 
         sidecar = ""
         if save_metadata and written:
-            shape = frames.shape
+            stem = strip_frame(os.path.splitext(os.path.basename(pattern))[0]) or "sequence"
             metadata = {
                 "node": "PDOutput",
                 "timestamp": now.isoformat(timespec="seconds"),
                 "template": template,
-                "resolved": resolved,
+                "resolved": resolved.replace(_FRAME_MARK, hashes),
                 "path_mode": path_mode,
                 "base_path": root,
                 "format": file_format,
-                "frame_padding": frame_padding,
                 "source": "video" if video is not None else "images",
                 "context": ctx,
                 "tokens": tokens,
                 "files": written,
                 "image": {
-                    "count": int(shape[0]),
-                    "height": int(shape[1]),
-                    "width": int(shape[2]),
-                    "channels": int(shape[3]) if len(shape) > 3 else 1,
+                    "count": count,
+                    "height": height,
+                    "width": width,
+                    "channels": int(frames.shape[3]) if len(frames.shape) > 3 else 1,
                 },
+                "alpha": {"source": matte_kind, "written": matte is not None},
                 "prompt": prompt,
             }
+            if numbered:
+                metadata["sequence"] = {
+                    "first": first,
+                    "last": last,
+                    "count": count,
+                    "padding": frame_padding,
+                    "pattern": pattern.replace(_FRAME_MARK, hashes),
+                }
             if is_video:
                 has_audio = bool(audio) and audio.get("waveform") is not None
                 metadata["video"] = {
                     "fps": fps,
-                    "codec": video_codec(file_format),
+                    "codec": video_codec(file_format, profile or "422 HQ"),
                     "crf": None if file_format == "mov" else crf,
+                    "prores_profile": profile,
                     "audio": audio_codec(file_format) if has_audio else None,
                     "sample_rate": int(audio.get("sample_rate", 0)) if has_audio else None,
                 }
@@ -249,14 +380,23 @@ class PDOutput:
                 metadata["exr"] = {
                     "precision": exr_precision,
                     "compression": exr_compression,
+                    "colorspace": exr_colorspace,
                 }
-            sidecar = write_sidecar(os.path.splitext(full_path)[0] + ".json", metadata) or ""
+            sidecar_path = os.path.join(os.path.dirname(paths[0]), stem + ".json")
+            sidecar = write_sidecar(sidecar_path, metadata) or ""
 
         previews, animated = build_preview(
             frames, written, is_video, fps, output_dir, get_temp_directory()
         )
 
-        ui = {"token_reference": [format_token_reference(ctx, frame_padding=frame_padding)]}
+        if numbered:
+            frame_info = f"{frame_label} ({count} frame{'s' if count > 1 else ''})"
+        elif is_video:
+            frame_info = "not used for video"
+        else:
+            frame_info = f"not used (single image; add {{frame}} to number it {first:0{frame_padding}d})"
+        ui = {"token_reference": [format_token_reference(
+            ctx, frame_padding=frame_padding, frame_info=frame_info)]}
         if previews:
             ui["images"] = previews
             if animated:

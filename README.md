@@ -96,7 +96,7 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token:
 | `{artist}` | Project Context |
 | `{date}` | Auto: YYYYMMDD |
 | `{time}` | Auto: HHMMSS |
-| `{frame}` | Padded frame placeholder (e.g. `####`) |
+| `{frame}` | Frame number in PD Output image sequences (`start_frame`, `frame_padding`); `####` in PD Shot Token |
 | `{wedge_idx}` | Current wedge iteration index |
 | `{wedge_<name>}` | Named wedge current value |
 | `{<custom>}` | Any key added via PD Custom Context |
@@ -129,21 +129,49 @@ The global reset is also available from the canvas right-click menu as **Pipedre
 
 | Input / Output | Notes |
 |----------------|-------|
-| `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio; with an image format its frames are written as an image sequence. |
-| `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
-| `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
-| `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
-| `exr_precision`, `exr_compression` | EXR only. `half` (default) or `float`; compression `zip` (default), `zips`, `rle` or `none`. EXR keeps the linear float values (no clipping to 0–1) and writes alpha when the image has 4 channels. |
-| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp, the ComfyUI prompt and the EXR/video settings. The workflow is not embedded in the image files. |
-| `path` (output) | First file written, or the video file. |
-| `path_sidecar` (output) | The sidecar JSON path, empty when `save_metadata` is off. |
-| `path_all` (output) | Every written file, one per line. |
+| `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio. With an image format, its frames are written as an image sequence. |
+| `alpha` (input) | Optional. Takes an `IMAGE`, `MASK` or `VIDEO` (one socket typed `IMAGE,MASK,VIDEO`, so other types can't connect). A MASK is used as is. An IMAGE or a VIDEO's frames give their Rec.709 luminance, so a grey matte keeps its exact values. It needs one frame (used for every frame) or as many frames as the source, at the same size; anything else is an error. See [Alpha](#alpha). |
+| `path_mode` | `relative` writes under ComfyUI's output directory. `absolute` writes under `base_path` (an absolute or UNC path). |
+| `template` | The output path without an extension. `{frame}` sets where the frame number goes. See [Image sequences](#image-sequences). |
+| `format` | Images, one file per frame: `png`, `exr`, `jpg`, `webp`. Video, one file per batch: `mp4` (H.264), `mov` (ProRes), `webm` (VP9). |
+| `start_frame`, `frame_padding` | Image formats only. The first frame number (default `1001`, the usual VFX start, which leaves room for handles before frame 1000) and its digit count (default 4). |
+| `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` sets the quality for mp4/webm (lower is better). ProRes ignores it. |
+| `prores_profile` | mov only. `auto` (default) writes ProRes 4444 with alpha when there is an alpha, and ProRes 422 HQ otherwise. `422 HQ` never writes alpha. `4444` is 4:4:4 10-bit, with alpha when there is one. |
+| `exr_precision`, `exr_compression` | EXR only. Precision is `half` (default) or `float`. Compression is `zip` (default), `zips`, `rle` or `none`. EXR keeps float values unclipped. |
+| `exr_colorspace` | EXR only. `as is` (default) writes the values unchanged. `sRGB to linear` decodes sRGB-encoded images, which covers most generated and loaded images, to linear light with the piecewise sRGB curve: `v / 12.92` up to 0.04045, then `((v + 0.055) / 1.055) ^ 2.4`. The power segment carries on above 1.0 (2.0 becomes about 5.7), and negative values are mirrored. Alpha is never converted. This is plain math with no OCIO; for other colorspaces, put [PD OCIO Transform](#ocio) before PD Output and leave this on `as is`. |
+| `overwrite` | When off, nothing is written if the file, or any frame of the sequence, already exists. The console says so. This prevents a sequence that mixes old and new frames. |
+| `save_metadata` | Writes a sidecar `.json` next to the output, with the template, resolved tokens and context, written files, frame range and `#` pattern, alpha source, timestamp, the ComfyUI prompt and the EXR/video settings (`colorspace`, `prores_profile`). The workflow is not embedded in the image files. |
+| `path` (output) | The first file written (the first frame of a sequence), or the video file. |
+| `path_sidecar` (output) | The sidecar JSON path. Empty when `save_metadata` is off. |
+| `path_all` (output) | Every written file, one per line (every frame of a sequence). |
 | `images` (output) | The input images passed through (the VIDEO's frames when only a VIDEO is connected). |
-| `video` (output) | The written video as a ComfyUI VIDEO, for Save Video, Preview Video and other video nodes. Empty for image formats. |
+| `video` (output) | The written video as a ComfyUI VIDEO, for Save Video, Preview Video and other video nodes. Only shown for video formats. |
 
-A preview of what was written appears under the node. Images and mp4/webm inside ComfyUI's output directory are shown directly; EXR, ProRes and files outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video). Widgets that do not apply to the chosen mode and format are hidden.
+### Image sequences
 
-Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install or extra package is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression).
+Image formats write one file per frame.
+
+- **With `{frame}`** in the template, the frame number goes there: `{shot}/{shot}_{version}.{frame}` writes `sh010_v001.1001.exr`, `sh010_v001.1002.exr`, and so on. `{frame}` can also appear in folder names.
+- **Without `{frame}`**, a batch of more than one frame gets the VFX-style `.1001` before the extension (`sh010_v001.1001.png`).
+- **A single image** (batch of 1) gets no frame number unless the template uses `{frame}`, in which case it is numbered `start_frame`.
+- **Video formats** ignore `{frame}`. It is removed along with one `.`, `_` or `-` just before it, so `clip.{frame}` writes `clip.mp4`.
+
+The sidecar of a sequence is named after the file name without the frame number (`sh010_v001.json`). It records `sequence.first`, `last`, `count`, `padding` and `pattern` (e.g. `…/sh010_v001.####.exr`). After a run, the token reference shows the frame range that `{frame}` covered.
+
+### Alpha
+
+Alpha is written to `png` and `webp` (8-bit RGBA), `exr` (RGBA, with alpha written as is: linear, unclipped and never colour-converted) and `mov` as ProRes 4444 (`prores_ks` profile 4, `yuva444p10le`). When `alpha` is not connected, the fourth channel of 4-channel images is used as alpha.
+
+`jpg`, `mp4`, `webm` and ProRes 422 HQ can't store alpha. If `alpha` is connected anyway, the file is written without it, a warning is printed to the console, and the sidecar records `"alpha": {"written": false}`. A warning was chosen over an error so that switching to a review format (e.g. mp4) doesn't break a graph that also writes alpha.
+
+### Hidden widgets and sockets
+
+Widgets that don't apply to the chosen mode and format are hidden. Sockets are hidden too: the `alpha` input for formats without alpha, and the `video` output for image formats. A linked widget or socket is never hidden. Frontend 1.59 has no per-slot hidden flag, so sockets are hidden by removing them and added back when they apply again. This is safe because inputs are matched by name, and `video` is the last output, so removing it shifts no other output's index. A saved workflow leaves out a hidden socket, and it comes back when the workflow is loaded with a format that uses it. The `images` output is always shown, since passing images through is useful for every format.
+
+A preview of what was written appears under the node, with one entry per frame for sequences. Images and mp4/webm inside ComfyUI's output directory are shown directly. EXR, ProRes and files outside the output directory get a downscaled preview in ComfyUI's temp directory (an animated WebP for video).
+
+Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
+
 
 ## Compatibility
 

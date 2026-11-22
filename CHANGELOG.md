@@ -2,6 +2,35 @@
 
 ## 0.2.0 (unreleased)
 
+### PD Output: alpha, sequences, sRGB to linear
+- Image sequences (breaking): image formats write one file per frame,
+  numbered from the new `start_frame` (default 1001) at `{frame}` in the
+  template, or as `name.1001.ext` without it (previously `name_0000.ext`).
+  Single images get no number unless `{frame}` is used. Video formats drop
+  `{frame}`. The sidecar is named without the frame number and records the
+  frame range and `####` pattern. The token reference shows the range.
+- Overwrite off now skips the whole sequence when any frame exists,
+  instead of writing a mix of old and new frames
+- New optional `alpha` input (IMAGE luminance, MASK, or VIDEO frames; one
+  frame or one per frame, same size, otherwise a clear error). Written to
+  png/webp (RGBA), exr (RGBA, alpha unconverted) and mov as ProRes 4444
+  (`yuva444p10le`). The 4th channel of RGBA images is used when `alpha` is
+  not connected. jpg/mp4/webm/ProRes 422 HQ drop it with a console warning
+- New `prores_profile` (auto / 422 HQ / 4444). auto picks 4444 when there
+  is an alpha
+- New `exr_colorspace` (as is / sRGB to linear), using the piecewise sRGB
+  EOTF extended above 1.0. Recorded in the sidecar
+- The frontend hides the `alpha` input for formats without alpha and the
+  `video` output for image formats (never while linked). Also hides
+  `start_frame`/`frame_padding` for video, `prores_profile` unless mov and
+  `exr_colorspace` unless exr. Slot hiding uses the new `showSlots()` in
+  web/pd_common.js
+- Widgets reordered/inserted (`format`, `start_frame`, `frame_padding`,
+  `prores_profile` after `crf`, `exr_colorspace` after `exr_compression`).
+  ComfyUI restores widget values by position, so PD Output nodes in
+  workflows saved before this change may load with shifted values. Re-create
+  those nodes
+
 ### Breaking cleanup
 - Removed the legacy PD Output Relative / PD Output Absolute nodes and the
   PDOutputNamer / PDNetworkOutput aliases; use PD Output
