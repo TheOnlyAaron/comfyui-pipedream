@@ -9,7 +9,7 @@ Every pair is an optional input so any subset validates.  The JS extension
 next one as each name is filled, up to ``MAX_PAIRS``.
 """
 
-from ..core.display import display_name
+from ..core.common import display_name
 
 MAX_PAIRS = 10
 

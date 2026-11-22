@@ -9,24 +9,8 @@ payload so the frontend receives an ``executed`` event for this node.
 All audio is handled by ``web/pd_sound.js``.
 """
 
-from ..core.display import display_name
+from ..core.common import ANY, display_name
 
-
-class AnyType(str):
-    """Wildcard type string that compares equal-enough to every type.
-
-    ``__ne__`` always returning False makes older ComfyUI validators (which
-    test ``received_type != input_type``) accept any connection, while newer
-    ones treat ``"*"`` as Any natively.
-    """
-
-    def __ne__(self, other):
-        return False
-
-    __hash__ = str.__hash__
-
-
-ANY = AnyType("*")
 
 SOUNDS = ["chime", "happy", "sad", "ding", "beeps", "alert", "custom URL"]
 PLAY_WHEN = ["node reached", "queue finished"]

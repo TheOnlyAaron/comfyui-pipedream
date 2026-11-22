@@ -2,6 +2,21 @@
 
 ## 0.2.0 (unreleased)
 
+### Breaking cleanup
+- Removed the legacy PD Output Relative / PD Output Absolute nodes and the
+  PDOutputNamer / PDNetworkOutput aliases; use PD Output
+- PD Shot Token now resolves its template against an optional context input
+  instead of its own project/shot/version/date/time widgets
+- PD Project Context is no longer an output node and has no hidden inputs
+- Removed core/compat.py, core/utils.py (merged into core/media.py),
+  core/display.py (now core/common.py, which also holds the shared
+  wildcard type), requirements.txt, the original design brief and the
+  placeholder workflow READMEs other than the wedge examples (05, 06)
+- Frontend helpers shared through web/pd_common.js; all extensions use
+  `isInputConnected` and target current (Nodes 2.0) frontends only
+
+### Changes
+
 - PD Project Context: added optional context input for override chaining
 - PD Project Context: added auto_increment_version (persistent, like seed)
 - New node: PD Custom Context (user-defined key/value token pairs)

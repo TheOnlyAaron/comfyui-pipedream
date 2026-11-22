@@ -1,21 +1,16 @@
 """
-Pipedream node classes.
-
-All node modules are imported here and collected into ``ALL_NODES`` for
-registration by the root ``__init__.py``.
+Pipedream node classes, collected into ``ALL_NODES`` for registration by
+the root ``__init__.py``.
 """
 
 from .project_context import PDProjectContext
 from .custom_context import PDCustomContext
 from .shot_token import PDShotToken
 from .output import PDOutput
-from .output_relative import PDOutputRelative
-from .output_absolute import PDOutputAbsolute
 from .switch import PDSwitch
 from .wedge import PDWedge
 from .rasterizer import PDRasterizer
 from .video import PDImagesToVideo, PDVideoToImages, PDVideoFrame, PDImageFrame
-
 from .sound import PDSound
 
 ALL_NODES: list = [
@@ -23,19 +18,12 @@ ALL_NODES: list = [
     PDCustomContext,
     PDShotToken,
     PDOutput,
-    PDOutputRelative,
-    PDOutputAbsolute,
     PDSwitch,
+    PDSound,
     PDWedge,
     PDRasterizer,
     PDImagesToVideo,
     PDVideoToImages,
     PDVideoFrame,
     PDImageFrame,
-
-    PDSound,
 ]
-
-# Backward compatibility aliases for saved workflows
-PDOutputNamer = PDOutputRelative
-PDNetworkOutput = PDOutputAbsolute

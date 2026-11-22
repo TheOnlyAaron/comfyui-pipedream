@@ -13,19 +13,15 @@ format is chosen.
 Each write can produce a sidecar JSON with the resolved tokens, template,
 written paths and the ComfyUI prompt.  The node shows a preview of what was
 written, returns the written paths, passes the images through, returns a
-VIDEO for written video, and keeps the token reference panel driven by
+VIDEO for written video, and feeds the token reference panel in
 ``web/pipedream.js``.
-
-``PDOutputBase.write_outputs`` holds the shared implementation used by
-``PDOutput`` and the legacy ``PDOutputRelative`` / ``PDOutputAbsolute``
-nodes.
 """
 
 import os
 import sys
 from datetime import datetime
 
-from ..core.display import display_name
+from ..core.common import display_name
 from ..core.media import (
     EXR_COMPRESSIONS,
     EXR_PRECISIONS,
@@ -33,12 +29,15 @@ from ..core.media import (
     VIDEO_FORMATS,
     audio_codec,
     build_preview,
+    ensure_directory,
+    normalize_path,
+    save_image_batch,
     save_video,
     video_codec,
     write_sidecar,
 )
 from ..core.tokens import resolve_tokens, format_token_reference
-from ..core.utils import normalize_path, ensure_directory, save_image_batch
+from ..core.video import comfy_video_api
 
 # ComfyUI's folder_paths is available at runtime inside custom nodes.
 try:
@@ -48,20 +47,6 @@ except ImportError:
 
 DEFAULT_TEMPLATE = "{project}/{sequence}/{shot}/{shot}_{version}_{date}"
 PATH_MODES = ("relative", "absolute")
-
-# Optional EXR widgets shared by PD Output and the legacy nodes (appended
-# last so saved widget values keep their positions).
-EXR_INPUTS = {
-    "exr_precision": (list(EXR_PRECISIONS), {
-        "default": "half",
-        "tooltip": "EXR only: half (16-bit float) or float (32-bit float).",
-    }),
-    "exr_compression": (list(EXR_COMPRESSIONS), {
-        "default": "zip",
-        "tooltip": "EXR only: zip (16 scanlines), zips (1 scanline), rle or none.",
-    }),
-}
-
 
 def get_output_directory() -> str:
     """Return ComfyUI's output directory, with a cwd fallback outside ComfyUI."""
@@ -83,18 +68,6 @@ def get_temp_directory() -> str | None:
     return None
 
 
-def video_from_file(path: str):
-    """
-    Return a ComfyUI VIDEO (``VideoFromFile``) for *path*, or None when
-    ``comfy_api`` is not importable (outside ComfyUI).
-    """
-    try:
-        from comfy_api.latest import InputImpl  # type: ignore[import-not-found]
-    except Exception:
-        return None
-    return InputImpl.VideoFromFile(path)
-
-
 def video_source(video) -> tuple:
     """
     Unpack a ComfyUI VIDEO into ``(images, audio, fps)``.
@@ -107,9 +80,10 @@ def video_source(video) -> tuple:
     return components.images, getattr(components, "audio", None), fps
 
 
-class PDOutputBase:
-    """Shared write/metadata/preview logic for the PD Output nodes."""
+class PDOutput:
+    """Write images or video to ComfyUI's output dir or an absolute path using a token template."""
 
+    DISPLAY_NAME = display_name("PD Output")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     OUTPUT_NODE = True
@@ -123,11 +97,63 @@ class PDOutputBase:
         "The written video as a ComfyUI VIDEO (empty for image formats).",
     )
 
-    def write_outputs(self, images, path_mode, base_path, template,
-                      frame_padding, file_format, context=None, fps=24.0,
-                      crf=18, create_dirs=True, overwrite=False,
-                      save_metadata=True, prompt=None, video=None,
-                      exr_precision="half", exr_compression="zip"):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "path_mode": (list(PATH_MODES), {
+                    "default": "relative",
+                    "tooltip": "relative: ComfyUI output directory. "
+                               "absolute: base_path (absolute or UNC path).",
+                }),
+                "base_path": ("STRING", {
+                    "default": "",
+                    "tooltip": "Root folder for absolute mode. Ignored in relative mode.",
+                }),
+                "template": ("STRING", {"default": DEFAULT_TEMPLATE, "multiline": False}),
+                "frame_padding": ("INT", {"default": 4, "min": 1, "max": 8}),
+                "format": (list(IMAGE_FORMATS + VIDEO_FORMATS), {
+                    "default": "png",
+                    "tooltip": "Images: png/exr/jpg/webp. Video: mp4 = H.264, "
+                               "mov = ProRes 422 HQ, webm = VP9 (audio from a "
+                               "connected VIDEO is kept).",
+                }),
+            },
+            "optional": {
+                "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'."}),
+                "context": ("PROJECT_CONTEXT",),
+                "video": ("VIDEO", {
+                    "tooltip": "Optional VIDEO to write instead of 'images', with its "
+                               "own frame rate and audio. With an image format its "
+                               "frames are written as an image sequence.",
+                }),
+                "fps": ("FLOAT", {"default": 24.0, "min": 1.0, "max": 240.0, "step": 0.001,
+                                  "tooltip": "Video frame rate for 'images'. A connected "
+                                             "VIDEO keeps its own frame rate."}),
+                "crf": ("INT", {"default": 18, "min": 0, "max": 51,
+                                "tooltip": "Video quality for mp4/webm (lower = better). "
+                                           "Ignored for ProRes."}),
+                "create_dirs": ("BOOLEAN", {"default": True}),
+                "overwrite": ("BOOLEAN", {"default": False}),
+                "save_metadata": ("BOOLEAN", {"default": True,
+                                              "tooltip": "Write a sidecar .json next to the output."}),
+                "exr_precision": (list(EXR_PRECISIONS), {
+                    "default": "half",
+                    "tooltip": "EXR only: half (16-bit float) or float (32-bit float).",
+                }),
+                "exr_compression": (list(EXR_COMPRESSIONS), {
+                    "default": "zip",
+                    "tooltip": "EXR only: zip (16 scanlines), zips (1 scanline), rle or none.",
+                }),
+            },
+            "hidden": {"prompt": "PROMPT"},
+        }
+
+    def execute(self, path_mode, base_path, template, frame_padding, format,
+                images=None, context=None, video=None, fps=24.0, crf=18,
+                create_dirs=True, overwrite=False, save_metadata=True,
+                prompt=None, exr_precision="half", exr_compression="zip"):
+        file_format = format
         audio = None
         if video is not None:
             frames, audio, fps = video_source(video)
@@ -190,7 +216,7 @@ class PDOutputBase:
         if save_metadata and written:
             shape = frames.shape
             metadata = {
-                "node": type(self).__name__,
+                "node": "PDOutput",
                 "timestamp": now.isoformat(timespec="seconds"),
                 "template": template,
                 "resolved": resolved,
@@ -236,72 +262,12 @@ class PDOutputBase:
             if animated:
                 ui["animated"] = (True,)
 
-        video_out = video_from_file(final) if is_video and os.path.isfile(final) else None
+        video_out = None
+        if is_video and os.path.isfile(final):
+            video_from_file = comfy_video_api()[1]
+            video_out = video_from_file(final) if video_from_file else None
         passthrough = images if images is not None else frames
         return {
             "ui": ui,
             "result": (final, sidecar, "\n".join(written), passthrough, video_out),
         }
-
-
-class PDOutput(PDOutputBase):
-    """Write images or video to ComfyUI's output dir or an absolute path using a token template."""
-
-    DISPLAY_NAME = display_name("PD Output")
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "path_mode": (list(PATH_MODES), {
-                    "default": "relative",
-                    "tooltip": "relative: ComfyUI output directory. "
-                               "absolute: base_path (absolute or UNC path).",
-                }),
-                "base_path": ("STRING", {
-                    "default": "",
-                    "tooltip": "Root folder for absolute mode. Ignored in relative mode.",
-                }),
-                "template": ("STRING", {"default": DEFAULT_TEMPLATE, "multiline": False}),
-                "frame_padding": ("INT", {"default": 4, "min": 1, "max": 8}),
-                "format": (list(IMAGE_FORMATS + VIDEO_FORMATS), {
-                    "default": "png",
-                    "tooltip": "Images: png/exr/jpg/webp. Video: mp4 = H.264, "
-                               "mov = ProRes 422 HQ, webm = VP9 (audio from a "
-                               "connected VIDEO is kept).",
-                }),
-            },
-            "optional": {
-                "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'."}),
-                "context": ("PROJECT_CONTEXT",),
-                "video": ("VIDEO", {
-                    "tooltip": "Optional VIDEO to write instead of 'images', with its "
-                               "own frame rate and audio. With an image format its "
-                               "frames are written as an image sequence.",
-                }),
-                "fps": ("FLOAT", {"default": 24.0, "min": 1.0, "max": 240.0, "step": 0.001,
-                                  "tooltip": "Video frame rate for 'images'. A connected "
-                                             "VIDEO keeps its own frame rate."}),
-                "crf": ("INT", {"default": 18, "min": 0, "max": 51,
-                                "tooltip": "Video quality for mp4/webm (lower = better). "
-                                           "Ignored for ProRes."}),
-                "create_dirs": ("BOOLEAN", {"default": True}),
-                "overwrite": ("BOOLEAN", {"default": False}),
-                "save_metadata": ("BOOLEAN", {"default": True,
-                                              "tooltip": "Write a sidecar .json next to the output."}),
-                **EXR_INPUTS,
-            },
-            "hidden": {"prompt": "PROMPT"},
-        }
-
-    def execute(self, path_mode, base_path, template, frame_padding, format,
-                images=None, context=None, video=None, fps=24.0, crf=18,
-                create_dirs=True, overwrite=False, save_metadata=True,
-                prompt=None, exr_precision="half", exr_compression="zip"):
-        return self.write_outputs(
-            images, path_mode, base_path, template, frame_padding, format,
-            context=context, fps=fps, crf=crf, create_dirs=create_dirs,
-            overwrite=overwrite, save_metadata=save_metadata, prompt=prompt,
-            video=video, exr_precision=exr_precision,
-            exr_compression=exr_compression,
-        )

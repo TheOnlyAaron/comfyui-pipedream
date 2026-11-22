@@ -18,7 +18,7 @@ import urllib.error
 _SERVER_URL = os.environ.get("COMFYUI_SERVER_URL", "http://127.0.0.1:8188")
 
 
-from ..core.display import display_name
+from ..core.common import display_name
 
 
 class PDWedge:

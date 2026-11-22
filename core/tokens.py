@@ -10,25 +10,6 @@ import sys
 from datetime import datetime
 
 
-def context_from_project(
-    project: str = "",
-    sequence: str = "",
-    shot: str = "",
-    version: str = "",
-    artist: str = "",
-) -> dict:
-    """Build a context dict from project-level metadata fields."""
-    ctx = {
-        "project": project,
-        "sequence": sequence,
-        "shot": shot,
-        "version": version,
-    }
-    if artist:
-        ctx["artist"] = artist
-    return ctx
-
-
 def resolve_tokens(template: str, context: dict, frame_padding: int = 4) -> str:
     """
     Replace ``{token}`` placeholders in *template* with values from *context*.
@@ -37,10 +18,9 @@ def resolve_tokens(template: str, context: dict, frame_padding: int = 4) -> str:
         {date}          YYYYMMDD (current date)
         {time}          HHMMSS (current time)
         {frame}         '#' repeated *frame_padding* times (e.g. ``####``)
-        {wedge_idx}     current wedge iteration index (from context)
-        {wedge_<name>}  named wedge value (looked up as ``wedge_<name>`` key)
 
-    Unknown tokens are left as-is and a warning is printed to stderr.
+    Wedge tokens (``{wedge_idx}``, ``{wedge_<name>}``) are ordinary context
+    keys.  Unknown tokens are left as-is and a warning is printed to stderr.
     """
     now = datetime.now()
 
@@ -58,12 +38,6 @@ def resolve_tokens(template: str, context: dict, frame_padding: int = 4) -> str:
             return now.strftime("%H%M%S")
         if name == "frame":
             return "#" * frame_padding
-
-        # Wedge tokens — look for 'wedge_<name>' key in context
-        if name.startswith("wedge_"):
-            wedge_key = name  # already prefixed
-            if wedge_key in context:
-                return str(context[wedge_key])
 
         # Unknown token — warn and leave in place
         print(
