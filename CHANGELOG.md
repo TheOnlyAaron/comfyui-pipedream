@@ -2,6 +2,30 @@
 
 ## 0.2.0 (unreleased)
 
+### Alpha masks and premultiplication
+- PD Video To Images and PD Video Frame have a new `mask` output (after
+  `images`/`image`) with the video's alpha, 1.0 = opaque. Alpha planes
+  (ProRes 4444, other `yuva*`, `rgba`, `gbrap*`) are decoded at full
+  precision in the same pass and with the same frame selection as the
+  images. Videos without alpha give a full-opacity mask of the same size and
+  count. In-memory videos use their own alpha or RGBA channel 4. This shifts
+  the later outputs by one, so links to `audio`/`fps`/`frame_count` (and
+  `frame_index`/`frame_count`/`fps`) in workflows saved during 0.2.0
+  development need reconnecting
+- PD Image Frame: new optional `mask` input and `mask` output that picks the
+  same frame (a single-frame mask is used for every frame); without a mask it
+  outputs RGBA channel 4, else full opacity. Later outputs shift by one
+- PD Output writes EXR alpha premultiplied, as the OpenEXR spec defines
+  (RGB x alpha, after the sRGB to linear decode). PNG, WebP and ProRes 4444
+  stay straight. The sidecar records `alpha.premultiplied`
+- README section "Alpha and premultiplication": conventions per format,
+  how to interpret ProRes 4444 (straight), and the inverted MASK of core
+  Load Image / Join Image with Alpha (use Invert Mask)
+- PD Video Frame and PD Image Frame show `index` only when mode is `index`
+  (web/pd_video.js)
+- PD Project Context "reset version" on an empty or non-numeric version
+  resets to the configured `project.version` default (v001 when none is set)
+
 ### Facility / user defaults
 - New TOML settings: built-in defaults, then `pipedream.toml` in the pack
   folder (user, git-ignored), then the file in `PIPEDREAM_COMFYUI_CONFIG` (facility).
