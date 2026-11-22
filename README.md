@@ -13,7 +13,13 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional dependencies are required. Video and EXR are written with PyAV (`av`), which ComfyUI already installs.
+The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolorio` on PyPI, BSD-3) for the OCIO nodes, listed in `requirements.txt`. ComfyUI-Manager installs it for you; for a manual clone, install it with ComfyUI's own Python:
+
+```bash
+python -m pip install -r ComfyUI/custom_nodes/comfyui-pipedream/requirements.txt
+```
+
+Without it every other node works, and the OCIO nodes raise an error explaining how to install it. Video and EXR are written with PyAV (`av`), which ComfyUI already installs.
 
 ## Nodes
 
@@ -32,6 +38,8 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Video To Images** | Decodes a `VIDEO` to images, audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
 | **💭 PD Video Frame** | Grabs one frame from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
 | **💭 PD Image Frame** | Picks one image from a batch (first, last or index; negative counts from the end). |
+| **💭 PD OCIO Transform** | Converts images between two OpenColorIO colorspaces, optionally through a look. See [OCIO](#ocio). |
+| **💭 PD OCIO Display** | Applies an OpenColorIO display/view transform (e.g. the ACES output transform for sRGB), or its inverse. See [OCIO](#ocio). |
 | **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
 
 ## Video
@@ -62,6 +70,18 @@ Wire anything through the `value` input; the `value` output is the same object, 
 - **Errors**: in node reached mode, an execution error plays the error tone straight away (unless `error_tone` is off).
 - **Sounds**: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` are synthesized in the browser (no audio files). `custom URL` plays a file: absolute URL, root-relative path, or a path relative to this pack's `web/` folder. Each node picks its own sound and volume; the test buttons preview them.
 - Sounds play in the browser tab that queued the prompt. Changing a PD Sound widget changes its inputs, so nodes downstream of an inline PD Sound re-run on the next queue, as with any other widget edit.
+
+## OCIO
+
+The OCIO nodes live under **Pipedream/Color** and use [OpenColorIO](https://opencolorio.org) 2.3 or newer.
+
+- **config** picks the OCIO config: `$OCIO environment` (the config in the `OCIO` environment variable, or the built-in ACES studio config when it is unset), `ACES studio (built-in)` (`ocio://studio-config-latest`), `ACES cg (built-in)` (`ocio://cg-config-latest`) or `custom file`, which reads `config_path` (shown only for that choice).
+- **PD OCIO Transform** converts `in_colorspace` to `out_colorspace`. Pick a `look` to apply one of the config's looks on the way (`inverse_look` applies its inverse). Defaults: `ACEScg` (or the config's `scene_linear` role) to `sRGB - Texture` (or its `color_picking` role).
+- **PD OCIO Display** applies the `display`/`view` transform to an image in `in_colorspace`; `inverse` goes from the display back to the scene colorspace. Defaults are the config's default display and view.
+- Images are processed as float32: values outside 0–1 survive linear-to-linear conversions, and alpha (a 4th channel) passes through untouched.
+- The dropdowns follow the selected config: changing `config` or `config_path` reloads the colorspace, display, view and look lists, and `view` follows `display`. Values that still exist are kept, others reset to the config's defaults. Colorspace aliases and role names (e.g. `srgb_tx`, `scene_linear`) are accepted too.
+- Names are validated against the selected config when you queue, so a workflow saved with a custom config loads and runs even though its names are not in the default lists.
+- Loaded configs and processors are cached. A custom config file is reloaded when it changes on disk.
 
 ## Token Reference
 
