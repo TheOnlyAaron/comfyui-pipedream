@@ -16,8 +16,8 @@ The name is **Pipedream**. Repo will be `comfyui-pipedream`. Node class names us
 ## Compatibility Requirements
 
 - Must support **legacy ComfyUI node API** (current production installs)
-- Must support **ComfyUI Nodes 2.0 API**
-- A compatibility shim in `__init__.py` should detect which API is present and register accordingly — do not write things twice, abstract it cleanly
+- Must look and work correctly in the **Nodes 2.0 (Vue) frontend**; classic node classes; no V3 shim. Where the classic canvas and Nodes 2.0 force a choice, Nodes 2.0 wins
+- Nodes are written once as classic node classes and registered through `NODE_CLASS_MAPPINGS` in `__init__.py`
 - Python 3.10+ target, no exotic dependencies, nothing that requires a separate model download
 
 ---
@@ -27,7 +27,7 @@ The name is **Pipedream**. Repo will be `comfyui-pipedream`. Node class names us
 ```
 comfyui-pipedream/
 │
-├── __init__.py                  # Node registration, compat shim, version
+├── __init__.py                  # Node registration (NODE_CLASS_MAPPINGS), version
 ├── pyproject.toml               # ComfyUI Registry / pip metadata
 ├── requirements.txt             # Minimal; likely empty or near-empty
 ├── README.md
@@ -46,7 +46,7 @@ comfyui-pipedream/
 │
 ├── core/
 │   ├── __init__.py
-│   ├── compat.py                # Legacy vs Nodes 2.0 detection and shim
+│   ├── compat.py                # NODE_CLASS_MAPPINGS / display-name helpers
 │   ├── tokens.py                # Token resolution engine ({shot}, {date}, etc.)
 │   └── utils.py                 # Shared helpers (path normalization, etc.)
 │
@@ -222,25 +222,13 @@ Note: The UI display portion requires a small JS extension (`web/pipedream_raste
 
 ---
 
-## core/compat.py — Compatibility Shim
+## core/compat.py — Registration Helpers
 
-This is the most important architectural piece. Detect API version at import time and expose a unified registration interface.
+Nodes use the classic class pattern (`INPUT_TYPES` classmethod, `RETURN_TYPES` / `RETURN_NAMES`, a `FUNCTION` method, `CATEGORY`, plus a `DISPLAY_NAME` attribute). There is no V3 (`comfy_api.latest`) wrapper or API-detection shim: current ComfyUI loads classic nodes alongside V3 ones, and the Nodes 2.0 Vue frontend renders them.
 
-```python
-"""
-Detects ComfyUI API version (legacy vs Nodes 2.0) and provides
-a normalized node registration helper so individual node files
-don't need to branch on API version themselves.
-"""
-```
+`core/compat.py` only builds `NODE_CLASS_MAPPINGS` and `NODE_DISPLAY_NAME_MAPPINGS` from the node list. If the pack ever moves to V3, port the nodes to `io.ComfyNode` directly rather than shimming.
 
-Key things to abstract:
-- `INPUT_TYPES` classmethod signature differences
-- `RETURN_TYPES` / `RETURN_NAMES` handling
-- Execution method name (`__call__` vs `execute`)
-- Any category/display name registration differences
-
-Each node file imports from `core.compat` rather than importing ComfyUI internals directly.
+Frontend extensions in `web/` must look and work correctly in both renderers, Nodes 2.0 first: prefer reactive widget state (`widget.hidden`, `widget.options`) over canvas-only drawing hacks, and check them with the Vue renderer enabled.
 
 ---
 
@@ -312,7 +300,7 @@ Must be valid for ComfyUI Registry (CNR) submission. Include:
 ## What Claude Code Should Do First
 
 1. Scaffold the full directory structure above (empty files with docstrings/stubs)
-2. Implement `core/compat.py` — this is the foundation everything else builds on
+2. Implement `core/compat.py` — `NODE_CLASS_MAPPINGS` / display-name helpers (no V3 shim)
 3. Implement `core/tokens.py` — standalone, testable
 4. Implement `nodes/project_context.py` and `nodes/output_namer.py` — these are the most fundamental and test the token engine
 5. Implement `nodes/switch.py` — self-contained, no token dependency
