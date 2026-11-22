@@ -31,15 +31,15 @@ app.registerExtension({
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.OutputTokenRef — read-only token reference display      */
-/*  Shared by PDOutputRelative and PDOutputAbsolute                   */
+/*  Shared by PDOutput and the legacy Relative/Absolute nodes         */
 /* ------------------------------------------------------------------ */
 
 app.registerExtension({
     name: "Pipedream.OutputTokenRef",
 
     async nodeCreated(node) {
-        if (node.comfyClass !== "PDOutputRelative" &&
-            node.comfyClass !== "PDOutputAbsolute") return;
+        if (!["PDOutput", "PDOutputRelative", "PDOutputAbsolute"]
+            .includes(node.comfyClass)) return;
 
         const widget = node.addWidget("customtext", "token_display", "", () => {}, {
             multiline: true,
