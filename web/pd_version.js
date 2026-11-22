@@ -54,15 +54,30 @@ export function incrementVersion(version) {
  * Return the first version in the same style as ``version``.
  *
  * "v017" -> "v001", "take_0042" -> "take_0001".  Empty or unparseable
- * strings fall back to "v001".
+ * strings fall back to ``fallback`` when it is non-empty (the configured
+ * default), otherwise "v001".
  *
  * @param {string} version
+ * @param {string} [fallback]
  * @returns {string}
  */
-export function resetVersion(version) {
+export function resetVersion(version, fallback) {
     const parsed = parseVersion(version);
-    if (!parsed) return DEFAULT_VERSION;
+    if (!parsed) return String(fallback ?? "").trim() || DEFAULT_VERSION;
     return formatVersion(parsed.prefix, 1, parsed.width);
+}
+
+/**
+ * The ``version`` default from the node's Python definition, which comes
+ * from the facility/user settings (``project.version``).
+ *
+ * Frontend 1.59 attaches the definition to the node class as ``nodeData``
+ * (a ComfyNodeDefImpl with both the V2 ``inputs`` and the V1 ``input``).
+ */
+export function configuredVersion(node) {
+    const def = node?.constructor?.nodeData
+        ?? globalThis.LiteGraph?.registered_node_types?.[NODE_CLASS]?.nodeData;
+    return def?.inputs?.version?.default ?? def?.input?.required?.version?.[1]?.default ?? "";
 }
 
 /** True when ``node`` is a PD Project Context node. */
@@ -97,14 +112,15 @@ export function bumpNodeVersion(node) {
 }
 
 /**
- * Reset a node's version widget to its first version.
+ * Reset a node's version widget to its first version, or to the
+ * configured default when the version has no number.
  *
  * @returns {boolean} true if the version changed.
  */
 export function resetNodeVersion(node) {
     const widget = findWidget(node, "version");
     if (!widget) return false;
-    return setVersion(node, resetVersion(widget.value));
+    return setVersion(node, resetVersion(widget.value, configuredVersion(node)));
 }
 
 /**
