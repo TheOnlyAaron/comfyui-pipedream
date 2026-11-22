@@ -43,13 +43,21 @@ def ensure_directory(path: str, create: bool = True) -> str:
     return directory
 
 
-def save_image_batch(images, full_path: str, overwrite: bool = False) -> list[str]:
+def save_image_batch(images, full_path: str, overwrite: bool = False,
+                     exr_precision: str = "half",
+                     exr_compression: str = "zip") -> list[str]:
     """
     Save a batch of ComfyUI IMAGE tensors to disk.
 
     *images* is a tensor of shape ``(B, H, W, C)`` with float32 values in
     ``[0, 1]``.  When the batch size is greater than one, a zero-padded
     index is appended before the extension (e.g. ``name_0001.png``).
+
+    png/jpg/webp are written 8-bit with Pillow.  ``.exr`` keeps the float
+    data linear and unclipped, including alpha, and is written by
+    ``core.media.save_exr`` with *exr_precision* (``half``/``float``) and
+    *exr_compression*; EXR write failures (including no available writer)
+    raise ``RuntimeError`` instead of being skipped.
 
     Returns a list of successfully written file paths.
     """
@@ -73,6 +81,13 @@ def save_image_batch(images, full_path: str, overwrite: bool = False) -> list[st
                 f"disabled: '{out_path}'",
                 file=sys.stderr,
             )
+            continue
+
+        if ext == ".exr":
+            from .media import exr_frame, save_exr
+
+            save_exr(exr_frame(images[i]), out_path, exr_precision, exr_compression)
+            written.append(out_path)
             continue
 
         img_array = (images[i].cpu().numpy() * 255).clip(0, 255).astype(np.uint8)

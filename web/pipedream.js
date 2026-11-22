@@ -31,15 +31,15 @@ app.registerExtension({
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.OutputTokenRef — read-only token reference display      */
-/*  Shared by PDOutputRelative and PDOutputAbsolute                   */
+/*  Shared by PDOutput and the legacy Relative/Absolute nodes         */
 /* ------------------------------------------------------------------ */
 
 app.registerExtension({
     name: "Pipedream.OutputTokenRef",
 
     async nodeCreated(node) {
-        if (node.comfyClass !== "PDOutputRelative" &&
-            node.comfyClass !== "PDOutputAbsolute") return;
+        if (!["PDOutput", "PDOutputRelative", "PDOutputAbsolute"]
+            .includes(node.comfyClass)) return;
 
         const widget = node.addWidget("customtext", "token_display", "", () => {}, {
             multiline: true,
@@ -128,29 +128,6 @@ app.registerExtension({
                 origOnConnectionsChange.call(this, type, index, connected, linkInfo);
             }
             syncSlots();
-        };
-    },
-});
-
-/* ------------------------------------------------------------------ */
-/*  Pipedream.ProjectContext — version auto-increment widget update    */
-/* ------------------------------------------------------------------ */
-
-app.registerExtension({
-    name: "Pipedream.ProjectContext",
-
-    async nodeCreated(node) {
-        if (node.comfyClass !== "PDProjectContext") return;
-
-        const origOnExecuted = node.onExecuted;
-        node.onExecuted = function (output) {
-            if (origOnExecuted) origOnExecuted.call(this, output);
-            if (output?.version?.length > 0) {
-                const versionWidget = this.widgets?.find(w => w.name === "version");
-                if (versionWidget) {
-                    versionWidget.value = output.version[0];
-                }
-            }
         };
     },
 });
