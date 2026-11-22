@@ -8,6 +8,7 @@ registration by the root ``__init__.py``.
 from .project_context import PDProjectContext
 from .custom_context import PDCustomContext
 from .shot_token import PDShotToken
+from .output import PDOutput
 from .output_relative import PDOutputRelative
 from .output_absolute import PDOutputAbsolute
 from .switch import PDSwitch
@@ -18,6 +19,7 @@ ALL_NODES: list = [
     PDProjectContext,
     PDCustomContext,
     PDShotToken,
+    PDOutput,
     PDOutputRelative,
     PDOutputAbsolute,
     PDSwitch,

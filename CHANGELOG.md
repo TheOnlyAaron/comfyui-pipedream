@@ -12,6 +12,27 @@
 - PD Switch: simplified to single-channel with auto-growing inputs (2–8)
 - Added 💭 emoji prefix to all node display names (with Windows fallback)
 - Consolidated JS extensions into single web/pipedream.js
+- New node: PD Output, combining Output Relative and Output Absolute with a
+  `path_mode` switch (relative/absolute) and video formats (#11)
+  - mp4 (H.264), mov (ProRes 422 HQ) and webm (VP9) encoded with PyAV, which
+    ships with ComfyUI (no ffmpeg binary needed), with `fps` and `crf` widgets
+  - Optional `video` (VIDEO) input: written with its own frame rate and audio
+    (AAC for mp4/mov, Opus for webm), or as an image sequence for image
+    formats; `images` is now optional and one of the two is required
+  - Relative mode refuses templates that resolve outside the output directory
+  - web/pd_output.js hides widgets that do not apply to the current
+    mode/format (built for the Nodes 2.0 renderer, also works on the classic
+    canvas)
+- PD Output Relative / PD Output Absolute are now deprecated "(legacy)" nodes
+  that share PD Output's implementation; existing workflows still load
+- All PD Output nodes:
+  - Write a sidecar JSON (template, resolved tokens/context, written paths,
+    timestamp, ComfyUI prompt), toggled by `save_metadata` (#6)
+  - Show a preview of what was written under the node (#8)
+  - Outputs `path` (first file or the video), `path_sidecar`, `path_all`
+    (every written file, newline-separated), `images` passthrough (#9) and
+    `video` (a ComfyUI VIDEO of the written file); `path` stays in slot 0 so
+    old `written_path` links keep working
 
 ## 0.1.0
 

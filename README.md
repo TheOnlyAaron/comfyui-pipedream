@@ -13,7 +13,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/theonlyaaron/comfyui-pipedream.git
 ```
 
-No additional dependencies are required.
+No additional dependencies are required. Video is written with PyAV (`av`), which ComfyUI already installs.
 
 ## Nodes
 
@@ -24,8 +24,9 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version. |
 | **💭 PD Custom Context** | Adds up to 5 user-defined key/value token pairs to a context. Chain after Project Context for custom tokens like `{task}`, `{department}`. |
 | **💭 PD Shot Token** | Lightweight token resolver — takes a template string and inline widget values, outputs a resolved string. |
-| **💭 PD Output Relative** | Resolves a token template and saves images to ComfyUI's output directory. Shows available tokens after execution. |
-| **💭 PD Output Absolute** | Same as Output Relative but saves to an absolute or UNC network path. |
+| **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. |
+| **💭 PD Output Relative (legacy)** | Deprecated: use PD Output in `relative` mode. Kept so older workflows still load. |
+| **💭 PD Output Absolute (legacy)** | Deprecated: use PD Output in `absolute` mode. Kept so older workflows still load. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
@@ -56,8 +57,29 @@ PD Project Context accepts an optional incoming context. Non-empty widget values
 PD Project Context (base: project=DITC, sequence=sq010)
     → PD Project Context (override: shot=sh010)
         → PD Custom Context (task=comp, element=BG)
-            → PD Output Relative
+            → PD Output
 ```
+
+## PD Output
+
+| Input / Output | Notes |
+|----------------|-------|
+| `images` / `video` (inputs) | Connect at least one. A connected `video` (ComfyUI VIDEO) is written instead of `images`, with its own frame rate and audio; with an image format its frames are written as an image sequence. |
+| `path_mode` | `relative` writes under ComfyUI's output directory; `absolute` writes under `base_path` (absolute or UNC path). |
+| `format` | Images: `png`, `exr`, `jpg`, `webp` (batches get a `_0000` index). Video: `mp4` (H.264), `mov` (ProRes 422 HQ), `webm` (VP9), one file per batch. |
+| `fps`, `crf` | Video only. `fps` applies to `images` (a VIDEO keeps its own rate). `crf` is the quality for mp4/webm (lower is better); ProRes ignores it. |
+| `save_metadata` | Writes `<name>.json` next to the output: template, resolved tokens and context, written file paths, timestamp and the ComfyUI prompt. The workflow is not embedded in the image files. |
+| `path` (output) | First file written, or the video file. |
+| `path_sidecar` (output) | The sidecar JSON path, empty when `save_metadata` is off. |
+| `path_all` (output) | Every written file, one per line. |
+| `images` (output) | The input images passed through (the VIDEO's frames when only a VIDEO is connected). |
+| `video` (output) | The written video as a ComfyUI VIDEO, for Save Video, Preview Video and other video nodes. Empty for image formats. |
+
+A preview of what was written appears under the node. Images and mp4/webm inside ComfyUI's output directory are shown directly; EXR, ProRes and files outside it get a downscaled preview in ComfyUI's temp directory (an animated WebP for video). Widgets that do not apply to the chosen mode and format are hidden.
+
+Video is encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the codecs need.
+
+The legacy Relative/Absolute nodes share this implementation and have the same five outputs; `path` is the first output, so links from their old `written_path` output keep working.
 
 ## Compatibility
 
