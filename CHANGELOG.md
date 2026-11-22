@@ -21,14 +21,16 @@
 - Both output nodes show a token reference panel after execution
 - PD Switch: simplified to single-channel with auto-growing inputs (2–8)
 - Added 💭 emoji prefix to all node display names (with Windows fallback)
-- Consolidated JS extensions into single web/pipedream.js
+- Frontend extensions: shared code in web/pipedream.js, per-feature files in web/pd_*.js
+- Nodes 2.0 fixes (#21): token reference and Rasterizer panels render in both
+  renderers, PD Switch starts with 2 inputs and resizes as inputs change
 - Removed the unused V3 wrapper (`wrap_as_v3`); nodes register via `NODE_CLASS_MAPPINGS` only (#17)
 - New video nodes (Pipedream/Video, core `VIDEO` type, PyAV decode helpers in core/video.py):
   - PD Images To Video (in-memory video from images + optional audio)
   - PD Video To Images (range / every-Nth decode with matching audio)
   - PD Video Frame (first / last / index with keyframe seeking)
   - PD Image Frame (first / last / index for image batches)
-- New node: PD Sound (browser sound cue with wildcard passthrough; plays when the node is reached or when the queue finishes; six synthesized sounds plus custom URL; optional error tone and play-when-cached; JS in web/pd_sound.js)
+- New node: PD Sound (#10) (browser sound cue with wildcard passthrough; plays when the node is reached or when the queue finishes; six synthesized sounds plus custom URL; optional error tone and play-when-cached; JS in web/pd_sound.js)
 - New node: PD Output, combining Output Relative and Output Absolute with a
   `path_mode` switch (relative/absolute) and video formats (#11)
   - mp4 (H.264), mov (ProRes 422 HQ) and webm (VP9) encoded with PyAV, which
