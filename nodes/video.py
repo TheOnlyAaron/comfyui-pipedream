@@ -7,7 +7,7 @@ type so they interoperate with Load Video, Save Video and other packs.
 Decoding helpers live in ``core/video.py``.
 """
 
-from ..core.display import display_name
+from ..core.common import display_name
 from ..core.video import images_to_video, read_frame, read_frames, resolve_index
 
 _CATEGORY = "Pipedream/Video"

@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { chain, findWidget, showWidgets } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Sound — browser sound cues for the PDSound node         */
@@ -330,50 +331,17 @@ app.registerExtension({
         });
         errButton.serialize = false;
 
-        // Hide widgets that do not apply: custom_url unless sound is
-        // "custom URL", when_cached unless play_when is "node reached".
-        // widget.hidden is reactive in Nodes 2.0; the classic canvas only
-        // needs the node refitted.  A widget driven by a link stays shown.
-        const syncVisibility = () => {
-            const value = (name) => node.widgets?.find((w) => w.name === name)?.value;
-            let changed = false;
-            const show = (name, shown) => {
-                const widget = node.widgets?.find((w) => w.name === name);
-                if (!widget) return;
-                const slot = node.inputs?.findIndex((i) => i.widget?.name === name) ?? -1;
-                const linked = slot >= 0 && (typeof node.isInputConnected === "function"
-                    ? node.isInputConnected(slot) : node.inputs[slot].link != null);
-                const hidden = !shown && !linked;
-                if (!!widget.hidden === hidden) return;
-                widget.hidden = hidden;
-                changed = true;
-            };
-            show("custom_url", value("sound") === "custom URL");
-            show("when_cached", value("play_when") !== "queue finished");
-            if (!changed) return;
-            if (!globalThis.LiteGraph?.vueNodesMode && node.computeSize && node.setSize) {
-                node.setSize([node.size[0], node.computeSize()[1]]);
-            }
-            node.setDirtyCanvas?.(true, true);
-        };
+        // custom_url only for "custom URL"; when_cached only in "node reached" mode.
+        const syncVisibility = () => showWidgets(node, {
+            custom_url: findWidget(node, "sound")?.value === "custom URL",
+            when_cached: findWidget(node, "play_when")?.value !== "queue finished",
+        });
         for (const name of ["sound", "play_when"]) {
-            const widget = node.widgets?.find((w) => w.name === name);
-            if (!widget) continue;
-            const orig = widget.callback;
-            widget.callback = function (...args) {
-                const r = orig?.apply(this, args);
-                syncVisibility();
-                return r;
-            };
+            const widget = findWidget(node, name);
+            if (widget) chain(widget, "callback", syncVisibility);
         }
-        for (const method of ["onConfigure", "onConnectionsChange"]) {
-            const orig = node[method];
-            node[method] = function (...args) {
-                const r = orig?.apply(this, args);
-                syncVisibility();
-                return r;
-            };
-        }
+        chain(node, "onConfigure", syncVisibility);
+        chain(node, "onConnectionsChange", syncVisibility);
         syncVisibility();
     },
 });

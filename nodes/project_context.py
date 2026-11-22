@@ -14,7 +14,7 @@ read there at queue time, like seed's ``control_after_generate``, so each
 queued prompt carries its own version.  This node only passes the value on.
 """
 
-from ..core.display import display_name
+from ..core.common import display_name
 
 
 class PDProjectContext:
@@ -23,7 +23,6 @@ class PDProjectContext:
     DISPLAY_NAME = display_name("PD Project Context")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
-    OUTPUT_NODE = True
     RETURN_TYPES = ("PROJECT_CONTEXT",)
     RETURN_NAMES = ("context",)
 
@@ -41,17 +40,13 @@ class PDProjectContext:
                 "artist": ("STRING", {"default": ""}),
                 "auto_increment_version": ("BOOLEAN", {"default": False}),
             },
-            "hidden": {
-                "unique_id": "UNIQUE_ID",
-            },
         }
 
     def execute(self, project, sequence, shot, version, context=None,
-                artist="", auto_increment_version=False, unique_id=None):
+                artist="", auto_increment_version=False):
         """Merge widget values over the incoming context and return it.
 
-        ``auto_increment_version`` is accepted for schema compatibility but
-        unused here; the frontend bumps the version widget after queueing.
+        ``auto_increment_version`` is only read by the frontend.
         """
         # Start from incoming context or empty dict
         ctx = dict(context) if context else {}

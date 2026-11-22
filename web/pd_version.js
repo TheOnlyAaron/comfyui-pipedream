@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { chain, findWidget, isInputLinked } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.ProjectContext — version auto-increment and reset       */
@@ -69,21 +70,6 @@ export function isProjectContext(node) {
     return (node?.comfyClass ?? node?.type) === NODE_CLASS;
 }
 
-function findWidget(node, name) {
-    return node?.widgets?.find(w => w.name === name);
-}
-
-/** True when the widget's input socket is connected to an upstream node. */
-function isWidgetLinked(node, name) {
-    return (node?.inputs ?? []).some((inp, slot) => {
-        if (inp.widget?.name !== name && inp.name !== name) return false;
-        // isInputConnected() is the current API; reading input.link logs a
-        // deprecation warning on recent (Nodes 2.0) frontends.
-        if (typeof node.isInputConnected === "function") return node.isInputConnected(slot);
-        return inp.link != null;
-    });
-}
-
 function setVersion(node, value) {
     const widget = findWidget(node, "version");
     if (!widget || widget.value === value) return false;
@@ -104,7 +90,7 @@ function setVersion(node, value) {
  */
 export function bumpNodeVersion(node) {
     if (!findWidget(node, "auto_increment_version")?.value) return false;
-    if (isWidgetLinked(node, "version")) return false;
+    if (isInputLinked(node, "version")) return false;
     const widget = findWidget(node, "version");
     if (!widget) return false;
     return setVersion(node, incrementVersion(widget.value));
@@ -124,9 +110,8 @@ export function resetNodeVersion(node) {
 /**
  * Collect every PD Project Context node in ``graph`` and its subgraphs.
  *
- * Handles both the legacy LiteGraph ``_nodes`` array and the newer
- * ``nodes`` / ``subgraphs`` API.  Each subgraph definition is visited
- * once, even when several subgraph nodes share it.
+ * Each subgraph definition is visited once, even when several subgraph
+ * nodes share it.
  *
  * @param {object} graph root graph
  * @returns {object[]}
@@ -138,7 +123,7 @@ export function collectProjectContexts(graph) {
     function walk(g) {
         if (!g || visited.has(g)) return;
         visited.add(g);
-        for (const node of g.nodes ?? g._nodes ?? []) {
+        for (const node of g.nodes ?? []) {
             if (isProjectContext(node)) found.push(node);
             if (node.subgraph) walk(node.subgraph);
         }
@@ -171,11 +156,7 @@ app.registerExtension({
 
         const versionWidget = findWidget(node, "version");
         if (versionWidget) {
-            const origAfterQueued = versionWidget.afterQueued;
-            versionWidget.afterQueued = function (...args) {
-                origAfterQueued?.apply(this, args);
-                bumpNodeVersion(node);
-            };
+            chain(versionWidget, "afterQueued", () => bumpNodeVersion(node));
         }
 
         const buttons = [

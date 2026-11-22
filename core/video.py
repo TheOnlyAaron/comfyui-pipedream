@@ -179,9 +179,9 @@ class _Reader:
     """
 
     def __init__(self, video):
-        import av
+        from .media import import_av
 
-        self._av = av
+        self._av = import_av()
         self.source = video.get_stream_source()
         trim = getattr(video, "get_active_trim_window", None)
         self.start_time, self.duration = trim() if trim else (0.0, 0.0)

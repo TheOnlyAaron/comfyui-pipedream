@@ -9,7 +9,7 @@ and displays an iteration preview table.
 import itertools
 import sys
 
-from ..core.display import display_name
+from ..core.common import display_name
 from ..core.tokens import resolve_tokens
 
 

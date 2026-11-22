@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { chain, isInputLinked, refit, setHidden } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.CustomContext — auto-expanding key/value pairs          */
@@ -48,29 +49,6 @@ export function getPairWidgets(node) {
     return pairs;
 }
 
-function isLinked(node, widget) {
-    return !!node.inputs?.some((inp, slot) => {
-        if (inp.widget?.name !== widget.name) return false;
-        // isInputConnected() is the current API; reading input.link logs a
-        // deprecation warning on recent (Nodes 2.0) frontends.
-        if (typeof node.isInputConnected === "function") return node.isInputConnected(slot);
-        return inp.link != null;
-    });
-}
-
-function setWidgetHidden(widget, hidden) {
-    if (hidden) {
-        if (!widget.hidden) widget._pdComputeSize = widget.computeSize;
-        widget.hidden = true;
-        widget.computeSize = () => [0, -4];
-    } else if (widget.hidden) {
-        widget.hidden = false;
-        if (widget._pdComputeSize) widget.computeSize = widget._pdComputeSize;
-        else delete widget.computeSize;
-        delete widget._pdComputeSize;
-    }
-}
-
 /**
  * Show the pairs that should be visible, hide the rest and refit the
  * node height. Widgets are never removed, so serialization and
@@ -83,25 +61,19 @@ export function syncPairs(node) {
     const count = visiblePairCount(pairs.map(p => ({
         name: p.name.value,
         value: p.value.value,
-        nameLinked: isLinked(node, p.name),
-        valueLinked: isLinked(node, p.value),
+        nameLinked: isInputLinked(node, p.name.name),
+        valueLinked: isInputLinked(node, p.value.name),
     })));
 
     let changed = false;
     pairs.forEach((p, i) => {
         const hide = i >= count;
         for (const w of [p.name, p.value]) {
-            if (!!w.hidden !== hide) {
-                setWidgetHidden(w, hide);
-                changed = true;
-            }
+            if (setHidden(w, hide)) changed = true;
         }
     });
 
-    if (changed && node.computeSize && node.setSize) {
-        node.setSize([node.size[0], node.computeSize()[1]]);
-        node.setDirtyCanvas?.(true, true);
-    }
+    if (changed) refit(node);
     return count;
 }
 
@@ -110,32 +82,11 @@ app.registerExtension({
 
     async nodeCreated(node) {
         if (node.comfyClass !== "PDCustomContext") return;
-
         for (const { name, value } of getPairWidgets(node)) {
-            for (const w of [name, value]) {
-                const origCallback = w.callback;
-                w.callback = function (...args) {
-                    const r = origCallback?.apply(this, args);
-                    syncPairs(node);
-                    return r;
-                };
-            }
+            for (const w of [name, value]) chain(w, "callback", () => syncPairs(node));
         }
-
-        const origOnConfigure = node.onConfigure;
-        node.onConfigure = function (info) {
-            const r = origOnConfigure?.call(this, info);
-            syncPairs(this);
-            return r;
-        };
-
-        const origOnConnectionsChange = node.onConnectionsChange;
-        node.onConnectionsChange = function (...args) {
-            const r = origOnConnectionsChange?.apply(this, args);
-            syncPairs(this);
-            return r;
-        };
-
+        chain(node, "onConfigure", () => syncPairs(node));
+        chain(node, "onConnectionsChange", () => syncPairs(node));
         syncPairs(node);
     },
 });

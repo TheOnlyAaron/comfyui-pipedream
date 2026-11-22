@@ -23,10 +23,8 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 |------|-------------|
 | **💭 PD Custom Context** | Adds user-defined key/value token pairs to a context. Starts with one empty pair; a new pair appears as each name is filled (up to 10). Chain after Project Context for custom tokens like `{task}`, `{department}`. |
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
-| **💭 PD Shot Token** | Lightweight token resolver — takes a template string and inline widget values, outputs a resolved string. |
+| **💭 PD Shot Token** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
 | **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. |
-| **💭 PD Output Relative (legacy)** | Deprecated: use PD Output in `relative` mode. Kept so older workflows still load. |
-| **💭 PD Output Absolute (legacy)** | Deprecated: use PD Output in `absolute` mode. Kept so older workflows still load. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
 | **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
@@ -71,10 +69,10 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token:
 
 | Token | Source |
 |-------|--------|
-| `{project}` | Project Context or widget |
-| `{sequence}` | Project Context or widget |
-| `{shot}` | Project Context or widget |
-| `{version}` | Project Context or widget |
+| `{project}` | Project Context |
+| `{sequence}` | Project Context |
+| `{shot}` | Project Context |
+| `{version}` | Project Context |
 | `{artist}` | Project Context |
 | `{date}` | Auto: YYYYMMDD |
 | `{time}` | Auto: HHMMSS |
@@ -127,15 +125,13 @@ A preview of what was written appears under the node. Images and mp4/webm inside
 
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so no `ffmpeg` install or extra package is needed. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression).
 
-The legacy Relative/Absolute nodes share this implementation, have the same five outputs and also have the `exr_precision` and `exr_compression` options; `path` is the first output, so links from their old `written_path` output keep working.
-
 ## Compatibility
 
-Pipedream registers its nodes through the legacy `NODE_CLASS_MAPPINGS` API, which current ComfyUI loads alongside V3 (`comfy_api`) nodes. There is no V3 wrapper; a future move to V3 would port the nodes directly.
+Pipedream nodes are classic ComfyUI node classes registered through `NODE_CLASS_MAPPINGS`, which current ComfyUI loads alongside V3 (`comfy_api`) nodes. A future move to V3 would port the nodes directly.
 
 All nodes are built and tested for the Nodes 2.0 (Vue) frontend first, and also work on the classic canvas.
 
-**Note:** Node display names use a 💭 emoji prefix. On Windows systems with legacy console codepages (cp1252, cp932), the emoji is automatically omitted to prevent encoding errors.
+**Note:** Node display names use a 💭 emoji prefix. On Windows systems with older console codepages (cp1252, cp932), the emoji is automatically omitted to prevent encoding errors.
 
 ## License
 

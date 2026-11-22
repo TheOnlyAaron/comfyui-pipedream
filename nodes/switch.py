@@ -6,7 +6,7 @@ managed dynamically by the JS extension (auto-grow on connect, auto-shrink
 on disconnect, min 2, max 8).
 """
 
-from ..core.display import display_name
+from ..core.common import ANY, display_name
 
 
 class PDSwitch:
@@ -15,7 +15,7 @@ class PDSwitch:
     DISPLAY_NAME = display_name("PD Switch")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
-    RETURN_TYPES = ("*",)
+    RETURN_TYPES = (ANY,)
     RETURN_NAMES = ("output",)
 
     @classmethod
@@ -29,12 +29,13 @@ class PDSwitch:
                 "index": ("INT", {
                     "default": 0, "min": 0, "max": 7, "forceInput": True,
                 }),
-                **{f"input_{i}": ("*",) for i in range(1, 9)},
+                **{f"input_{i}": (ANY,) for i in range(1, 9)},
             },
         }
 
     @classmethod
-    def VALIDATE_INPUTS(cls, **kwargs):
+    def VALIDATE_INPUTS(cls, input_types):
+        """Accept any connected type; taking ``input_types`` skips type checks."""
         return True
 
     def execute(self, mode, select, index=None, **kwargs):

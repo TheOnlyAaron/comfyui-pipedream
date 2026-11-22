@@ -1,16 +1,18 @@
 """
 PD Shot Token node.
 
-Lightweight alternative to PD Project Context when you only need shot-level
-tokens injected into a single string template.
+Resolves a token template to a plain string, e.g. for prompts, filenames
+or other nodes' path widgets.  Tokens come from an optional
+PROJECT_CONTEXT (PD Project Context / PD Custom Context) plus the
+automatic ``{date}``, ``{time}`` and ``{frame}`` tokens.
 """
 
-from ..core.display import display_name
+from ..core.common import display_name
 from ..core.tokens import resolve_tokens
 
 
 class PDShotToken:
-    """Resolve a token template using inline widget values."""
+    """Resolve a token template against a context."""
 
     DISPLAY_NAME = display_name("PD Shot Token")
     CATEGORY = "Pipedream"
@@ -26,27 +28,12 @@ class PDShotToken:
                     "default": "{project}_{shot}_{version}",
                     "multiline": True,
                 }),
-                "project": ("STRING", {"default": ""}),
-                "shot": ("STRING", {"default": ""}),
-                "version": ("STRING", {"default": "v001"}),
+                "frame_padding": ("INT", {"default": 4, "min": 1, "max": 8}),
             },
             "optional": {
-                "date": ("STRING", {"default": "auto"}),
-                "time": ("STRING", {"default": "auto"}),
+                "context": ("PROJECT_CONTEXT",),
             },
         }
 
-    def execute(self, template, project, shot, version, date="auto", time="auto"):
-        ctx: dict = {
-            "project": project,
-            "shot": shot,
-            "version": version,
-        }
-        # "auto" means let the token engine use live date/time
-        if date != "auto":
-            ctx["date"] = date
-        if time != "auto":
-            ctx["time"] = time
-
-        resolved = resolve_tokens(template, ctx)
-        return (resolved,)
+    def execute(self, template, frame_padding, context=None):
+        return (resolve_tokens(template, dict(context or {}), frame_padding=frame_padding),)
