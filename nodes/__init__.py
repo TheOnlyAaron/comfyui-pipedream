@@ -14,6 +14,7 @@ from .output_absolute import PDOutputAbsolute
 from .switch import PDSwitch
 from .wedge import PDWedge
 from .rasterizer import PDRasterizer
+from .sound import PDSound
 
 ALL_NODES: list = [
     PDProjectContext,
@@ -25,6 +26,7 @@ ALL_NODES: list = [
     PDSwitch,
     PDWedge,
     PDRasterizer,
+    PDSound,
 ]
 
 # Backward compatibility aliases for saved workflows
