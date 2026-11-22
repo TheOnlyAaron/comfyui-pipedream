@@ -20,7 +20,8 @@ app.registerExtension({
         const mode = findWidget(node, "mode");
         if (mode) chain(mode, "callback", () => sync(node));
         chain(node, "onConfigure", () => sync(node));
-        chain(node, "onConnectionsChange", () => sync(node));
+        // Deferred: the link is not registered yet while onConnectionsChange runs.
+        chain(node, "onConnectionsChange", () => queueMicrotask(() => sync(node)));
         sync(node);
     },
 });
