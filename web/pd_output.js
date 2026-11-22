@@ -23,7 +23,20 @@ function findWidget(node, name) {
 }
 
 function inputLinked(node, name) {
-    return node.inputs?.some(i => (i.name === name || i.widget?.name === name) && i.link != null);
+    const idx = node.inputs?.findIndex(i => i.name === name || i.widget?.name === name) ?? -1;
+    if (idx < 0) return false;
+    if (typeof node.isInputConnected === "function") return node.isInputConnected(idx);
+    return node.inputs[idx].link != null;
+}
+
+function clearClassicVideoPreview(node) {
+    const widget = findWidget(node, "video-preview");
+    if (widget) {
+        if (typeof node.removeWidget === "function") node.removeWidget(widget);
+        else node.widgets.splice(node.widgets.indexOf(widget), 1);
+        widget.onRemove?.();
+    }
+    node.videoContainer = undefined;
 }
 
 function setShown(node, name, shown) {
@@ -86,6 +99,7 @@ app.registerExtension({
             const isVideo = output?.animated?.some(Boolean) &&
                 output?.images?.some(i => VIDEO_EXTS.test(i?.filename ?? ""));
             this.previewMediaType = isVideo ? "video" : "image";
+            if (!isVideo && !globalThis.LiteGraph?.vueNodesMode) clearClassicVideoPreview(this);
         });
 
         syncWidgets(node);
