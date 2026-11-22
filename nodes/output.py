@@ -11,13 +11,14 @@ its own frame rate and audio, or as an image sequence when an image
 format is chosen.  Image formats write one file per frame, numbered from
 ``start_frame`` at ``{frame}`` in the template (or ``name.1001.ext`` by
 default, with the ``sequence.frame_separator`` setting before the number).  An optional alpha (IMAGE, MASK or VIDEO), or the fourth
-channel of the images, is written to png/webp/exr and ProRes 4444.
+channel of the images, is written to png/webp/exr and ProRes 4444
+(straight, except EXR, which is premultiplied as its spec requires).
 
 Each write can produce a sidecar JSON with the resolved tokens, template,
-written paths, frame range and the ComfyUI prompt.  The node shows a
-preview of what was written, returns the written paths, passes the images
-through, returns a VIDEO for written video, and feeds the token reference
-panel in ``web/pipedream.js``.
+written paths, frame range, alpha convention and the ComfyUI prompt.  The
+node shows a preview of what was written, returns the written paths,
+passes the images through, returns a VIDEO for written video, and feeds
+the token reference panel in ``web/pipedream.js``.
 
 Widget defaults come from the facility/user settings (``core/settings.py``).
 """
@@ -38,6 +39,7 @@ from ..core.media import (
     PRORES_CHOICES,
     VIDEO_FORMATS,
     alpha_matte,
+    alpha_premultiplied,
     audio_codec,
     build_preview,
     ensure_directory,
@@ -219,7 +221,9 @@ class PDOutput:
                 "alpha": (ALPHA_TYPES, {
                     "tooltip": "Optional alpha for png/webp/exr and mov (ProRes 4444): a "
                                "MASK, an IMAGE (its luminance) or a VIDEO (its frames' "
-                               "luminance). One frame, or as many frames as the source.",
+                               "luminance). One frame, or as many frames as the source. "
+                               "1.0 = opaque, straight; EXR is written premultiplied. Core "
+                               "Load Image's mask is inverted: put Invert Mask in between.",
                 }),
             },
             "hidden": {"prompt": "PROMPT"},
@@ -370,7 +374,11 @@ class PDOutput:
                     "width": width,
                     "channels": int(frames.shape[3]) if len(frames.shape) > 3 else 1,
                 },
-                "alpha": {"source": matte_kind, "written": matte is not None},
+                "alpha": {
+                    "written": matte is not None,
+                    "source": matte_kind,
+                    "premultiplied": alpha_premultiplied(file_format) if matte is not None else None,
+                },
                 "settings": {"sources": list(settings.sources)},
                 "prompt": prompt,
             }

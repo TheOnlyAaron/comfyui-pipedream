@@ -63,6 +63,17 @@ def supports_alpha(fmt: str, prores_profile: str = "4444") -> bool:
     return fmt in ALPHA_FORMATS
 
 
+def alpha_premultiplied(fmt: str) -> bool:
+    """
+    True when alpha written to *fmt* is premultiplied (associated).
+
+    Only EXR: the OpenEXR spec defines RGBA as premultiplied.  png/webp
+    store straight alpha by spec, and ProRes 4444 is written straight (its
+    bitstream has no reliable flag, so straight is Pipedream's convention).
+    """
+    return fmt == "exr"
+
+
 def audio_codec(fmt: str) -> str:
     """Return the audio encoder used for a video *fmt* (``aac`` or ``libopus``)."""
     spec = _VIDEO_SPECS.get(fmt)
@@ -280,7 +291,8 @@ def save_video(images, full_path: str, fmt: str, fps: float = 24.0,
     ``mp4`` uses H.264 (yuv420p), ``mov`` uses ProRes (10-bit) and
     ``webm`` uses VP9 (yuv420p), tagged BT.709.  *prores_profile* is
     ``422 HQ`` (yuv422p10le) or ``4444`` (yuv444p10le, or yuva444p10le
-    with an alpha channel when matte *alpha* ``(1|N, H, W)`` is given).
+    with an alpha channel when matte *alpha* ``(1|N, H, W)`` is given;
+    straight alpha, RGB is not premultiplied).
     *alpha* is ignored by every other format/profile.  *crf* applies to
     H.264 and VP9; ProRes ignores it.  Odd frame sizes are padded to even
     by repeating the last row/column.  *audio* is an optional ComfyUI
@@ -556,7 +568,13 @@ def save_image_sequence(images, paths: list[str], alpha=None,
     keeps the float data unclipped and is written by ``save_exr`` with
     *exr_precision* and *exr_compression*; with *exr_linearize* the RGB
     channels are decoded from sRGB to linear first (``srgb_to_linear``),
-    alpha is always written as is.  EXR failures raise ``RuntimeError``;
+    alpha is always written as is.
+
+    Alpha conventions: *images* and *alpha* are straight (unpremultiplied),
+    as everywhere in ComfyUI.  png/webp store straight alpha (their spec),
+    so they are written as is.  OpenEXR defines RGBA as premultiplied, so
+    EXR RGB is multiplied by the alpha, after the sRGB to linear decode
+    (which must see straight values).  See ``alpha_premultiplied``.  EXR failures raise ``RuntimeError``;
     other per-file failures are printed and skipped.  Callers handle the
     overwrite policy (see ``existing_files``).
 
@@ -575,7 +593,8 @@ def save_image_sequence(images, paths: list[str], alpha=None,
             if exr_linearize:
                 rgb = srgb_to_linear(rgb)
             if matte is not None:
-                rgb = np.concatenate([rgb, np.asarray(matte, np.float32)[..., None]], axis=-1)
+                matte = np.asarray(matte, np.float32)[..., None]
+                rgb = np.concatenate([rgb * matte, matte], axis=-1)
             save_exr(np.ascontiguousarray(rgb), out_path, exr_precision, exr_compression)
             written.append(out_path)
             continue
