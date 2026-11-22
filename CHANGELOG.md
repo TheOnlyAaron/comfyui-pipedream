@@ -2,6 +2,22 @@
 
 ## 0.2.0 (unreleased)
 
+### Facility / user defaults
+- New TOML settings: built-in defaults, then `pipedream.toml` in the pack
+  folder (user, git-ignored), then the file in `PIPEDREAM_CONFIG` (facility).
+  Keys override only when present and valid; invalid values, unknown keys,
+  bad TOML and a missing facility file warn once in the console. Read with
+  `tomllib` (or `tomli`), no new dependency. Restart ComfyUI after edits
+- Tables `[output]`, `[exr]`, `[sequence]`, `[tokens]` (+ `[tokens.extra]`),
+  `[shot_token]`, `[project]`, `[ocio]`, `[sound]`, defined once in the
+  `core/settings.py` schema, which also generates `pipedream.example.toml`
+- Node widget defaults come from the settings (saved workflows keep their
+  values). Token delimiters, date/time formats, extra tokens and the
+  sequence frame separator apply when resolving tokens
+- The PD Output token reference ends with the loaded settings files, and
+  the sidecar records them under `settings.sources`
+- Added `tests/` (standard library unittest) for the settings and tokens
+
 ### PD Output: alpha, sequences, sRGB to linear
 - Image sequences (breaking): image formats write one file per frame,
   numbered from the new `start_frame` (default 1001) at `{frame}` in the
