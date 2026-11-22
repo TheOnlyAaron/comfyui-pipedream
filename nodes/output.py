@@ -154,8 +154,9 @@ class PDOutput:
                     "default": s("output.template"), "multiline": False,
                     "tooltip": f"Output path without extension. Put {frame} where the frame "
                                f"number goes (e.g. {wrap('shot')}.{frame}); without it, "
-                               f"sequences get '{s('sequence.frame_separator')}1001' "
-                               "before the extension.",
+                               f"sequences get '{s('sequence.frame_separator')}"
+                               f"{s('sequence.start_frame'):0{s('sequence.frame_padding')}d}' "
+                               "(the start frame) before the extension.",
                 }),
                 "format": (list(IMAGE_FORMATS + VIDEO_FORMATS), {
                     "default": s("output.format"),
