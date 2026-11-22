@@ -1,6 +1,6 @@
 """
-Wedge rows and values, shared by the PD Wedge node and (later) the queue
-expansion.  No ComfyUI dependency.
+Wedge rows, values and queue expansion, shared by the PD Wedge node and
+its server route.  No ComfyUI dependency.
 
 A PD Wedge node has up to ``MAX_ROWS`` rows.  Row *n* is an optional
 input socket ``input_n`` (any type) paired with a text widget
@@ -12,7 +12,8 @@ The row's text is the wedge token's value.  With nothing linked, the text
 is also the row's value; a linked row with empty text gets its row number
 as text, so file names stay unique.
 
-The job a node runs is set in the prompt by the queue expansion, as plain
+One queued prompt becomes one job per combination of rows (``plan``,
+``jobs``, ``apply_job``).  The job a node runs is set in the prompt as plain
 inputs on the node (``ROW_KEY``, ``JOB_KEY``, ``TOTAL_KEY``).  ComfyUI
 drops prompt inputs a node does not declare, so the node reads them from
 the hidden ``PROMPT``; they still change the node's cache signature, so a
@@ -45,7 +46,16 @@ _TOKEN_NAME = re.compile(r"^\w+$")
 
 
 class WedgeError(ValueError):
-    """A wedge setup that cannot run (no rows, bad token, mismatched group...)."""
+    """A wedge setup that cannot run (no rows, bad token, mismatched group...).
+
+    ``node_id`` and ``input_name`` name the wedge and widget at fault when
+    known, so the frontend can mark them.
+    """
+
+    def __init__(self, message: str, node_id: str | None = None, input_name: str = "token"):
+        super().__init__(message)
+        self.node_id = node_id
+        self.input_name = input_name
 
 
 def is_link(value) -> bool:
@@ -159,3 +169,122 @@ def wedge_tokens(wedge: dict | None) -> dict:
     tokens["wedge_idx"] = index_label(wedge.get("job", 0))
     tokens["wedge_total"] = str(wedge.get("total", 1))
     return tokens
+
+
+# ---------------------------------------------------------------------------
+# Queue expansion: one prompt in, one job per combination of wedge rows out.
+# ---------------------------------------------------------------------------
+
+MAX_JOBS = 10000
+
+
+def _id_key(node_id: str) -> tuple:
+    """Sort key for prompt node ids ('7', '12', '5:3' inside subgraphs)."""
+    return tuple((0, int(p)) if p.isdigit() else (1, p) for p in str(node_id).split(":"))
+
+
+def ancestors(prompt: dict, roots) -> set:
+    """Return *roots* and every node they read from, following prompt links."""
+    seen, stack = set(), [str(r) for r in roots]
+    while stack:
+        node_id = stack.pop()
+        if node_id in seen or node_id not in prompt:
+            continue
+        seen.add(node_id)
+        for value in prompt[node_id].get("inputs", {}).values():
+            if is_link(value):
+                stack.append(str(value[0]))
+    return seen
+
+
+def _chain_depth(prompt: dict, node_id: str) -> int:
+    """Number of wedges before *node_id* in its chain (via the ``wedge`` input)."""
+    depth, seen = 0, {node_id}
+    link = prompt[node_id]["inputs"].get("wedge")
+    while is_link(link) and str(link[0]) not in seen:
+        upstream = prompt.get(str(link[0]))
+        if not upstream or upstream.get("class_type") != CLASS_TYPE:
+            break
+        depth += 1
+        seen.add(str(link[0]))
+        link = upstream["inputs"].get("wedge")
+    return depth
+
+
+def plan(prompt: dict, output_ids) -> dict:
+    """
+    Work out the jobs for *prompt*.
+
+    Only wedges that an output node in *output_ids* reads from count.  Each
+    ungrouped wedge is an axis; wedges with the same ``group`` share one
+    axis and must have the same number of rows.  Axes are ordered by chain
+    position (upstream first), then node id; the first axis varies
+    fastest.
+
+    Returns ``{"axes": [{"group", "nodes", "tokens", "length"}], "total"}``
+    (``total`` is 1 and ``axes`` empty without wedges).  Raises WedgeError
+    for a wedge without rows, a mismatched group or too many jobs.
+    """
+    used = ancestors(prompt, output_ids)
+    wedges = sorted(
+        (n for n in used if prompt[n].get("class_type") == CLASS_TYPE),
+        key=lambda n: (_chain_depth(prompt, n), _id_key(n)),
+    )
+    axes, by_group = [], {}
+    for node_id in wedges:
+        inputs = prompt[node_id]["inputs"]
+        token = str(inputs.get("token", "")).strip() or f"#{node_id}"
+        length = len(active_rows(inputs))
+        if length == 0:
+            raise WedgeError(f"PD Wedge '{token}' has no rows: link an input or type a value.",
+                             node_id, f"{VALUE_PREFIX}1")
+        group = inputs.get("group")
+        group = group.strip() if isinstance(group, str) else ""
+        axis = by_group.get(group) if group else None
+        if axis is None:
+            axis = {"group": group, "nodes": [], "tokens": [], "length": length}
+            axes.append(axis)
+            if group:
+                by_group[group] = axis
+        elif axis["length"] != length:
+            sizes = ", ".join(f"'{t}' {n}" for t, n in zip(axis["tokens"], axis["lengths"]))
+            raise WedgeError(
+                f"PD Wedges in group '{group}' need the same number of rows: "
+                f"{sizes}, '{token}' {length}.",
+                node_id, "group",
+            )
+        axis["nodes"].append(node_id)
+        axis["tokens"].append(token)
+        axis.setdefault("lengths", []).append(length)
+
+    total = 1
+    for axis in axes:
+        del axis["lengths"]
+        total *= axis["length"]
+    if total > MAX_JOBS:
+        raise WedgeError(f"The wedges make {total} jobs; the limit is {MAX_JOBS}.")
+    return {"axes": axes, "total": total}
+
+
+def jobs(wedge_plan: dict) -> list[dict]:
+    """Return one ``{node_id: row}`` per job, the first axis varying fastest."""
+    result = []
+    for job in range(wedge_plan["total"]):
+        rows, rest = {}, job
+        for axis in wedge_plan["axes"]:
+            row = rest % axis["length"]
+            rest //= axis["length"]
+            for node_id in axis["nodes"]:
+                rows[node_id] = row
+        result.append(rows)
+    return result
+
+
+def apply_job(prompt: dict, rows: dict, job: int, total: int) -> dict:
+    """Return a copy of *prompt* with each wedge set to its row for *job*."""
+    out = dict(prompt)
+    for node_id, row in rows.items():
+        node = dict(out[node_id])
+        node["inputs"] = {**node["inputs"], ROW_KEY: row, JOB_KEY: job, TOTAL_KEY: total}
+        out[node_id] = node
+    return out

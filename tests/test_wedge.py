@@ -82,5 +82,87 @@ class ChainCase(unittest.TestCase):
         self.assertEqual(wedge.wedge_tokens(None), {})
 
 
+def wedge_node(token, values, upstream=None, group="", links=()):
+    inputs = {"token": token, "group": group}
+    for n, text in enumerate(values, 1):
+        inputs[f"value_{n}"] = text
+    for n in links:
+        inputs[f"input_{n}"] = ["90", 0]
+    if upstream:
+        inputs["wedge"] = [upstream, 4]
+    return {"class_type": "PDWedge", "inputs": inputs}
+
+
+class PlanCase(unittest.TestCase):
+    def prompt(self):
+        return {
+            "90": {"class_type": "EmptyImage", "inputs": {}},
+            "20": wedge_node("angle", ["front", "side", "top"], upstream="30"),
+            "30": wedge_node("product", ["", "", ""], links=(1, 2, 3)),
+            "40": {"class_type": "PDOutput", "inputs": {"images": ["20", 0], "wedge": ["20", 4]}},
+        }
+
+    def test_chain_order_first_fastest(self):
+        prompt = self.prompt()
+        plan = wedge.plan(prompt, ["40"])
+        self.assertEqual([a["tokens"] for a in plan["axes"]], [["product"], ["angle"]])
+        self.assertEqual(plan["total"], 9)
+        rows = wedge.jobs(plan)
+        self.assertEqual([(r["30"], r["20"]) for r in rows[:4]], [(0, 0), (1, 0), (2, 0), (0, 1)])
+        self.assertEqual((rows[-1]["30"], rows[-1]["20"]), (2, 2))
+
+    def test_unused_wedges_ignored(self):
+        prompt = self.prompt()
+        prompt["50"] = wedge_node("stray", ["a", "b"])
+        self.assertEqual(wedge.plan(prompt, ["40"])["total"], 9)
+        self.assertEqual(wedge.plan(prompt, [])["total"], 1)
+
+    def test_group_steps_together(self):
+        prompt = self.prompt()
+        prompt["60"] = wedge_node("prompt", ["a", "b", "c"], group="look")
+        prompt["30"]["inputs"]["group"] = "look"
+        prompt["40"]["inputs"]["extra"] = ["60", 0]
+        plan = wedge.plan(prompt, ["40"])
+        self.assertEqual(plan["total"], 9)
+        self.assertEqual([a["tokens"] for a in plan["axes"]], [["product", "prompt"], ["angle"]])
+        for rows in wedge.jobs(plan):
+            self.assertEqual(rows["30"], rows["60"])
+
+    def test_group_mismatch(self):
+        prompt = self.prompt()
+        prompt["60"] = wedge_node("prompt", ["a", "b"], group="look")
+        prompt["30"]["inputs"]["group"] = "look"
+        prompt["40"]["inputs"]["extra"] = ["60", 0]
+        with self.assertRaisesRegex(wedge.WedgeError, "same number of rows"):
+            wedge.plan(prompt, ["40"])
+
+    def test_no_rows(self):
+        prompt = self.prompt()
+        prompt["20"] = wedge_node("angle", ["", ""], upstream="30")
+        with self.assertRaisesRegex(wedge.WedgeError, "no rows"):
+            wedge.plan(prompt, ["40"])
+
+    def test_too_many(self):
+        prompt = {"9": {"class_type": "PDOutput", "inputs": {}}}
+        upstream = None
+        for i in range(4):
+            prompt[str(i)] = wedge_node(f"w{i}", [str(n) for n in range(1, 13)], upstream=upstream)
+            upstream = str(i)
+        prompt["9"]["inputs"]["wedge"] = [upstream, 4]
+        with self.assertRaisesRegex(wedge.WedgeError, "limit"):
+            wedge.plan(prompt, ["9"])
+
+    def test_apply_job(self):
+        prompt = self.prompt()
+        out = wedge.apply_job(prompt, {"20": 2, "30": 1}, 7, 9)
+        self.assertEqual(wedge.job_state(out["20"]["inputs"]), (2, 7, 9))
+        self.assertEqual(wedge.job_state(out["30"]["inputs"]), (1, 7, 9))
+        self.assertNotIn(wedge.ROW_KEY, prompt["20"]["inputs"])
+
+    def test_subgraph_ids_sort(self):
+        self.assertLess(wedge._id_key("5:3"), wedge._id_key("12"))
+        self.assertLess(wedge._id_key("2"), wedge._id_key("10"))
+
+
 if __name__ == "__main__":
     unittest.main()

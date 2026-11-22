@@ -11,6 +11,13 @@
   lazy, so only the selected row's branch is computed. Optional `group`:
   wedges sharing a group step together instead of multiplying. Old PD Wedge
   workflows do not load into the new node
+- One Queue click queues one job per combination of wedge rows. The prompt
+  is built once, so every job has the same seed. The first wedge in a chain
+  varies fastest; wedges in the same group step together and need the same
+  number of rows. Above 20 jobs a confirmation shows the count. Only wedges
+  that feed an output count. Wedge errors (no rows, mismatched group) mark
+  the wedge like a validation error. The jobs come from
+  `POST /pipedream/wedge/plan`
 - PD Rasterizer is removed; a wedge preview replaces it
 
 ### Alpha masks and premultiplication
