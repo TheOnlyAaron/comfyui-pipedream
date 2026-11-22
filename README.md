@@ -21,7 +21,6 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 
 | Node | Description |
 |------|-------------|
-| **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version. |
 | **💭 PD Custom Context** | Adds user-defined key/value token pairs to a context. Starts with one empty pair; a new pair appears as each name is filled (up to 10). Chain after Project Context for custom tokens like `{task}`, `{department}`. |
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
 | **💭 PD Shot Token** | Lightweight token resolver — takes a template string and inline widget values, outputs a resolved string. |
@@ -35,6 +34,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Video To Images** | Decodes a `VIDEO` to images, audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
 | **💭 PD Video Frame** | Grabs one frame from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
 | **💭 PD Image Frame** | Picks one image from a batch (first, last or index; negative counts from the end). |
+| **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
 
 ## Video
 
@@ -53,7 +53,6 @@ Notes:
 - PD Video Frame's `frame_count` is exact for `last` and negative indices. For `first` and positive indices it comes from container metadata.
 - Seeking assumes a constant frame rate. On variable-frame-rate footage, frame indices are approximate.
 - Decoding uses PyAV, which ships with ComfyUI. No ffmpeg binary or extra packages are needed.
-| **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
 
 ## PD Sound
 
@@ -133,6 +132,8 @@ The legacy Relative/Absolute nodes share this implementation, have the same five
 ## Compatibility
 
 Pipedream registers its nodes through the legacy `NODE_CLASS_MAPPINGS` API, which current ComfyUI loads alongside V3 (`comfy_api`) nodes. There is no V3 wrapper; a future move to V3 would port the nodes directly.
+
+All nodes are built and tested for the Nodes 2.0 (Vue) frontend first, and also work on the classic canvas.
 
 **Note:** Node display names use a 💭 emoji prefix. On Windows systems with legacy console codepages (cp1252, cp932), the emoji is automatically omitted to prevent encoding errors.
 
