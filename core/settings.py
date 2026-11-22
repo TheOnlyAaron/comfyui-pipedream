@@ -5,7 +5,7 @@ Precedence, lowest to highest:
 
 1. built-in defaults (:data:`SCHEMA`)
 2. user file: ``pipedream.toml`` in the pack root (:data:`USER_PATH`)
-3. facility file: the path in the ``PIPEDREAM_CONFIG`` environment variable
+3. facility file: the path in the ``PIPEDREAM_COMFYUI_CONFIG`` environment variable
 
 A key overrides only when it is present and valid; missing keys fall
 through.  Invalid values, unknown keys, unreadable files and TOML syntax
@@ -52,7 +52,7 @@ except ImportError:
     except ImportError:
         _toml = None
 
-ENV_VAR = "PIPEDREAM_CONFIG"
+ENV_VAR = "PIPEDREAM_COMFYUI_CONFIG"
 USER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pipedream.toml")
 EXTRA_KEY = "tokens.extra"
 RESERVED_TOKENS = ("frame",)
@@ -272,7 +272,7 @@ def load(user_path: str | None = USER_PATH, facility_path: str | None = None) ->
     """
     (Re)load the settings: built-ins, then *user_path*, then *facility_path*.
 
-    *facility_path* defaults to ``$PIPEDREAM_CONFIG``.  A missing user file
+    *facility_path* defaults to ``$PIPEDREAM_COMFYUI_CONFIG``.  A missing user file
     is silently skipped; a missing facility file warns.  Updates the
     module-level values, :data:`sources` and :data:`warnings` in place.
     """
