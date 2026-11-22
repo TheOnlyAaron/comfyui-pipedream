@@ -131,26 +131,3 @@ app.registerExtension({
         };
     },
 });
-
-/* ------------------------------------------------------------------ */
-/*  Pipedream.ProjectContext — version auto-increment widget update    */
-/* ------------------------------------------------------------------ */
-
-app.registerExtension({
-    name: "Pipedream.ProjectContext",
-
-    async nodeCreated(node) {
-        if (node.comfyClass !== "PDProjectContext") return;
-
-        const origOnExecuted = node.onExecuted;
-        node.onExecuted = function (output) {
-            if (origOnExecuted) origOnExecuted.call(this, output);
-            if (output?.version?.length > 0) {
-                const versionWidget = this.widgets?.find(w => w.name === "version");
-                if (versionWidget) {
-                    versionWidget.value = output.version[0];
-                }
-            }
-        };
-    },
-});
