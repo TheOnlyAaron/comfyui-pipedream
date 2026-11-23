@@ -5,8 +5,9 @@ import { chain, clearClassicVideoPreview, findWidget, showSlots, showWidgets } f
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Load                                                     */
 /*    - Hide what does not apply: base_path in relative mode;          */
-/*      fps_from_file for image formats; exr_colorspace unless exr or  */
-/*      auto; the audio output for image formats.                      */
+/*      sequence_from_file for video formats; fps_from_file for image  */
+/*      formats; exr_colorspace unless exr or auto; the audio output   */
+/*      for image formats.                                             */
 /*    - Paste a full file path (quotes allowed) into file or           */
 /*      base_path: if it is an existing file, it is split into the     */
 /*      two fields (absolute mode) and loaded.                         */
@@ -27,6 +28,7 @@ function sync(node) {
         const isImage = format !== "auto" && !VIDEO_FORMATS.includes(format);
         showWidgets(node, {
             base_path: mode === "absolute",
+            sequence_from_file: !VIDEO_FORMATS.includes(format),
             fps_from_file: !isImage,
             exr_colorspace: format === "auto" || format === "exr",
         });

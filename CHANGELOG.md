@@ -9,7 +9,8 @@
   split into the two fields and loaded. A **load** button runs just this
   node (PD Load is now an output node). `fps_from_file` uses a video's
   frame rate, with `fps` as the override. Sequences and video preview as a
-  playable clip
+  playable clip. `sequence_from_file` (on by default): a file that is one
+  frame of a sequence loads the whole sequence; off, just that frame
 - New **PD Load**, the inverse of PD Output: a token template (with context
   and wedge tokens) resolved under ComfyUI's input folder or an
   absolute/UNC base path loads a single image, an image sequence

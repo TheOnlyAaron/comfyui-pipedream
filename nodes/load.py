@@ -217,6 +217,12 @@ class PDLoad:
                     "default": 1, "min": 1, "max": 1000,
                     "tooltip": "Load every nth frame (fps is divided to match).",
                 }),
+                "sequence_from_file": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "When file is one frame of a sequence (shot.1001.exr with "
+                               "shot.1002.exr next to it), load the whole sequence. Off: "
+                               "load just that frame.",
+                }),
             },
             "optional": {
                 "context": ("PROJECT_CONTEXT", {
@@ -248,8 +254,9 @@ class PDLoad:
 
     @classmethod
     def IS_CHANGED(cls, path_mode="relative", base_path="", file="", format="auto",
-                   unique_id=None, context=None, wedge=None, **kwargs):
-        widgets = (path_mode, base_path, file, format,
+                   unique_id=None, context=None, wedge=None, sequence_from_file=True,
+                   **kwargs):
+        widgets = (path_mode, base_path, file, format, bool(sequence_from_file),
                    tuple(sorted((k, str(v)) for k, v in kwargs.items())))
         resolved = None
         if context is None and wedge is None and not _LINKED.get(str(unique_id)):
@@ -261,13 +268,15 @@ class PDLoad:
         if resolved is None:
             resolved = _LAST_RESOLVED.get(str(unique_id))
         try:
-            paths = find_media(resolved, format)["paths"] if resolved else []
+            paths = (find_media(resolved, format, sequence_from_file)["paths"]
+                     if resolved else [])
         except Exception:
             paths = []
         return repr((widgets, resolved, fingerprint(paths)))
 
     def execute(self, path_mode, base_path, file, format, start_frame=0, frame_count=0,
-                every_nth=1, context=None, wedge=None, fps_from_file=True,
+                every_nth=1, sequence_from_file=True, context=None, wedge=None,
+                fps_from_file=True,
                 fps=settings.get("output.fps"), exr_colorspace="as is", unique_id=None):
         incoming = dict(context) if context else {}
         tokens = auto_tokens()
@@ -275,7 +284,7 @@ class PDLoad:
         full = resolve_path(path_mode, base_path, file, tokens)
         _LAST_RESOLVED[str(unique_id)] = full
         _LINKED[str(unique_id)] = context is not None or wedge is not None
-        media = find_media(full, format)
+        media = find_media(full, format, sequence_from_file)
 
         missing, audio = [], None
         if media["kind"] == "video":
