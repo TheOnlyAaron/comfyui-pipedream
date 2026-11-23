@@ -2,6 +2,39 @@
 
 ## 0.2.0 (unreleased)
 
+### Wedges (rework, #3)
+- PD Wedge is rebuilt around rows: each row is an input of any type (image,
+  prompt, model, video...) paired with a text value, the token's value for
+  PD Output. Rows grow as they are used (up to 16); empty rows are skipped.
+  An unlinked row's value is its text. Outputs: `value`, `text`, `int`,
+  `float` and `wedge` (a chain for further wedges and PD Output). Inputs are
+  lazy, so only the selected row's branch is computed. Optional `group`:
+  wedges sharing a group step together instead of multiplying. Old PD Wedge
+  workflows do not load into the new node
+- One Queue click queues one job per combination of wedge rows. The prompt
+  is built once, so every job has the same seed. The first wedge in a chain
+  varies fastest; wedges in the same group step together and need the same
+  number of rows. Above 20 jobs a confirmation shows the count. Only wedges
+  that feed an output count. Wedge errors (no rows, mismatched group) mark
+  the wedge like a validation error. The jobs come from
+  `POST /pipedream/wedge/plan`
+- PD Output has an optional `wedge` input (the last wedge of a chain). It
+  adds `{<token>}` and `{<token>_idx}` for each wedge, plus `{wedge_idx}`
+  and `{wedge_total}`, over the context tokens; the sidecar records the job
+  and each wedge's row under `wedge`
+- PD Wedge `solo`: run only that row number (0: every row), for a test
+  render. In a group it pins the whole group
+- PD Output "preview wedge" button: lists the path of every job in the
+  token panel without running the graph or writing anything. Only what
+  feeds the file name runs (context, wedges); wedges compute none of their
+  row inputs. Shows the job count and warns about wedges not chained into
+  the node, paths written by more than one job, and existing files when
+  overwrite is off
+- Example workflows 05 (prompt wedge) and 06 (product matrix: grouped and
+  chained wedges) replace the old wedge READMEs. `docs/wedges-headless.md`
+  notes how to expand wedges for prompts posted without the browser
+- PD Rasterizer is removed; PD Output's wedge preview replaces it
+
 ### Alpha masks and premultiplication
 - PD Video To Images and PD Video Frame have a new `mask` output (after
   `images`/`image`) with the video's alpha, 1.0 = opaque. Alpha planes

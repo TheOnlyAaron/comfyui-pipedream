@@ -94,10 +94,9 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Custom Context** | Adds user-defined key/value token pairs to a context. Starts with one empty pair; a new pair appears as each name is filled (up to 10). Chain after Project Context for custom tokens like `{task}`, `{department}`. |
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, artist). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
 | **💭 PD Shot Token** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
-| **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. |
+| **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. **preview wedge** lists every wedge job's path without running the graph. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
-| **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
-| **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
+| **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. `group` steps wedges together; `solo` runs one row. See [Wedges](#wedges). |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
 | **💭 PD Video To Images** | Decodes a `VIDEO` to images, mask (alpha), audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
 | **💭 PD Video Frame** | Grabs one frame and its mask (alpha) from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
@@ -164,8 +163,8 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token. The
 | `{date}` | Auto: YYYYMMDD |
 | `{time}` | Auto: HHMMSS |
 | `{frame}` | Frame number in PD Output image sequences (`start_frame`, `frame_padding`); `####` in PD Shot Token |
-| `{wedge_idx}` | Current wedge iteration index |
-| `{wedge_<name>}` | Named wedge current value |
+| `{<token>}`, `{<token>_idx}` | PD Wedge (via PD Output's `wedge` input): the selected row's text and its position (`000`, `001`...) |
+| `{wedge_idx}`, `{wedge_total}` | PD Wedge: the job number and the number of jobs |
 | `{<custom>}` | Any key added via PD Custom Context |
 | `{<extra>}` | Any `[tokens.extra]` setting (context values override it) |
 
@@ -241,6 +240,25 @@ A preview of what was written appears under the node, with one entry per frame f
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
 
 
+## Wedges
+
+A wedge turns several near-identical graphs into one. Each **PD Wedge** row is an input of any type (image, prompt, model, video, LoRA...) paired with a text value; one Queue click runs the graph once per row, and the row's text becomes a file name token on PD Output.
+
+1. Set `token` (e.g. `product`). Link inputs to `input_1`, `input_2`... and name each row in `value_n`. Rows appear as you use them (up to 16); a row with only text uses the text as its value, so prompts and numbers can be typed in.
+2. Use the wedge's `value` where the input would go. The row's text is also on `text`, `int` and `float` (for seeds, strengths, steps...).
+3. Connect the wedge's `wedge` output to PD Output's `wedge` input and use `{product}` (row text) or `{product_idx}` (`000`, `001`...) in the template. `{wedge_idx}` is the job number, `{wedge_total}` the job count.
+4. Press **preview wedge** on PD Output to list every job's path without running the graph, then Run.
+
+Only the selected row's input is computed, and ComfyUI's cache keeps everything else (base image, model, encoded prompts) between jobs. The prompt is built once per click, so the seed is the same in every job.
+
+**Several wedges.** Chain wedges through their `wedge` input; the last one goes to PD Output. They multiply: 3 products × 2 looks = 6 jobs. The first wedge in the chain varies fastest. Wedges with the same `group` step together instead (row 1 with row 1...), e.g. a product image and its prompt, and need the same number of rows.
+
+**Solo.** `solo` on a wedge runs only that row number (0: all rows), for a test render.
+
+**Checks.** Above 20 jobs, Run asks before queueing. A wedge without rows, an empty solo row or a group with different row counts stops the queue and marks the wedge. The preview warns when a wedge that changes the image is not chained into PD Output (its jobs would overwrite each other), when jobs share a path, and when files exist with overwrite off.
+
+Wedges are expanded by the frontend; a prompt posted straight to `/prompt` runs each wedge's first row once. See [docs/wedges-headless.md](docs/wedges-headless.md). Example workflows are in [workflows/](workflows/).
+
 ## Alpha and premultiplication
 
 Pipedream has no premultiplication setting. It uses fixed conventions, recorded in the PD Output sidecar (`"alpha": {"written": true, "source": "mask", "premultiplied": false}`).
@@ -300,7 +318,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 |-------|------|
 | `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps` (also PD Images To Video), `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
 | `[exr]` | `precision`, `compression`, `colorspace` |
-| `[sequence]` | `frame_padding` (also PD Shot Token and PD Rasterizer), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
+| `[sequence]` | `frame_padding` (also PD Shot Token), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
 | `[tokens]` | `open`, `close` (token delimiters, default `{` `}`; non-empty, different, no letters/digits/`_`/spaces), `date_format`, `time_format` (strftime) |
 | `[tokens.extra]` | Any fixed tokens, available to every template. Context values (Project/Custom Context) override them. `frame` is reserved. |
 | `[shot_token]` | `template` (PD Shot Token) |
@@ -311,7 +329,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 How the settings apply:
 
 - **Widget defaults.** New nodes start with the configured values. Nodes in saved workflows keep their saved values. Inputs left out of an API prompt also use the settings.
-- **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token, PD Rasterizer). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
+- **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
 - **Traceability.** The PD Output token reference ends with the loaded files (`settings: facility \\server\pipeline\comfyui\pipedream.toml, user (none)`), and the sidecar JSON records them under `settings.sources`.
 - **Restart needed.** Files are read once, when ComfyUI starts. Restart ComfyUI after editing a file or changing `PIPEDREAM_COMFYUI_CONFIG`.
 

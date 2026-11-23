@@ -14,8 +14,12 @@ default, with the ``sequence.frame_separator`` setting before the number).  An o
 channel of the images, is written to png/webp/exr and ProRes 4444
 (straight, except EXR, which is premultiplied as its spec requires).
 
+A connected PD Wedge chain adds its tokens (``{<token>}``,
+``{<token>_idx}``, ``{wedge_idx}``, ``{wedge_total}``) over the context.
+
 Each write can produce a sidecar JSON with the resolved tokens, template,
-written paths, frame range, alpha convention and the ComfyUI prompt.  The
+written paths, frame range, alpha convention, wedge job and the ComfyUI
+prompt.  The
 node shows a preview of what was written, returns the written paths,
 passes the images through, returns a VIDEO for written video, and feeds
 the token reference panel in ``web/pipedream.js``.
@@ -23,6 +27,7 @@ the token reference panel in ``web/pipedream.js``.
 Widget defaults come from the facility/user settings (``core/settings.py``).
 """
 
+import json
 import os
 import re
 import sys
@@ -55,6 +60,7 @@ from ..core.media import (
 )
 from ..core.tokens import auto_tokens, format_token_reference, resolve_tokens, with_extra, wrap
 from ..core.video import comfy_video_api
+from ..core.wedge import PREVIEW_KEY, WedgeError, chain_jobs, wedge_metadata, wedge_tokens
 
 # ComfyUI's folder_paths is available at runtime inside custom nodes.
 try:
@@ -93,6 +99,150 @@ def get_temp_directory() -> str | None:
 def strip_frame(text: str) -> str:
     """Remove the {frame} placeholder from *text*, with one separator before it."""
     return _FRAME_WITH_SEP.sub("", text)
+
+
+def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: bool,
+                    path_mode: str, base_path: str, file_format: str) -> tuple:
+    """
+    Resolve *template* into ``(resolved, root, pattern)``.
+
+    *resolved* is the template with tokens filled in (relative to *root*,
+    no extension), *pattern* the full path with extension.  Both hold
+    ``_FRAME_MARK`` where the frame number goes when *numbered*.  Raises
+    ValueError for a missing base_path, or a relative path that escapes the
+    output directory.
+    """
+    resolved = resolve_tokens(template, {**tokens, "frame": _FRAME_MARK},
+                              frame_padding=frame_padding)
+    if not numbered:
+        resolved = strip_frame(resolved)
+    elif _FRAME_MARK not in resolved:
+        resolved = f"{resolved}{settings.get('sequence.frame_separator')}{_FRAME_MARK}"
+
+    output_dir = get_output_directory()
+    if path_mode == "relative":
+        root = output_dir
+    else:
+        if not base_path or not base_path.strip():
+            raise ValueError(
+                "[Pipedream] Absolute path mode needs a base_path "
+                "(e.g. /mnt/projects or \\\\server\\share)."
+            )
+        root = base_path.strip()
+
+    pattern = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
+    if path_mode == "relative":
+        out_abs = os.path.abspath(output_dir)
+        if os.path.commonpath([os.path.abspath(pattern), out_abs]) != out_abs:
+            raise ValueError(
+                f"[Pipedream] Resolved path escapes the output directory: "
+                f"'{strip_frame(pattern)}'. Use absolute path mode for other locations."
+            )
+    return resolved, root, pattern
+
+
+PREVIEW_LINES = 200
+
+
+def preview_request(prompt, unique_id) -> dict | None:
+    """
+    The wedge preview request set on this node by the frontend, or None.
+
+    It is a JSON string ``{"total": jobs in the queue, "axes": [{"tokens",
+    "length"}]}`` for the wedges that feed this node, from the planner.
+    """
+    raw = (prompt or {}).get(str(unique_id), {}).get("inputs", {}).get(PREVIEW_KEY)
+    if not raw:
+        return None
+    try:
+        request = json.loads(raw) if isinstance(raw, str) else dict(raw)
+    except (TypeError, ValueError):
+        request = {}
+    return request if isinstance(request, dict) else {}
+
+
+def wedge_preview(request: dict, path_mode, base_path, template, file_format,
+                  frame_padding, context, wedge, overwrite) -> dict:
+    """
+    List the path every job of the connected wedge chain would write.
+
+    Nothing is written.  Flags paths written by more than one job (from
+    wedges not chained into this node, or a template without the wedge
+    tokens) and, with overwrite off, files that already exist.
+    """
+    numbered = file_format not in VIDEO_FORMATS and wrap("frame") in template
+    hashes = "#" * frame_padding
+    try:
+        jobs = chain_jobs(wedge)
+    except WedgeError as exc:
+        raise ValueError(f"[Pipedream] {exc}") from exc
+    base = dict(context) if context else {}
+    tokens = auto_tokens()
+
+    rows, root = [], ""
+    for job_tokens in jobs:
+        ctx = with_extra({**base, **job_tokens})
+        resolved, root, pattern = resolve_pattern(template, {**tokens, **ctx}, frame_padding,
+                                                  numbered, path_mode, base_path, file_format)
+        rows.append((job_tokens.get("wedge_idx", "000"), resolved.replace(_FRAME_MARK, hashes),
+                     pattern.replace(_FRAME_MARK, f"{settings.get('sequence.start_frame'):0{frame_padding}d}")))
+
+    chained = {a["token"] for a in (wedge or {}).get("axes", [])}
+    other = [a for a in request.get("axes", []) if not set(a.get("tokens", [])) & chained]
+    repeat = 1
+    for axis in other:
+        repeat *= max(1, int(axis.get("length", 1)))
+    queued = int(request.get("total", len(rows) * repeat) or 1)
+
+    groups = {}
+    for a in (wedge or {}).get("axes", []):
+        key = a.get("group") or id(a)
+        entry = groups.setdefault(key, {"tokens": [], "rows": len(a["rows"]), "solo": False})
+        entry["tokens"].append(a["token"])
+        entry["solo"] = entry["solo"] or bool(a.get("solo"))
+    axes = " x ".join(
+        f"{'+'.join(g['tokens'])} " + ("1 (solo)" if g["solo"] else str(g["rows"]))
+        for g in groups.values()
+    )
+    lines = [f"Wedge preview: {len(rows)} output{'s' if len(rows) != 1 else ''}"
+             + (f" ({axes})" if axes else "") + ", nothing written.",
+             f"Root: {root}", ""]
+    for idx, resolved, _ in rows[:PREVIEW_LINES]:
+        lines.append(f"  [{idx}] {resolved}.{file_format}")
+    if len(rows) > PREVIEW_LINES:
+        lines.append(f"  ... and {len(rows) - PREVIEW_LINES} more")
+
+    warnings = []
+    if other:
+        names = ", ".join("+".join(a.get("tokens", [])) for a in other)
+        warnings.append(f"Not chained into this PD Output: {names}. Each path above is "
+                        f"written {repeat} times ({len(rows) * repeat} jobs), each over the last.")
+    seen = {}
+    for idx, resolved, _ in rows:
+        seen.setdefault(resolved, []).append(idx)
+    clashes = {p: i for p, i in seen.items() if len(i) > 1}
+    if clashes:
+        path, idxs = next(iter(clashes.items()))
+        warnings.append(f"{len(clashes)} path(s) are written by more than one job, e.g. "
+                        f"{path}.{file_format} by jobs {', '.join(idxs)}. Add the wedge "
+                        "tokens to the template.")
+    if not overwrite:
+        existing = [r for r in rows if os.path.exists(r[2])]
+        if existing:
+            warnings.append(f"{len(existing)} file(s) already exist and overwrite is off, "
+                            f"so those jobs write nothing, e.g. {existing[0][1]}.{file_format}.")
+    if queued != len(rows) * repeat:
+        warnings.append(f"The queue makes {queued} jobs in all (other outputs' wedges).")
+    if warnings:
+        lines += ["", "Warnings:"] + [f"  ! {w}" for w in warnings]
+    else:
+        lines += ["", f"Queue makes {queued} job{'s' if queued != 1 else ''}."]
+
+    paths = [r[2] for r in rows]
+    return {
+        "ui": {"token_reference": ["\n".join(lines)]},
+        "result": (paths[0] if paths else "", "", "\n".join(paths), None, None),
+    }
 
 
 def alpha_source(alpha) -> tuple:
@@ -180,6 +330,11 @@ class PDOutput:
                 "images": ("IMAGE", {"tooltip": "Frames to write. Connect this or 'video'. "
                                                 "A fourth channel is written as alpha."}),
                 "context": ("PROJECT_CONTEXT",),
+                "wedge": ("WEDGE", {
+                    "tooltip": "Last PD Wedge of a chain: adds {<token>} and {<token>_idx} "
+                               "for each wedge, plus {wedge_idx} and {wedge_total}. "
+                               "Wedge tokens override context tokens of the same name.",
+                }),
                 "video": ("VIDEO", {
                     "tooltip": "Optional VIDEO to write instead of 'images', with its "
                                "own frame rate and audio. With an image format its "
@@ -226,13 +381,13 @@ class PDOutput:
                                "Load Image's mask is inverted: put Invert Mask in between.",
                 }),
             },
-            "hidden": {"prompt": "PROMPT"},
+            "hidden": {"prompt": "PROMPT", "unique_id": "UNIQUE_ID"},
         }
 
     def execute(self, path_mode, base_path, template, format,
                 start_frame=settings.get("sequence.start_frame"),
                 frame_padding=settings.get("sequence.frame_padding"),
-                images=None, context=None, video=None, fps=settings.get("output.fps"),
+                images=None, context=None, wedge=None, video=None, fps=settings.get("output.fps"),
                 crf=settings.get("output.crf"),
                 prores_profile=settings.get("output.prores_profile"),
                 create_dirs=settings.get("output.create_dirs"),
@@ -240,12 +395,18 @@ class PDOutput:
                 save_metadata=settings.get("output.save_metadata"),
                 exr_precision=settings.get("exr.precision"),
                 exr_compression=settings.get("exr.compression"),
-                exr_colorspace=settings.get("exr.colorspace"), alpha=None, prompt=None):
+                exr_colorspace=settings.get("exr.colorspace"), alpha=None, prompt=None,
+                unique_id=None):
         """Write the source and return the ui payload plus outputs.
 
         Omitted optional inputs (e.g. from an API prompt) use the settings
-        loaded at startup.
+        loaded at startup.  A wedge preview run lists paths instead.
         """
+        request = preview_request(prompt, unique_id)
+        if request is not None:
+            return wedge_preview(request, path_mode, base_path, template, format,
+                                 frame_padding, context, wedge, overwrite)
+
         file_format = format
         is_video = file_format in VIDEO_FORMATS
         audio = None
@@ -285,6 +446,7 @@ class PDOutput:
             matte = None
 
         ctx = dict(context) if context else {}
+        ctx.update(wedge_tokens(wedge))
         now = datetime.now()
         numbered = not is_video and (count > 1 or wrap("frame") in template)
         first, last = start_frame, start_frame + count - 1
@@ -294,33 +456,10 @@ class PDOutput:
 
         tokens = auto_tokens(now)
         tokens.update(with_extra(ctx))
-        resolved = resolve_tokens(template, {**tokens, "frame": _FRAME_MARK},
-                                  frame_padding=frame_padding)
-        if not numbered:
-            resolved = strip_frame(resolved)
-        elif _FRAME_MARK not in resolved:
-            resolved = f"{resolved}{settings.get('sequence.frame_separator')}{_FRAME_MARK}"
+        resolved, root, pattern = resolve_pattern(template, tokens, frame_padding, numbered,
+                                                  path_mode, base_path, file_format)
         tokens["frame"] = frame_label if numbered else ""
-
         output_dir = get_output_directory()
-        if path_mode == "relative":
-            root = output_dir
-        else:
-            if not base_path or not base_path.strip():
-                raise ValueError(
-                    "[Pipedream] Absolute path mode needs a base_path "
-                    "(e.g. /mnt/projects or \\\\server\\share)."
-                )
-            root = base_path.strip()
-
-        pattern = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
-        if path_mode == "relative":
-            out_abs = os.path.abspath(output_dir)
-            if os.path.commonpath([os.path.abspath(pattern), out_abs]) != out_abs:
-                raise ValueError(
-                    f"[Pipedream] Resolved path escapes the output directory: "
-                    f"'{strip_frame(pattern)}'. Use absolute path mode for other locations."
-                )
 
         if numbered:
             paths = [pattern.replace(_FRAME_MARK, f"{start_frame + i:0{frame_padding}d}")
@@ -367,6 +506,7 @@ class PDOutput:
                 "source": "video" if video is not None else "images",
                 "context": ctx,
                 "tokens": tokens,
+                "wedge": wedge_metadata(wedge),
                 "files": written,
                 "image": {
                     "count": count,
