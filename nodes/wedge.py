@@ -1,150 +1,133 @@
 """
 PD Wedge node.
 
-Holds a list of values to iterate over.  On execution, emits the current
-iteration's value.  When ``auto_queue`` is enabled, the node queues
-additional ComfyUI prompt executions for the remaining values.
+Turns several near-identical runs of a graph into one graph: each row is
+an input (any type) paired with a text value, and each queued job selects
+one row.  The selected input comes out of ``value``; the row's text is
+the wedge token's value for PD Output, and also comes out as ``text``,
+``int`` and ``float``.  An unlinked row's value is its text, so prompts,
+seeds or numbers can be wedged by typing them in.
+
+Inputs are lazy: only the selected row's branch is computed, and ComfyUI's
+cache keeps the rest of the graph between jobs.
+
+Wedges chain through ``wedge``: the upstream wedge is the first axis and
+varies fastest.  Wedges sharing a ``group`` step together instead of
+multiplying.  Row and job selection, and the WEDGE value, are described in
+``core/wedge.py``; the rows are shown and hidden by ``web/pd_wedge.js``.
 """
 
-import copy
-import json
-import os
-import random
-import sys
-import urllib.request
-import urllib.error
-
-
-_SERVER_URL = os.environ.get("COMFYUI_SERVER_URL", "http://127.0.0.1:8188")
-
-
-from ..core.common import display_name
+from ..core.common import ANY, display_name
+from ..core.wedge import (
+    INPUT_PREFIX,
+    MAX_ROWS,
+    VALUE_PREFIX,
+    WedgeError,
+    active_rows,
+    chain_axes,
+    check_token,
+    job_state,
+    row_text,
+    to_float,
+    to_int,
+)
 
 
 class PDWedge:
-    """Iteration/wedging node that emits one value per execution."""
+    """Emit one row (input and text value) per queued job."""
 
     DISPLAY_NAME = display_name("PD Wedge")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
-    RETURN_TYPES = ("WEDGE", "STRING", "INT")
-    RETURN_NAMES = ("wedge", "current_value", "wedge_index")
+    RETURN_TYPES = (ANY, "STRING", "INT", "FLOAT", "WEDGE")
+    RETURN_NAMES = ("value", "text", "int", "float", "wedge")
+    OUTPUT_TOOLTIPS = (
+        "The selected row's input, or its text when nothing is linked.",
+        "The selected row's text (the token value).",
+        "The selected row's text as an integer (2.7 gives 2; 0 if not a number).",
+        "The selected row's text as a float (0.0 if not a number).",
+        "This wedge and the wedges chained before it, for the next wedge or PD Output.",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
+        rows = {}
+        for n in range(1, MAX_ROWS + 1):
+            rows[f"{INPUT_PREFIX}{n}"] = (ANY, {
+                "lazy": True,
+                "tooltip": "Anything: image, prompt, model, video... Only the "
+                           "selected row is computed.",
+            })
+        for n in range(1, MAX_ROWS + 1):
+            rows[f"{VALUE_PREFIX}{n}"] = ("STRING", {
+                "default": "",
+                "tooltip": f"Token value for row {n}. With nothing linked to "
+                           f"{INPUT_PREFIX}{n}, also the row's value.",
+            })
         return {
             "required": {
-                "name": ("STRING", {"default": "wedge"}),
-                "type": (["STRING", "INT", "FLOAT"],),
-                "values": ("STRING", {
-                    "default": "",
-                    "multiline": True,
+                "token": ("STRING", {
+                    "default": "wedge",
+                    "tooltip": "Token name for PD Output, e.g. product gives "
+                               "{product} and {product_idx}.",
                 }),
-                "mode": (["sequential", "random"],),
-                "auto_queue": ("BOOLEAN", {"default": False}),
             },
-            "hidden": {
-                "prompt": "PROMPT",
-                "unique_id": "UNIQUE_ID",
+            "optional": {
+                "group": ("STRING", {
+                    "default": "",
+                    "tooltip": "Wedges with the same group step together (row 1 with "
+                               "row 1...) instead of multiplying. Empty: multiply.",
+                }),
+                "wedge": ("WEDGE", {
+                    "tooltip": "Previous wedge in the chain. It varies faster than this one.",
+                }),
+                **rows,
             },
+            "hidden": {"prompt": "PROMPT", "unique_id": "UNIQUE_ID"},
         }
 
-    def execute(self, name, type, values, mode, auto_queue, prompt=None, unique_id=None):
-        # Parse values list
-        value_list = [v.strip() for v in values.split("\n") if v.strip()]
-        if not value_list:
-            print("[Pipedream] Warning: PD Wedge has no values to iterate", file=sys.stderr)
-            return ({"name": name, "values": [], "current_index": 0}, "", 0)
-
-        # Determine current index from injected override or default to 0
-        current_index = 0
-        if prompt and unique_id:
-            node_inputs = prompt.get(str(unique_id), {}).get("inputs", {})
-            override = node_inputs.get("_wedge_override_index")
-            if override is not None:
-                current_index = int(override)
-
-        # Apply mode
-        if mode == "random":
-            rng = random.Random(current_index)
-            order = list(range(len(value_list)))
-            rng.shuffle(order)
-            effective_idx = order[current_index % len(order)]
-        else:
-            effective_idx = current_index % len(value_list)
-
-        raw_value = value_list[effective_idx]
-
-        # Cast value according to type widget
-        current_value = self._cast(raw_value, type)
-
-        # Build wedge state dict
-        wedge_state = {
-            "name": name,
-            "type": type,
-            "values": value_list,
-            "current_index": current_index,
-            "current_value": current_value,
-        }
-
-        # Queue additional iterations if auto_queue is enabled and this is
-        # the first (non-injected) execution
-        if auto_queue and current_index == 0 and len(value_list) > 1:
-            self._queue_remaining(prompt, unique_id, value_list)
-
-        return (wedge_state, str(current_value), current_index)
+    @classmethod
+    def VALIDATE_INPUTS(cls, input_types):
+        """Accept any connected type; taking ``input_types`` skips type checks."""
+        return True
 
     @staticmethod
-    def _cast(value: str, type_name: str):
-        try:
-            if type_name == "INT":
-                return int(value)
-            if type_name == "FLOAT":
-                return float(value)
-        except ValueError:
-            print(
-                f"[Pipedream] Warning: could not cast '{value}' to {type_name}, "
-                f"returning as string",
-                file=sys.stderr,
+    def _selection(prompt, unique_id):
+        inputs = (prompt or {}).get(str(unique_id), {}).get("inputs", {})
+        rows = active_rows(inputs)
+        position, job, total = job_state(inputs)
+        if not rows:
+            raise WedgeError("PD Wedge has no rows: link an input or type a value.")
+        if position >= len(rows):
+            raise WedgeError(
+                f"PD Wedge row {position} was queued but the node has {len(rows)} rows."
             )
-        return value
+        return rows, position, job, total
 
-    @staticmethod
-    def _queue_remaining(prompt, unique_id, value_list):
-        """POST modified prompts to the ComfyUI server for remaining values."""
-        if not prompt or not unique_id:
-            print(
-                "[Pipedream] Warning: cannot auto-queue — prompt or unique_id unavailable",
-                file=sys.stderr,
-            )
-            return
+    def check_lazy_status(self, token, prompt=None, unique_id=None, **kwargs):
+        rows, position, _, _ = self._selection(prompt, unique_id)
+        row = rows[position]
+        name = f"{INPUT_PREFIX}{row['row']}"
+        if row["linked"] and kwargs.get(name) is None:
+            return [name]
+        return []
 
-        uid = str(unique_id)
-        for idx in range(1, len(value_list)):
-            modified = copy.deepcopy(prompt)
-            if uid in modified and "inputs" in modified[uid]:
-                modified[uid]["inputs"]["_wedge_override_index"] = idx
+    def execute(self, token, group="", wedge=None, prompt=None, unique_id=None, **kwargs):
+        token = check_token(token)
+        rows, position, job, total = self._selection(prompt, unique_id)
+
+        texts = []
+        for row in rows:
+            runtime = kwargs.get(f"{VALUE_PREFIX}{row['row']}")
+            if isinstance(runtime, str) and runtime.strip():
+                texts.append(runtime.strip())
             else:
-                print(
-                    f"[Pipedream] Warning: node {uid} not found in prompt, "
-                    f"skipping queue injection for index {idx}",
-                    file=sys.stderr,
-                )
-                return
+                texts.append(row_text(row))
 
-            payload = json.dumps({"prompt": modified}).encode("utf-8")
-            req = urllib.request.Request(
-                f"{_SERVER_URL}/prompt",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=10):
-                    pass
-            except (urllib.error.URLError, OSError) as exc:
-                print(
-                    f"[Pipedream] Error: failed to queue wedge iteration {idx}: {exc}",
-                    file=sys.stderr,
-                )
-                return
+        row = rows[position]
+        text = texts[position]
+        value = kwargs.get(f"{INPUT_PREFIX}{row['row']}") if row["linked"] else text
+
+        axis = {"token": token, "group": (group or "").strip(), "rows": texts, "row": position}
+        out = {"axes": chain_axes(wedge, axis), "job": job, "total": total}
+        return (value, text, to_int(text), to_float(text), out)

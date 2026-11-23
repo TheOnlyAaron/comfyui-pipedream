@@ -2,6 +2,17 @@
 
 ## 0.2.0 (unreleased)
 
+### Wedges (rework, #3)
+- PD Wedge is rebuilt around rows: each row is an input of any type (image,
+  prompt, model, video...) paired with a text value, the token's value for
+  PD Output. Rows grow as they are used (up to 16); empty rows are skipped.
+  An unlinked row's value is its text. Outputs: `value`, `text`, `int`,
+  `float` and `wedge` (a chain for further wedges and PD Output). Inputs are
+  lazy, so only the selected row's branch is computed. Optional `group`:
+  wedges sharing a group step together instead of multiplying. Old PD Wedge
+  workflows do not load into the new node
+- PD Rasterizer is removed; a wedge preview replaces it
+
 ### Alpha masks and premultiplication
 - PD Video To Images and PD Video Frame have a new `mask` output (after
   `images`/`image`) with the video's alpha, 1.0 = opaque. Alpha planes

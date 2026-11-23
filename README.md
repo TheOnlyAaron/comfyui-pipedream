@@ -32,8 +32,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Shot Token** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
 | **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
-| **💭 PD Wedge** | Iteration node — holds a list of values and emits one per execution. Optional auto-queue for batch iteration. |
-| **💭 PD Rasterizer** | Dry-run inspector — connects to wedges and previews the full cartesian product iteration table. |
+| **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. Work in progress (#3). |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
 | **💭 PD Video To Images** | Decodes a `VIDEO` to images, mask (alpha), audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
 | **💭 PD Video Frame** | Grabs one frame and its mask (alpha) from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
@@ -100,8 +99,8 @@ Tokens are `{name}` placeholders resolved by output nodes and PD Shot Token. The
 | `{date}` | Auto: YYYYMMDD |
 | `{time}` | Auto: HHMMSS |
 | `{frame}` | Frame number in PD Output image sequences (`start_frame`, `frame_padding`); `####` in PD Shot Token |
-| `{wedge_idx}` | Current wedge iteration index |
-| `{wedge_<name>}` | Named wedge current value |
+| `{<token>}`, `{<token>_idx}` | PD Wedge: the selected row's text and its position (`000`, `001`...) |
+| `{wedge_idx}`, `{wedge_total}` | PD Wedge: the job number and the number of jobs |
 | `{<custom>}` | Any key added via PD Custom Context |
 | `{<extra>}` | Any `[tokens.extra]` setting (context values override it) |
 
@@ -236,7 +235,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 |-------|------|
 | `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps` (also PD Images To Video), `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
 | `[exr]` | `precision`, `compression`, `colorspace` |
-| `[sequence]` | `frame_padding` (also PD Shot Token and PD Rasterizer), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
+| `[sequence]` | `frame_padding` (also PD Shot Token), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
 | `[tokens]` | `open`, `close` (token delimiters, default `{` `}`; non-empty, different, no letters/digits/`_`/spaces), `date_format`, `time_format` (strftime) |
 | `[tokens.extra]` | Any fixed tokens, available to every template. Context values (Project/Custom Context) override them. `frame` is reserved. |
 | `[shot_token]` | `template` (PD Shot Token) |
@@ -247,7 +246,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 How the settings apply:
 
 - **Widget defaults.** New nodes start with the configured values. Nodes in saved workflows keep their saved values. Inputs left out of an API prompt also use the settings.
-- **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token, PD Rasterizer). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
+- **Server-side behaviour.** Token delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens are resolved (PD Output, PD Shot Token). With custom delimiters, the built-in templates switch to them (unless you set the template too), and `{...}` becomes plain text.
 - **Traceability.** The PD Output token reference ends with the loaded files (`settings: facility \\server\pipeline\comfyui\pipedream.toml, user (none)`), and the sidecar JSON records them under `settings.sources`.
 - **Restart needed.** Files are read once, when ComfyUI starts. Restart ComfyUI after editing a file or changing `PIPEDREAM_COMFYUI_CONFIG`.
 
