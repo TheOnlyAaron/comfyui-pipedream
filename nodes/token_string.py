@@ -1,5 +1,5 @@
 """
-PD Shot Token node.
+PD Token String node.
 
 Resolves a token template to a plain string, e.g. for prompts, filenames
 or other nodes' path widgets.  Tokens come from an optional
@@ -13,10 +13,10 @@ from ..core.common import display_name
 from ..core.tokens import resolve_tokens
 
 
-class PDShotToken:
+class PDTokenString:
     """Resolve a token template against a context."""
 
-    DISPLAY_NAME = display_name("PD Shot Token")
+    DISPLAY_NAME = display_name("PD Token String")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     RETURN_TYPES = ("STRING",)
@@ -27,7 +27,7 @@ class PDShotToken:
         return {
             "required": {
                 "template": ("STRING", {
-                    "default": settings.get("shot_token.template"),
+                    "default": settings.get("token_string.template"),
                     "multiline": True,
                 }),
                 "frame_padding": ("INT", {"default": settings.get("sequence.frame_padding"),

@@ -141,7 +141,9 @@ export function showSlots(node, kind, rules) {
 /**
  * Add a read-only, non-serialized multiline text display.
  *
- * A plain <textarea> DOM widget, which both renderers mount.  Nodes 2.0
+ * A plain <textarea> DOM widget, which both renderers mount.  It has no
+ * resize handle of its own: it fills the space the node gives it, so
+ * resizing the node resizes the panel (in width and height).  Nodes 2.0
  * lays DOM widgets out with CSS and ignores getMinHeight, so the minimum
  * height is also set in CSS.
  */
@@ -158,7 +160,8 @@ export function addReadOnlyText(node, name, placeholder, minHeight = 100) {
         opacity: "0.85",
         width: "100%",
         boxSizing: "border-box",
-        resize: "vertical",
+        resize: "none",
+        height: "100%",
         minHeight: `${minHeight}px`,
     });
     const widget = node.addDOMWidget(name, "pd_readonly_text", el, {

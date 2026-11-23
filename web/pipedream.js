@@ -6,7 +6,7 @@ import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
-    PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 140],
+    PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 100],
 };
 
 app.registerExtension({

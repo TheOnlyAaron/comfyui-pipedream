@@ -2,6 +2,19 @@
 
 ## 0.2.0 (unreleased)
 
+### Renames and fixes
+- Renamed nodes (class names too, so workflows saved with the old names
+  need the nodes re-added): PD Shot Token → **PD Token String**
+  (`PDTokenString`), PD Video Frame → **PD Video Get Frame**
+  (`PDVideoGetFrame`), PD Image Frame → **PD Image From Batch**
+  (`PDImageFromBatch`). The `[shot_token]` settings table is now
+  `[token_string]`
+- PD Project Context: `artist` is now `user`, and the token is `{user}`
+- PD Output token panel: no resize handle of its own; it fills the node, so
+  resizing the node resizes it (both renderers). Smaller on a new node
+- Wedge preview: the panel could miss the result when the preview finished
+  before the queue request returned
+
 ### Wedges (rework, #3)
 - PD Wedge is rebuilt around rows: each row is an input of any type (image,
   prompt, model, video...) paired with a text value, the token's value for

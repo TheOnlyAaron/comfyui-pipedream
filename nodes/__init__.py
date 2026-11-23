@@ -5,26 +5,26 @@ the root ``__init__.py``.
 
 from .project_context import PDProjectContext
 from .custom_context import PDCustomContext
-from .shot_token import PDShotToken
+from .token_string import PDTokenString
 from .output import PDOutput
 from .switch import PDSwitch
 from .wedge import PDWedge
-from .video import PDImagesToVideo, PDVideoToImages, PDVideoFrame, PDImageFrame
+from .video import PDImagesToVideo, PDVideoToImages, PDVideoGetFrame, PDImageFromBatch
 from .sound import PDSound
 from .ocio import PDOCIOTransform, PDOCIODisplay
 
 ALL_NODES: list = [
     PDProjectContext,
     PDCustomContext,
-    PDShotToken,
+    PDTokenString,
     PDOutput,
     PDSwitch,
     PDSound,
     PDWedge,
     PDImagesToVideo,
     PDVideoToImages,
-    PDVideoFrame,
-    PDImageFrame,
+    PDVideoGetFrame,
+    PDImageFromBatch,
     PDOCIOTransform,
     PDOCIODisplay,
 ]

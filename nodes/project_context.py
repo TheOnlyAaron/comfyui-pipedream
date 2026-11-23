@@ -38,7 +38,7 @@ class PDProjectContext:
             },
             "optional": {
                 "context": ("PROJECT_CONTEXT",),
-                "artist": ("STRING", {"default": ""}),
+                "user": ("STRING", {"default": ""}),
                 "auto_increment_version": ("BOOLEAN", {
                     "default": settings.get("project.auto_increment_version"),
                 }),
@@ -46,7 +46,7 @@ class PDProjectContext:
         }
 
     def execute(self, project, sequence, shot, version, context=None,
-                artist="", auto_increment_version=False):
+                user="", auto_increment_version=False):
         """Merge widget values over the incoming context and return it.
 
         ``auto_increment_version`` is only read by the frontend.
@@ -57,7 +57,7 @@ class PDProjectContext:
         # Widget values override incoming context only when non-empty
         for key, val in [("project", project), ("sequence", sequence),
                          ("shot", shot), ("version", version),
-                         ("artist", artist)]:
+                         ("user", user)]:
             if val:
                 ctx[key] = val
             elif key not in ctx:

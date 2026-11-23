@@ -2,11 +2,12 @@ import { app } from "../../scripts/app.js";
 import { chain, findWidget, showWidgets } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Pipedream.Video — PD Video Frame / PD Image Frame show the index   */
-/*  widget only when mode is "index" (never hidden while linked).      */
+/*  Pipedream.Video — PD Video Get Frame / PD Image From Batch show    */
+/*  the index widget only when mode is "index" (never hidden while     */
+/*  linked).                                                           */
 /* ------------------------------------------------------------------ */
 
-const NODE_CLASSES = ["PDVideoFrame", "PDImageFrame"];
+const NODE_CLASSES = ["PDVideoGetFrame", "PDImageFromBatch"];
 
 function sync(node) {
     showWidgets(node, { index: findWidget(node, "mode")?.value === "index" });

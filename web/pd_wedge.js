@@ -245,28 +245,47 @@ function promptId(output, node) {
 
 /**
  * Put the preview text in PD Output's panel when the preview prompt runs.
+ *
  * The app only routes results of prompts it queued itself, so this
- * listens for the preview's own ``executed`` event.
+ * listens for the preview's own ``executed`` event.  The listener starts
+ * before the prompt is sent (a small preview can finish before the queue
+ * request returns); events are kept until ``watch(promptId)`` names the
+ * prompt.  Returns ``{watch, stop}``.
  */
-function showPreview(node, promptIdValue, id) {
-    const onExecuted = ({ detail }) => {
-        if (detail?.prompt_id !== promptIdValue) return;
-        if (String(detail.node) !== id && String(detail.display_node) !== id) return;
+function listenForPreview(node, id) {
+    const seen = [];
+    let target = null;
+    const show = (detail) => {
+        if (String(detail.node) !== id && String(detail.display_node) !== id) return false;
         const text = detail.output?.token_reference?.[0];
         const panel = findWidget(node, "token_display");
         if (text && panel) panel.value = text;
         node.setDirtyCanvas?.(true, true);
-        done();
+        return true;
+    };
+    const onExecuted = ({ detail }) => {
+        if (!detail) return;
+        if (target === null) seen.push(detail);
+        else if (detail.prompt_id === target && show(detail)) stop();
     };
     const onError = ({ detail }) => {
-        if (detail?.prompt_id === promptIdValue) done();
+        if (target !== null && detail?.prompt_id === target) stop();
     };
-    const done = () => {
+    const stop = () => {
         api.removeEventListener("executed", onExecuted);
         api.removeEventListener("execution_error", onError);
+        clearTimeout(timer);
     };
+    const timer = setTimeout(stop, 120000);
     api.addEventListener("executed", onExecuted);
     api.addEventListener("execution_error", onError);
+    return {
+        watch(promptIdValue) {
+            target = promptIdValue;
+            if (seen.some(d => d.prompt_id === target && show(d))) stop();
+        },
+        stop,
+    };
 }
 
 async function previewWedge(node) {
@@ -285,8 +304,15 @@ async function previewWedge(node) {
         }
         const request = { total: all.total, axes: own.axes.map(a => ({ tokens: a.tokens, length: a.length })) };
         const send = queueOnce ?? ((n, d) => api.queuePrompt(n, d));
-        const response = await send(0, { output: previewPrompt(output, id, request), workflow });
-        if (response?.prompt_id) showPreview(node, response.prompt_id, id);
+        const listener = listenForPreview(node, id);
+        try {
+            const response = await send(0, { output: previewPrompt(output, id, request), workflow });
+            if (response?.prompt_id) listener.watch(response.prompt_id);
+            else listener.stop();
+        } catch (error) {
+            listener.stop();
+            throw error;
+        }
     } catch (error) {
         toast("error", `Preview failed: ${error.message ?? error}`);
     }

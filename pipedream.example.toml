@@ -56,7 +56,7 @@
 # colorspace = "as is"
 
 [sequence]
-# Digits in frame numbers (PD Output, PD Shot Token). Range 1..8.
+# Digits in frame numbers (PD Output, PD Token String). Range 1..8.
 # frame_padding = 4
 
 # First frame number of an image sequence. Range 0..9999999.
@@ -86,8 +86,8 @@
 # facility = "MAKE"
 # show_root = "//nas/shows"
 
-[shot_token]
-# PD Shot Token default template.
+[token_string]
+# PD Token String default template.
 # template = "{project}_{shot}_{version}"
 
 [project]

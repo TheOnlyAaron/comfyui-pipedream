@@ -101,10 +101,10 @@ class PDVideoToImages:
         return (images, mask, audio, fps, count)
 
 
-class PDVideoFrame:
+class PDVideoGetFrame:
     """Decode a single frame (first, last or by index) from a VIDEO."""
 
-    DISPLAY_NAME = display_name("PD Video Frame")
+    DISPLAY_NAME = display_name("PD Video Get Frame")
     DESCRIPTION = (
         "Grab one frame from a VIDEO. Only the needed frame is decoded "
         "(seeks to the nearest keyframe). Negative index counts from the end."
@@ -139,10 +139,10 @@ class PDVideoFrame:
         return (image, mask, frame_index, count, fps)
 
 
-class PDImageFrame:
+class PDImageFromBatch:
     """Pick a single image (first, last or by index) from an IMAGE batch, with its mask."""
 
-    DISPLAY_NAME = display_name("PD Image Frame")
+    DISPLAY_NAME = display_name("PD Image From Batch")
     DESCRIPTION = (
         "Pick one image from a batch: first, last or by index. "
         "Negative index counts from the end (-1 = last). The mask output "
@@ -206,7 +206,7 @@ def pick_mask(images, idx: int, mask=None):
         return mask
     if frames != int(images.shape[0]):
         raise ValueError(
-            f"[Pipedream] PD Image Frame: mask has {frames} frames but images has "
+            f"[Pipedream] PD Image From Batch: mask has {frames} frames but images has "
             f"{int(images.shape[0])}. Connect a mask with one frame or one per image."
         )
     return mask[idx:idx + 1]
