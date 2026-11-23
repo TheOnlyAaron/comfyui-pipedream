@@ -80,6 +80,15 @@ class ChainCase(unittest.TestCase):
 
     def test_no_wedge(self):
         self.assertEqual(wedge.wedge_tokens(None), {})
+        self.assertIsNone(wedge.wedge_metadata(None))
+
+    def test_metadata(self):
+        value = {"axes": [self.axis("product", ["red", "blue"], 1, group="look")],
+                 "job": 1, "total": 2}
+        self.assertEqual(wedge.wedge_metadata(value), {
+            "job": 1, "total": 2,
+            "axes": [{"token": "product", "group": "look", "row": 1, "value": "blue", "rows": 2}],
+        })
 
 
 def wedge_node(token, values, upstream=None, group="", links=()):

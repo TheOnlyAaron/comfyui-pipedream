@@ -18,6 +18,10 @@
   that feed an output count. Wedge errors (no rows, mismatched group) mark
   the wedge like a validation error. The jobs come from
   `POST /pipedream/wedge/plan`
+- PD Output has an optional `wedge` input (the last wedge of a chain). It
+  adds `{<token>}` and `{<token>_idx}` for each wedge, plus `{wedge_idx}`
+  and `{wedge_total}`, over the context tokens; the sidecar records the job
+  and each wedge's row under `wedge`
 - PD Rasterizer is removed; a wedge preview replaces it
 
 ### Alpha masks and premultiplication
