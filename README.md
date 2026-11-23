@@ -76,7 +76,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 |------|--------------|
 | **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. |
 | **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). |
-| **PD&nbsp;Token&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. |
+| **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. |
 | **PD&nbsp;Output** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-output) |
 | **PD&nbsp;Load** | Loads an image, sequence or video from any local or network path; paste a path to fill it in. [More](#pd-load) |
 | **PD&nbsp;Wedge** | Runs the graph once per row of inputs (any type), for comparison matrices. [More](#wedges) |
@@ -96,7 +96,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–04 ru
 
 | # | Workflow | Shows |
 |---|----------|-------|
-| 01 | [Output basics](workflows/01_output_basics/) | Context tokens, PD Output, sidecar, PD Token String |
+| 01 | [Output basics](workflows/01_output_basics/) | Context tokens, PD Output, sidecar, PD Tokens To String |
 | 02 | [Load and read back](workflows/02_load_and_read_back/) | PD Load, EXR sequence out, read back with its sidecar tokens |
 | 03 | [Video utilities](workflows/03_video_utilities/) | Images to video, mp4 out, get frame, decode a range, switch, sound |
 | 04 | [Colour with OCIO](workflows/04_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
@@ -112,7 +112,7 @@ Templates use `{name}` placeholders. Delimiters, date/time formats and fixed ext
 | `{project}` `{sequence}` `{shot}` `{version}` `{user}` | PD Project Context |
 | `{<custom>}` | PD Custom Context |
 | `{date}` `{time}` | Automatic (`YYYYMMDD`, `HHMMSS`) |
-| `{frame}` | Frame number in PD Output sequences; `####` in PD Token String; sequence frames in PD Load |
+| `{frame}` | Frame number in PD Output sequences; `####` in PD Tokens To String; sequence frames in PD Load |
 | `{<token>}` `{<token>_idx}` | PD Wedge row text and position (`000`, `001`...) |
 | `{wedge_idx}` `{wedge_total}` | PD Wedge job number and job count |
 | `{<extra>}` | `[tokens.extra]` settings (context values win) |
@@ -245,7 +245,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 | `[sequence]` | `frame_padding`, `start_frame`, `frame_separator` |
 | `[tokens]` | `open`, `close`, `date_format`, `time_format` |
 | `[tokens.extra]` | Any fixed tokens (`frame` is reserved) |
-| `[token_string]` | `template` |
+| `[tokens_to_string]` | `template` |
 | `[project]` | `version`, `auto_increment_version` |
 | `[ocio]` | `config`, `config_path`, `in_colorspace`, `out_colorspace`, `display`, `view` |
 | `[sound]` | `sound`, `volume`, `play_when` |

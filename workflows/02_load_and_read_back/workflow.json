@@ -934,7 +934,7 @@
     },
     {
       "id": 8,
-      "type": "PDTokenString",
+      "type": "PDTokensToString",
       "pos": [
         1720,
         480
@@ -985,7 +985,7 @@
       ],
       "title": "Tokens from the sidecar",
       "properties": {
-        "Node name for S&R": "PDTokenString"
+        "Node name for S&R": "PDTokensToString"
       },
       "widgets_values": [
         "{project} / {shot} / {version}",

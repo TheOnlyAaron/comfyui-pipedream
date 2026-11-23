@@ -5,7 +5,7 @@ the root ``__init__.py``.
 
 from .project_context import PDProjectContext
 from .custom_context import PDCustomContext
-from .token_string import PDTokenString
+from .tokens_to_string import PDTokensToString
 from .output import PDOutput
 from .load import PDLoad
 from .switch import PDSwitch
@@ -17,7 +17,7 @@ from .ocio import PDOCIOTransform, PDOCIODisplay, PDOCIOApplyLUT
 ALL_NODES: list = [
     PDProjectContext,
     PDCustomContext,
-    PDTokenString,
+    PDTokensToString,
     PDOutput,
     PDLoad,
     PDSwitch,

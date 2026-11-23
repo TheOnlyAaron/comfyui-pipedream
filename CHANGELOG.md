@@ -39,11 +39,11 @@
 
 ### Renames and fixes
 - Renamed nodes (class names too, so workflows saved with the old names
-  need the nodes re-added): PD Shot Token → **PD Token String**
-  (`PDTokenString`), PD Video Frame → **PD Video Get Frame**
+  need the nodes re-added): PD Shot Token → **PD Tokens To String**
+  (`PDTokensToString`), PD Video Frame → **PD Video Get Frame**
   (`PDVideoGetFrame`), PD Image Frame → **PD Image From Batch**
   (`PDImageFromBatch`). The `[shot_token]` settings table is now
-  `[token_string]`
+  `[tokens_to_string]`
 - PD Project Context: `artist` is now `user`, and the token is `{user}`
 - PD Output token panel: no resize handle of its own; it fills the node, so
   resizing the node resizes it (both renderers). Smaller on a new node

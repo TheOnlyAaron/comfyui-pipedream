@@ -57,7 +57,7 @@ USER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 EXTRA_KEY = "tokens.extra"
 RESERVED_TOKENS = ("frame",)
 # Built-in templates written with {}, rewritten to the configured delimiters when not set.
-TEMPLATE_KEYS = ("output.template", "load.file", "token_string.template")
+TEMPLATE_KEYS = ("output.template", "load.file", "tokens_to_string.template")
 
 _TOKEN_NAME = re.compile(r"^\w+$")
 
@@ -131,7 +131,7 @@ SCHEMA: dict[str, Setting] = {
         str, "as is", "EXR: write values as is, or decode sRGB to linear.",
         choices=EXR_COLORSPACES),
     "sequence.frame_padding": Setting(
-        int, 4, "Digits in frame numbers (PD Output, PD Token String).",
+        int, 4, "Digits in frame numbers (PD Output, PD Tokens To String).",
         min=1, max=8),
     "sequence.start_frame": Setting(int, 1001, "First frame number of an image sequence.",
                                     min=0, max=9999999),
@@ -149,8 +149,8 @@ SCHEMA: dict[str, Setting] = {
     EXTRA_KEY: Setting(
         dict, {}, "Fixed tokens available to every template; context values override "
         "them. Values are strings or numbers. 'frame' is reserved."),
-    "token_string.template": Setting(str, "{project}_{shot}_{version}",
-                                   "PD Token String default template."),
+    "tokens_to_string.template": Setting(str, "{project}_{shot}_{version}",
+                                   "PD Tokens To String default template."),
     "project.version": Setting(str, "v001", "PD Project Context default version.",
                                check=_not_empty),
     "project.auto_increment_version": Setting(

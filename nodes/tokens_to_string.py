@@ -1,5 +1,5 @@
 """
-PD Token String node.
+PD Tokens To String node.
 
 Resolves a token template to a plain string, e.g. for prompts, filenames
 or other nodes' path widgets.  Tokens come from an optional
@@ -13,10 +13,10 @@ from ..core.common import display_name
 from ..core.tokens import resolve_tokens
 
 
-class PDTokenString:
+class PDTokensToString:
     """Resolve a token template against a context."""
 
-    DISPLAY_NAME = display_name("PD Token String")
+    DISPLAY_NAME = display_name("PD Tokens To String")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     RETURN_TYPES = ("STRING",)
@@ -27,7 +27,7 @@ class PDTokenString:
         return {
             "required": {
                 "template": ("STRING", {
-                    "default": settings.get("token_string.template"),
+                    "default": settings.get("tokens_to_string.template"),
                     "multiline": True,
                 }),
                 "frame_padding": ("INT", {"default": settings.get("sequence.frame_padding"),

@@ -165,7 +165,7 @@ class TestTokens(SettingsCase):
             tpl = f"{open_}project{close}/{{shot}}_{open_}frame{close}"
             self.assertEqual(tokens.resolve_tokens(tpl, {"project": "P", "shot": "S"}),
                              "P/{shot}_####")
-            self.assertEqual(settings.get("token_string.template"),
+            self.assertEqual(settings.get("tokens_to_string.template"),
                              f"{open_}project{close}_{open_}shot{close}_{open_}version{close}")
             ref = tokens.format_token_reference({"project": "P"})
             self.assertIn(f"{open_}project{close}", ref)
