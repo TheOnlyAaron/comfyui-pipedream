@@ -2,7 +2,30 @@
 
 ## 0.2.0 (unreleased)
 
+### Workflows, docs and cleanup
+- Example workflows 01 (output basics), 02 (load and read back), 03 (video
+  utilities) and 04 (colour with OCIO) run without a model, using ComfyUI's
+  `input/example.png`; 05 and 06 (wedges) are unchanged
+- README tightened; node names stay on one line in the table
+- PD Load: a full path in `file` (e.g. PD Output's `path`) is used as is,
+  whatever `path_mode` and `base_path` say. `sequence_from_file` is an
+  optional input, so API prompts without it keep working
+- PD Output previews ProRes and other video it cannot show directly as a
+  playable mp4 (was an animated WebP), the same as PD Load
+- Shared code: `core/paths.py` (frame mark, root folder and inside-folder
+  checks for PD Output and PD Load), `core/comfy.py` (ComfyUI folders and
+  server routes), preview helpers in `core/media.py`, and
+  `trackPreviewMedia` in `web/pd_common.js`
+
 ### PD Load and PD OCIO Apply LUT
+- PD Load: `template` is now `file` (settings `load.template` →
+  `load.file`, empty by default). Paste a full file path into `file` or
+  `base_path` (quotes from Windows' "Copy as path" are fine) and it is
+  split into the two fields and loaded. A **load** button runs just this
+  node (PD Load is now an output node). `fps_from_file` uses a video's
+  frame rate, with `fps` as the override. Sequences and video preview as a
+  playable clip. `sequence_from_file` (on by default): a file that is one
+  frame of a sequence loads the whole sequence; off, just that frame
 - New **PD Load**, the inverse of PD Output: a token template (with context
   and wedge tokens) resolved under ComfyUI's input folder or an
   absolute/UNC base path loads a single image, an image sequence
@@ -16,11 +39,11 @@
 
 ### Renames and fixes
 - Renamed nodes (class names too, so workflows saved with the old names
-  need the nodes re-added): PD Shot Token → **PD Token String**
-  (`PDTokenString`), PD Video Frame → **PD Video Get Frame**
+  need the nodes re-added): PD Shot Token → **PD Tokens To String**
+  (`PDTokensToString`), PD Video Frame → **PD Video Get Frame**
   (`PDVideoGetFrame`), PD Image Frame → **PD Image From Batch**
   (`PDImageFromBatch`). The `[shot_token]` settings table is now
-  `[token_string]`
+  `[tokens_to_string]`
 - PD Project Context: `artist` is now `user`, and the token is `{user}`
 - PD Output token panel: no resize handle of its own; it fills the node, so
   resizing the node resizes it (both renderers). Smaller on a new node

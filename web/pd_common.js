@@ -180,3 +180,33 @@ export function showOutputText(node, widget, key) {
         if (output?.[key]?.length > 0) widget.value = output[key][0];
     });
 }
+
+const VIDEO_FILE = /\.(mp4|webm|mov|mkv)$/i;
+
+/** Remove the classic canvas' video-preview DOM widget (kept after a switch back to images). */
+function clearClassicVideoPreview(node) {
+    const widget = findWidget(node, "video-preview");
+    if (widget) {
+        node.removeWidget(widget);
+        widget.onRemove?.();
+    }
+    node.videoContainer = undefined;
+}
+
+/**
+ * Show a node's preview as video when it executes with a video file in
+ * ``ui.images`` and ``ui.animated``, and as images otherwise.
+ *
+ * The frontend previews any node with a VIDEO input or output as video
+ * unless ``previewMediaType`` says otherwise.  The classic canvas keeps
+ * its video player after a switch back to images, so it is removed then.
+ */
+export function trackPreviewMedia(node) {
+    node.previewMediaType = "image";
+    chain(node, "onExecuted", function (output) {
+        const isVideo = output?.animated?.some(Boolean) &&
+            output?.images?.some(i => VIDEO_FILE.test(i?.filename ?? ""));
+        this.previewMediaType = isVideo ? "video" : "image";
+        if (!isVideo && !globalThis.LiteGraph?.vueNodesMode) clearClassicVideoPreview(this);
+    });
+}

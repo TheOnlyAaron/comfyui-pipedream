@@ -20,6 +20,7 @@ BROWSER_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 BROWSER_VIDEO_FORMATS = ("mp4", "webm")
 
 PREVIEW_MAX_SIZE = 512
+PREVIEW_MAX_FRAMES = 1000
 
 # format -> (label, PyAV encoder, pixel format, audio encoder)
 _VIDEO_SPECS = {
@@ -449,27 +450,59 @@ def _ui_entry_for(path: str, base_dir: str, kind: str) -> dict | None:
     return {"filename": os.path.basename(path), "subfolder": subfolder, "type": kind}
 
 
+def preview_still(image, temp_dir: str, name: str) -> dict:
+    """Save one frame (``HxWxC`` tensor or array) as a downscaled PNG in *temp_dir*."""
+    from PIL import Image
+
+    os.makedirs(temp_dir, exist_ok=True)
+    _downscale(Image.fromarray(frames_to_uint8(image[None])[0])).save(
+        os.path.join(temp_dir, name + ".png"), compress_level=1)
+    return {"filename": name + ".png", "subfolder": "", "type": "temp"}
+
+
+def preview_clip(images, fps: float, temp_dir: str, name: str, audio=None) -> dict:
+    """
+    Save frames as a playable H.264 mp4 in *temp_dir*: downscaled to
+    ``PREVIEW_MAX_SIZE``, at most ``PREVIEW_MAX_FRAMES`` frames, with the
+    audio if given.  The frontend shows it with video controls.
+    """
+    import torch.nn.functional as F
+
+    frames = images[:PREVIEW_MAX_FRAMES, ..., :3]
+    h, w = int(frames.shape[1]), int(frames.shape[2])
+    scale = min(1.0, PREVIEW_MAX_SIZE / max(h, w))
+    if scale < 1.0:
+        size = (max(2, int(h * scale)), max(2, int(w * scale)))
+        frames = F.interpolate(frames.permute(0, 3, 1, 2), size=size, mode="area")
+        frames = frames.permute(0, 2, 3, 1)
+    os.makedirs(temp_dir, exist_ok=True)
+    save_video(frames.clamp(0, 1), os.path.join(temp_dir, name + ".mp4"), "mp4",
+               fps=fps, crf=23, overwrite=True, audio=audio)
+    return {"filename": name + ".mp4", "subfolder": "", "type": "temp"}
+
+
+def preview_name(prefix: str = "pd_preview") -> str:
+    """A unique file name stem for a temp preview."""
+    return f"{prefix}_{uuid.uuid4().hex[:8]}"
+
+
 def build_preview(images, written: list[str], is_video: bool, fps: float,
-                  output_dir: str | None, temp_dir: str | None) -> tuple[list[dict], bool]:
+                  output_dir: str | None, temp_dir: str | None,
+                  audio=None) -> tuple[list[dict], bool]:
     """
     Build the ``ui["images"]`` list showing what an output node wrote.
 
     *written* holds one path per frame of *images* for image formats.
     Browser-viewable images, and mp4/webm video, inside ComfyUI's output
     directory are referenced directly.  Anything else (EXR, ProRes, files
-    outside the output dir) gets a downscaled PNG, or an animated WebP for
-    video, in the temp directory.
+    outside the output dir) gets a downscaled PNG, or a playable mp4 for
+    video (``preview_clip``), in the temp directory.
 
     Returns ``(entries, animated)``.  Preview failures never raise.
     """
-    from PIL import Image
-
     if not written:
         return [], False
-
-    entries: list[dict] = []
-    prefix = f"pd_preview_{uuid.uuid4().hex[:8]}"
-
+    name = preview_name()
     try:
         if is_video:
             ext = os.path.splitext(written[0])[1].lower().lstrip(".")
@@ -479,39 +512,21 @@ def build_preview(images, written: list[str], is_video: bool, fps: float,
                     return [entry], True
             if not temp_dir:
                 return [], False
-            os.makedirs(temp_dir, exist_ok=True)
-            frames = [_downscale(Image.fromarray(f)) for f in frames_to_uint8(images)]
-            name = f"{prefix}.webp"
-            frames[0].save(
-                os.path.join(temp_dir, name),
-                save_all=True,
-                append_images=frames[1:],
-                duration=max(1, int(round(1000.0 / max(float(fps), 0.01)))),
-                loop=0,
-                quality=80,
-            )
-            return [{"filename": name, "subfolder": "", "type": "temp"}], len(frames) > 1
+            return [preview_clip(images, fps, temp_dir, name, audio)], True
 
-        frames = None
+        entries: list[dict] = []
         for i, path in enumerate(written):
             entry = None
             if os.path.splitext(path)[1].lower() in BROWSER_IMAGE_EXTS:
                 entry = _ui_entry_for(path, output_dir, "output")
             if entry is None and temp_dir:
-                if frames is None:
-                    frames = frames_to_uint8(images)
-                os.makedirs(temp_dir, exist_ok=True)
-                name = f"{prefix}_{i:04d}.png"
-                _downscale(Image.fromarray(frames[min(i, len(frames) - 1)])).save(
-                    os.path.join(temp_dir, name), compress_level=1
-                )
-                entry = {"filename": name, "subfolder": "", "type": "temp"}
+                entry = preview_still(images[min(i, len(images) - 1)], temp_dir, f"{name}_{i:04d}")
             if entry is not None:
                 entries.append(entry)
+        return entries, False
     except Exception as exc:
         print(f"[Pipedream] Warning: failed to build preview: {exc}", file=sys.stderr)
-
-    return entries, False
+        return [], False
 
 
 def write_sidecar(path: str, data: dict) -> str | None:

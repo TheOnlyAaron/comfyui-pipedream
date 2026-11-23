@@ -75,6 +75,22 @@ class FindCase(unittest.TestCase):
         with self.assertRaisesRegex(load.MediaNotFound, "does not exist"):
             load.find_media(self.path("nope/plate"), "png")
 
+    def test_sequence_from_file(self):
+        self.touch("sh010.1001.exr", "sh010.1002.exr", "sh010.1003.exr", "lone_0007.png",
+                   "v2.png", "v3.png")
+        one = load.find_media(self.path("sh010.1002.exr"))
+        self.assertEqual((one["kind"], one["frames"]), ("image", [0]))
+        seq = load.find_media(self.path("sh010.1002.exr"), sequence_from_file=True)
+        self.assertEqual((seq["kind"], seq["frames"]), ("sequence", [1001, 1002, 1003]))
+        self.assertEqual(seq["pattern"], self.path("sh010.####.exr"))
+        self.assertEqual(load.find_media(self.path("lone_0007.png"),
+                                         sequence_from_file=True)["kind"], "image")
+        self.assertEqual(load.find_media(self.path("v2.png"),
+                                         sequence_from_file=True)["kind"], "sequence")
+        self.touch("0001.jpg", "0002.jpg")
+        bare = load.find_media(self.path("0002.jpg"), sequence_from_file=True)
+        self.assertEqual((bare["frames"], bare["pattern"]), ([1, 2], self.path("####.jpg")))
+
     def test_select_frames(self):
         self.touch(*[f"s.{n}.png" for n in (1001, 1002, 1003, 1005, 1006, 1007)])
         media = load.find_media(self.path("s.####.png"))
@@ -97,6 +113,19 @@ class FindCase(unittest.TestCase):
         self.assertEqual(load.read_sidecar(media["pattern"], media["kind"]),
                          {"shot": "sh010", "version": "v001"})
         self.assertEqual(load.read_sidecar(self.path("x.png"), "image"), {})
+
+    def test_clean_and_split(self):
+        self.touch("my plate.JPG")
+        full = self.path("my plate.JPG")
+        self.assertEqual(load.clean_path(f'  "{full}" '), full)
+        self.assertEqual(load.clean_path(f"'{full}'"), full)
+        self.assertTrue(load.looks_absolute("C:\\Users\\x.png"))
+        self.assertTrue(load.looks_absolute("\\\\server\\share\\x.exr"))
+        self.assertFalse(load.looks_absolute("plate.exr"))
+        self.assertEqual(load.split_file(f'"{full}"'), {"folder": self.dir, "name": "my plate.JPG"})
+        self.assertIsNone(load.split_file(self.path("missing.png")))
+        self.assertIsNone(load.split_file(self.dir))
+        self.assertIsNone(load.split_file("my plate.JPG"))
 
     def test_fingerprint_sees_new_frames(self):
         self.touch("s.1001.png")

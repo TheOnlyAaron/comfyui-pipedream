@@ -30,7 +30,7 @@ import os
 import re
 import sys
 
-FRAME_MARK = "@@PDFRAME@@"
+from .paths import FRAME_MARK
 
 IMAGE_EXTS = ("exr", "png", "jpg", "jpeg", "webp", "tif", "tiff", "dpx", "bmp")
 VIDEO_EXTS = ("mp4", "mov", "webm", "mkv", "avi", "m4v")
@@ -40,6 +40,37 @@ EXR_COLORSPACES = ("as is", "linear to sRGB")
 _ALIASES = {"jpg": ("jpg", "jpeg"), "tif": ("tif", "tiff")}
 _HASHES = re.compile(r"#+")
 _PRINTF = re.compile(r"%0?(\d*)d")
+
+
+def clean_path(text: str) -> str:
+    """
+    Tidy a pasted path: surrounding whitespace and quotes go.
+
+    Windows' "Copy as path" (shift+right click) wraps the path in double
+    quotes; single quotes and stray whitespace are removed too.
+    """
+    text = (text or "").strip()
+    while len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+    return text
+
+
+def looks_absolute(text: str) -> bool:
+    """True for ``C:\\...``, ``\\\\server\\share...`` or ``/...`` paths."""
+    return bool(re.match(r"^([A-Za-z]:[\\/]|\\\\|//|/)", text or ""))
+
+
+def split_file(text: str) -> dict | None:
+    """
+    ``{"folder", "name"}`` when *text* (quotes allowed) is the full path of an
+    existing file, else None.  Used to split a pasted path into PD Load's
+    base_path and file fields.
+    """
+    path = clean_path(text)
+    if not looks_absolute(path) or not os.path.isfile(path):
+        return None
+    folder, name = os.path.split(path)
+    return {"folder": folder, "name": name}
 
 
 class MediaNotFound(FileNotFoundError):
@@ -83,16 +114,37 @@ def _listdir(folder: str) -> list[str]:
         return []
 
 
-def find_media(resolved: str, file_format: str = "auto") -> dict:
+def _sequence_of(path: str, ext: str, entries: list[str]):
+    """
+    The sequence a numbered image belongs to: ``(paths, frames)`` when
+    *path* ends in a frame number (``shot.1001.exr``, ``plate_0042.png``,
+    ``0001.png``) and at least one other file with the same prefix and
+    extension sits next to it, else None.
+    """
+    folder, name = os.path.split(path)
+    match = re.match(r"^(.*?)(\d+)\." + re.escape(ext) + "$", name, re.IGNORECASE)
+    if not match:
+        return None
+    regex = re.compile(re.escape(match.group(1)) + r"(\d+)\." + re.escape(ext) + "$",
+                       re.IGNORECASE)
+    frames = sorted((int(m.group(1)), entry) for entry in entries if (m := regex.match(entry)))
+    if len(frames) < 2:
+        return None
+    return [os.path.join(folder, e) for _, e in frames], [n for n, _ in frames]
+
+
+def find_media(resolved: str, file_format: str = "auto", sequence_from_file: bool = False) -> dict:
     """
     Find the file(s) a resolved template names.
 
     Returns ``{"kind": "image"|"sequence"|"video", "paths": [...],
     "frames": [...], "pattern": str, "ext": str}``; ``frames`` holds the
     frame numbers of a sequence (``[0]`` otherwise) and ``pattern`` is a
-    readable name (``shot.####.exr`` for a sequence).  Raises MediaNotFound
-    (with what was searched) or ValueError when ``auto`` finds more than
-    one format.
+    readable name (``shot.####.exr`` for a sequence).  With
+    *sequence_from_file*, a single image that is one frame of a sequence
+    (``shot.1001.exr`` with ``shot.1002.exr`` next to it) loads as that
+    whole sequence.  Raises MediaNotFound (with what was searched) or
+    ValueError when ``auto`` finds more than one format.
     """
     stem, ext = _split_ext(resolved)
     exts = (ext,) if ext else _candidates(file_format)
@@ -134,6 +186,10 @@ def find_media(resolved: str, file_format: str = "auto") -> dict:
 
     ext, (how, paths, frames) = next(iter(found.items()))
     kind = kind_of(ext)
+    if how == "single" and kind == "image" and sequence_from_file:
+        sequence = _sequence_of(paths[0], ext, entries)
+        if sequence:
+            how, (paths, frames) = "sequence", sequence
     if how == "sequence" and kind == "video":
         kind, paths, frames = "video", paths[:1], [0]
     elif how == "sequence":

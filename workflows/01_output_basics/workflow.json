@@ -1,0 +1,1060 @@
+{
+  "id": "0d582e83-1455-4d11-bb7f-22de9f6d9fd1",
+  "revision": 0,
+  "last_node_id": 7,
+  "last_link_id": 5,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [
+        0,
+        -330
+      ],
+      "size": [
+        560,
+        290
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Output basics: name and write files from tokens.\n\n1. PD Project Context and PD Custom Context hold the shot details. Their values become tokens: {project}, {sequence}, {shot}, {version}, {user}, {task}.\n2. PD Output builds the path from its template and writes the image into ComfyUI's output folder, with a sidecar .json.\n3. PD Tokens To String turns the same tokens into text (for prompts, titles, other paths).\n\nRun it, then look at PD Output's token panel. Try version 002, auto_increment_version, or path_mode absolute with a network base_path."
+      ],
+      "widgets_values_named": {
+        "text": "Output basics: name and write files from tokens.\n\n1. PD Project Context and PD Custom Context hold the shot details. Their values become tokens: {project}, {sequence}, {shot}, {version}, {user}, {task}.\n2. PD Output builds the path from its template and writes the image into ComfyUI's output folder, with a sidecar .json.\n3. PD Tokens To String turns the same tokens into text (for prompts, titles, other paths).\n\nRun it, then look at PD Output's token panel. Try version 002, auto_increment_version, or path_mode absolute with a network base_path."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "PDLoad",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        274.373046875,
+        532
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "file",
+          "name": "file",
+          "type": "STRING",
+          "widget": {
+            "name": "file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "widget": {
+            "name": "frame_count"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "every_nth",
+          "name": "every_nth",
+          "type": "INT",
+          "widget": {
+            "name": "every_nth"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence_from_file",
+          "name": "sequence_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "sequence_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps_from_file",
+          "name": "fps_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "fps_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            2
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "first_frame",
+          "name": "first_frame",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "title": "Source image",
+      "properties": {
+        "Node name for S&R": "PDLoad"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "example.png",
+        "auto",
+        0,
+        0,
+        1,
+        true,
+        true,
+        24,
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "file": "example.png",
+        "format": "auto",
+        "start_frame": 0,
+        "frame_count": 0,
+        "every_nth": 1,
+        "sequence_from_file": true,
+        "fps_from_file": true,
+        "fps": 24,
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 3,
+      "type": "PDProjectContext",
+      "pos": [
+        0,
+        1000
+      ],
+      "size": [
+        297.4765625,
+        226
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "project",
+          "name": "project",
+          "type": "STRING",
+          "widget": {
+            "name": "project"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence",
+          "name": "sequence",
+          "type": "STRING",
+          "widget": {
+            "name": "sequence"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "shot",
+          "name": "shot",
+          "type": "STRING",
+          "widget": {
+            "name": "shot"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "version",
+          "name": "version",
+          "type": "STRING",
+          "widget": {
+            "name": "version"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "user",
+          "name": "user",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "user"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "auto_increment_version",
+          "name": "auto_increment_version",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_increment_version"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDProjectContext"
+      },
+      "widgets_values": [
+        "demo",
+        "sq010",
+        "sh010",
+        "v001",
+        "jsmith",
+        false
+      ],
+      "widgets_values_named": {
+        "project": "demo",
+        "sequence": "sq010",
+        "shot": "sh010",
+        "version": "v001",
+        "user": "jsmith",
+        "auto_increment_version": false
+      }
+    },
+    {
+      "id": 4,
+      "type": "PDCustomContext",
+      "pos": [
+        420,
+        1000
+      ],
+      "size": [
+        270,
+        130
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": 1
+        },
+        {
+          "localized_name": "custom_1_name",
+          "name": "custom_1_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_1_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_1_value",
+          "name": "custom_1_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_1_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_2_name",
+          "name": "custom_2_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_2_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_2_value",
+          "name": "custom_2_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_2_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_3_name",
+          "name": "custom_3_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_3_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_3_value",
+          "name": "custom_3_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_3_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_4_name",
+          "name": "custom_4_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_4_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_4_value",
+          "name": "custom_4_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_4_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_5_name",
+          "name": "custom_5_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_5_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_5_value",
+          "name": "custom_5_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_5_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_6_name",
+          "name": "custom_6_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_6_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_6_value",
+          "name": "custom_6_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_6_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_7_name",
+          "name": "custom_7_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_7_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_7_value",
+          "name": "custom_7_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_7_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_8_name",
+          "name": "custom_8_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_8_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_8_value",
+          "name": "custom_8_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_8_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_9_name",
+          "name": "custom_9_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_9_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_9_value",
+          "name": "custom_9_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_9_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_10_name",
+          "name": "custom_10_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_10_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_10_value",
+          "name": "custom_10_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_10_value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": [
+            3,
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDCustomContext"
+      },
+      "widgets_values": [
+        "task",
+        "comp",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "custom_1_name": "task",
+        "custom_1_value": "comp",
+        "custom_2_name": "",
+        "custom_2_value": "",
+        "custom_3_name": "",
+        "custom_3_value": "",
+        "custom_4_name": "",
+        "custom_4_value": "",
+        "custom_5_name": "",
+        "custom_5_value": "",
+        "custom_6_name": "",
+        "custom_6_value": "",
+        "custom_7_name": "",
+        "custom_7_value": "",
+        "custom_8_name": "",
+        "custom_8_value": "",
+        "custom_9_name": "",
+        "custom_9_value": "",
+        "custom_10_name": "",
+        "custom_10_value": ""
+      }
+    },
+    {
+      "id": 5,
+      "type": "PDOutput",
+      "pos": [
+        880,
+        0
+      ],
+      "size": [
+        420,
+        620
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": 3
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": null
+        },
+        {
+          "localized_name": "alpha",
+          "name": "alpha",
+          "shape": 7,
+          "type": "IMAGE,MASK,VIDEO",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "template",
+          "name": "template",
+          "type": "STRING",
+          "widget": {
+            "name": "template"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_padding",
+          "name": "frame_padding",
+          "type": "INT",
+          "widget": {
+            "name": "frame_padding"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "crf",
+          "name": "crf",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "crf"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "prores_profile",
+          "name": "prores_profile",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "prores_profile"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "create_dirs",
+          "name": "create_dirs",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "create_dirs"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "overwrite",
+          "name": "overwrite",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "overwrite"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "save_metadata",
+          "name": "save_metadata",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_metadata"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_precision",
+          "name": "exr_precision",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_precision"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_compression",
+          "name": "exr_compression",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_compression"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "path_sidecar",
+          "name": "path_sidecar",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "path_all",
+          "name": "path_all",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDOutput"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "pipedream_demo/{project}/{sequence}/{shot}/{task}/{shot}_{task}_{version}",
+        "png",
+        1001,
+        4,
+        24,
+        18,
+        "auto",
+        true,
+        true,
+        true,
+        "half",
+        "zip",
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "template": "pipedream_demo/{project}/{sequence}/{shot}/{task}/{shot}_{task}_{version}",
+        "format": "png",
+        "start_frame": 1001,
+        "frame_padding": 4,
+        "fps": 24,
+        "crf": 18,
+        "prores_profile": "auto",
+        "create_dirs": true,
+        "overwrite": true,
+        "save_metadata": true,
+        "exr_precision": "half",
+        "exr_compression": "zip",
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 6,
+      "type": "PDTokensToString",
+      "pos": [
+        880,
+        720
+      ],
+      "size": [
+        420,
+        160
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": 4
+        },
+        {
+          "localized_name": "template",
+          "name": "template",
+          "type": "STRING",
+          "widget": {
+            "name": "template"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_padding",
+          "name": "frame_padding",
+          "type": "INT",
+          "widget": {
+            "name": "frame_padding"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "resolved",
+          "name": "resolved",
+          "type": "STRING",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDTokensToString"
+      },
+      "widgets_values": [
+        "{shot} {task} {version} by {user}",
+        4
+      ],
+      "widgets_values_named": {
+        "template": "{shot} {task} {version} by {user}",
+        "frame_padding": 4
+      }
+    },
+    {
+      "id": 7,
+      "type": "PreviewAny",
+      "pos": [
+        1360,
+        720
+      ],
+      "size": [
+        360,
+        160
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "source",
+          "name": "source",
+          "type": "*",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Resolved text",
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    }
+  ],
+  "links": [
+    [
+      1,
+      3,
+      0,
+      4,
+      0,
+      "PROJECT_CONTEXT"
+    ],
+    [
+      2,
+      2,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      4,
+      0,
+      5,
+      1,
+      "PROJECT_CONTEXT"
+    ],
+    [
+      4,
+      4,
+      0,
+      6,
+      0,
+      "PROJECT_CONTEXT"
+    ],
+    [
+      5,
+      6,
+      0,
+      7,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        416,
+        110
+      ]
+    }
+  },
+  "version": 0.4
+}

@@ -45,9 +45,10 @@
 # prores_profile = "auto"
 
 [load]
-# PD Load path template. The extension is optional; mark sequence frames with
-# {frame}, #### or %04d (a numbered file next to the name is found too).
-# template = "{project}/{sequence}/{shot}/{shot}_{version}"
+# PD Load default file: a name in base_path (or the input folder), optionally
+# with tokens such as {shot}_{version}. The extension is optional; mark
+# sequence frames with {frame}, #### or %04d.
+# file = ""
 
 # PD Load: relative (ComfyUI input dir) or absolute (base_path). One of:
 # "relative", "absolute".
@@ -68,7 +69,7 @@
 # colorspace = "as is"
 
 [sequence]
-# Digits in frame numbers (PD Output, PD Token String). Range 1..8.
+# Digits in frame numbers (PD Output, PD Tokens To String). Range 1..8.
 # frame_padding = 4
 
 # First frame number of an image sequence. Range 0..9999999.
@@ -98,8 +99,8 @@
 # facility = "MAKE"
 # show_root = "//nas/shows"
 
-[token_string]
-# PD Token String default template.
+[tokens_to_string]
+# PD Tokens To String default template.
 # template = "{project}_{shot}_{version}"
 
 [project]

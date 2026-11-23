@@ -15,6 +15,7 @@ from functools import partial
 import torch
 
 from ..core import ocio, settings
+from ..core.comfy import server_routes
 from ..core.common import display_name
 
 _CATEGORY = "Pipedream/Color"
@@ -204,23 +205,14 @@ class PDOCIOApplyLUT:
         return (_run(build, image),)
 
 
-def _register_routes():
-    """Add ``GET /pipedream/ocio/options`` (the frontend's dropdown source) when the server is up."""
-    try:
-        from aiohttp import web
-        from server import PromptServer
-        routes = PromptServer.instance.routes
-    except Exception:
-        return
-
+routes, web = server_routes()
+if routes is not None:
     @routes.get("/pipedream/ocio/options")
     async def ocio_options(request):
+        """The frontend's dropdown source: the names in the selected config."""
         config = request.query.get("config", ocio.CONFIG_ENV)
         path = request.query.get("path", "")
         try:
             return web.json_response(ocio.options(config, path))
         except Exception as exc:
             return web.json_response({"error": str(exc)}, status=400)
-
-
-_register_routes()
