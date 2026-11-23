@@ -32,7 +32,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Shot Token** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
 | **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. **preview wedge** lists every wedge job's path without running the graph. |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
-| **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. `group` steps wedges together; `solo` runs one row. Work in progress (#3). |
+| **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. `group` steps wedges together; `solo` runs one row. See [Wedges](#wedges). |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
 | **💭 PD Video To Images** | Decodes a `VIDEO` to images, mask (alpha), audio, fps and frame count. Optional start frame, frame limit and every-Nth step decode only what you ask for. |
 | **💭 PD Video Frame** | Grabs one frame and its mask (alpha) from a `VIDEO` (first, last or index; negative counts from the end). Seeks instead of decoding the whole clip. |
@@ -175,6 +175,25 @@ A preview of what was written appears under the node, with one entry per frame f
 
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
 
+
+## Wedges
+
+A wedge turns several near-identical graphs into one. Each **PD Wedge** row is an input of any type (image, prompt, model, video, LoRA...) paired with a text value; one Queue click runs the graph once per row, and the row's text becomes a file name token on PD Output.
+
+1. Set `token` (e.g. `product`). Link inputs to `input_1`, `input_2`... and name each row in `value_n`. Rows appear as you use them (up to 16); a row with only text uses the text as its value, so prompts and numbers can be typed in.
+2. Use the wedge's `value` where the input would go. The row's text is also on `text`, `int` and `float` (for seeds, strengths, steps...).
+3. Connect the wedge's `wedge` output to PD Output's `wedge` input and use `{product}` (row text) or `{product_idx}` (`000`, `001`...) in the template. `{wedge_idx}` is the job number, `{wedge_total}` the job count.
+4. Press **preview wedge** on PD Output to list every job's path without running the graph, then Run.
+
+Only the selected row's input is computed, and ComfyUI's cache keeps everything else (base image, model, encoded prompts) between jobs. The prompt is built once per click, so the seed is the same in every job.
+
+**Several wedges.** Chain wedges through their `wedge` input; the last one goes to PD Output. They multiply: 3 products × 2 looks = 6 jobs. The first wedge in the chain varies fastest. Wedges with the same `group` step together instead (row 1 with row 1...), e.g. a product image and its prompt, and need the same number of rows.
+
+**Solo.** `solo` on a wedge runs only that row number (0: all rows), for a test render.
+
+**Checks.** Above 20 jobs, Run asks before queueing. A wedge without rows, an empty solo row or a group with different row counts stops the queue and marks the wedge. The preview warns when a wedge that changes the image is not chained into PD Output (its jobs would overwrite each other), when jobs share a path, and when files exist with overwrite off.
+
+Wedges are expanded by the frontend; a prompt posted straight to `/prompt` runs each wedge's first row once. See [docs/wedges-headless.md](docs/wedges-headless.md). Example workflows are in [workflows/](workflows/).
 
 ## Alpha and premultiplication
 

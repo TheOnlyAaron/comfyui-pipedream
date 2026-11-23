@@ -30,6 +30,9 @@
   row inputs. Shows the job count and warns about wedges not chained into
   the node, paths written by more than one job, and existing files when
   overwrite is off
+- Example workflows 05 (prompt wedge) and 06 (product matrix: grouped and
+  chained wedges) replace the old wedge READMEs. `docs/wedges-headless.md`
+  notes how to expand wedges for prompts posted without the browser
 - PD Rasterizer is removed; PD Output's wedge preview replaces it
 
 ### Alpha masks and premultiplication

@@ -1,0 +1,1278 @@
+{
+  "id": "80dd356f-799b-4394-b3b4-c158e44cedb2",
+  "revision": 0,
+  "last_node_id": 12,
+  "last_link_id": 14,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [
+        40,
+        -300
+      ],
+      "size": [
+        420,
+        200
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Output.\n\nPress \"preview wedge\" on PD Output to see the file names, then Run: 3 jobs, same seed."
+      ],
+      "widgets_values_named": {
+        "text": "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Output.\n\nPress \"preview wedge\" on PD Output to see the file names, then Run: 3 jobs, same seed."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        40,
+        480
+      ],
+      "size": [
+        270,
+        98
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "ckpt_name",
+          "name": "ckpt_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "ckpt_name"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "MODEL",
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            7
+          ]
+        },
+        {
+          "localized_name": "CLIP",
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4,
+            6
+          ]
+        },
+        {
+          "localized_name": "VAE",
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        null
+      ],
+      "widgets_values_named": {
+        "ckpt_name": null
+      }
+    },
+    {
+      "id": 3,
+      "type": "PDWedge",
+      "pos": [
+        560,
+        0
+      ],
+      "size": [
+        270,
+        282
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "label": "1: studio",
+          "localized_name": "input_1",
+          "name": "input_1",
+          "shape": 7,
+          "type": "*",
+          "link": 1
+        },
+        {
+          "localized_name": "token",
+          "name": "token",
+          "type": "STRING",
+          "widget": {
+            "name": "token"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "group",
+          "name": "group",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "group"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "solo",
+          "name": "solo",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "solo"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_1",
+          "name": "value_1",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_1"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_2",
+          "name": "value_2",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_2"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_3",
+          "name": "value_3",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_4",
+          "name": "value_4",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_4"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_5",
+          "name": "value_5",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_5"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_6",
+          "name": "value_6",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_6"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_7",
+          "name": "value_7",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_7"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_8",
+          "name": "value_8",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_8"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_9",
+          "name": "value_9",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_9"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_10",
+          "name": "value_10",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_10"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_11",
+          "name": "value_11",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_11"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_12",
+          "name": "value_12",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_12"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_13",
+          "name": "value_13",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_13"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_14",
+          "name": "value_14",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_14"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_15",
+          "name": "value_15",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_15"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_16",
+          "name": "value_16",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_16"
+          },
+          "link": null
+        },
+        {
+          "label": "2: kitchen",
+          "name": "input_2",
+          "type": "*",
+          "link": 2
+        },
+        {
+          "label": "3: night",
+          "name": "input_3",
+          "type": "*",
+          "link": 3
+        },
+        {
+          "label": "4",
+          "name": "input_4",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": [
+            5
+          ]
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "int",
+          "name": "int",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "float",
+          "name": "float",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "type": "WEDGE",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDWedge"
+      },
+      "widgets_values": [
+        "look",
+        "",
+        0,
+        "studio",
+        "kitchen",
+        "night",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "token": "look",
+        "group": "",
+        "solo": 0,
+        "value_1": "studio",
+        "value_2": "kitchen",
+        "value_3": "night",
+        "value_4": "",
+        "value_5": "",
+        "value_6": "",
+        "value_7": "",
+        "value_8": "",
+        "value_9": "",
+        "value_10": "",
+        "value_11": "",
+        "value_12": "",
+        "value_13": "",
+        "value_14": "",
+        "value_15": "",
+        "value_16": ""
+      }
+    },
+    {
+      "id": 4,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        40,
+        0
+      ],
+      "size": [
+        460,
+        110
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "title": "Prompt: studio",
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "product photo of a ceramic mug, white seamless studio backdrop, softbox lighting"
+      ],
+      "widgets_values_named": {
+        "value": "product photo of a ceramic mug, white seamless studio backdrop, softbox lighting"
+      }
+    },
+    {
+      "id": 5,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        460,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "title": "Prompt: kitchen",
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "product photo of a ceramic mug on a wooden kitchen counter, morning window light"
+      ],
+      "widgets_values_named": {
+        "value": "product photo of a ceramic mug on a wooden kitchen counter, morning window light"
+      }
+    },
+    {
+      "id": 6,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        460,
+        110
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "title": "Prompt: night",
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "product photo of a ceramic mug on a balcony at night, city bokeh, neon rim light"
+      ],
+      "widgets_values_named": {
+        "value": "product photo of a ceramic mug on a balcony at night, city bokeh, neon rim light"
+      }
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        960,
+        0
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CONDITIONING",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "title": "Positive (from wedge)",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "widgets_values_named": {
+        "text": ""
+      }
+    },
+    {
+      "id": 8,
+      "type": "CLIPTextEncode",
+      "pos": [
+        960,
+        280
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CONDITIONING",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "title": "Negative",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "blurry, low quality, text, watermark"
+      ],
+      "widgets_values_named": {
+        "text": "blurry, low quality, text, watermark"
+      }
+    },
+    {
+      "id": 9,
+      "type": "EmptyLatentImage",
+      "pos": [
+        960,
+        560
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "width",
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "height",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "batch_size",
+          "name": "batch_size",
+          "type": "INT",
+          "widget": {
+            "name": "batch_size"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "LATENT",
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "widgets_values_named": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    {
+      "id": 10,
+      "type": "KSampler",
+      "pos": [
+        1440,
+        0
+      ],
+      "size": [
+        270,
+        262
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "link": 7
+        },
+        {
+          "localized_name": "positive",
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 8
+        },
+        {
+          "localized_name": "negative",
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 9
+        },
+        {
+          "localized_name": "latent_image",
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 10
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "steps",
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cfg",
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sampler_name",
+          "name": "sampler_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampler_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "scheduler",
+          "name": "scheduler",
+          "type": "COMBO",
+          "widget": {
+            "name": "scheduler"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "denoise",
+          "name": "denoise",
+          "type": "FLOAT",
+          "widget": {
+            "name": "denoise"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "LATENT",
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1234,
+        "fixed",
+        20,
+        8,
+        "euler",
+        "simple",
+        1
+      ],
+      "widgets_values_named": {
+        "seed": 1234,
+        "control_after_generate": "fixed",
+        "steps": 20,
+        "cfg": 8,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1
+      }
+    },
+    {
+      "id": 11,
+      "type": "VAEDecode",
+      "pos": [
+        1840,
+        0
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "samples",
+          "name": "samples",
+          "type": "LATENT",
+          "link": 11
+        },
+        {
+          "localized_name": "vae",
+          "name": "vae",
+          "type": "VAE",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 12,
+      "type": "PDOutput",
+      "pos": [
+        2100,
+        0
+      ],
+      "size": [
+        270,
+        462
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 13
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": 14
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": null
+        },
+        {
+          "localized_name": "alpha",
+          "name": "alpha",
+          "shape": 7,
+          "type": "IMAGE,MASK,VIDEO",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "template",
+          "name": "template",
+          "type": "STRING",
+          "widget": {
+            "name": "template"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_padding",
+          "name": "frame_padding",
+          "type": "INT",
+          "widget": {
+            "name": "frame_padding"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "crf",
+          "name": "crf",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "crf"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "prores_profile",
+          "name": "prores_profile",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "prores_profile"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "create_dirs",
+          "name": "create_dirs",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "create_dirs"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "overwrite",
+          "name": "overwrite",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "overwrite"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "save_metadata",
+          "name": "save_metadata",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_metadata"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_precision",
+          "name": "exr_precision",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_precision"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_compression",
+          "name": "exr_compression",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_compression"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "path_sidecar",
+          "name": "path_sidecar",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "path_all",
+          "name": "path_all",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDOutput"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "wedges/05_prompt/{look}_{date}",
+        "png",
+        1001,
+        4,
+        24,
+        18,
+        "auto",
+        true,
+        false,
+        true,
+        "half",
+        "zip",
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "template": "wedges/05_prompt/{look}_{date}",
+        "format": "png",
+        "start_frame": 1001,
+        "frame_padding": 4,
+        "fps": 24,
+        "crf": 18,
+        "prores_profile": "auto",
+        "create_dirs": true,
+        "overwrite": false,
+        "save_metadata": true,
+        "exr_precision": "half",
+        "exr_compression": "zip",
+        "exr_colorspace": "as is"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      4,
+      0,
+      3,
+      1,
+      "STRING"
+    ],
+    [
+      2,
+      5,
+      0,
+      3,
+      21,
+      "STRING"
+    ],
+    [
+      3,
+      6,
+      0,
+      3,
+      22,
+      "STRING"
+    ],
+    [
+      4,
+      2,
+      1,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      3,
+      0,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      6,
+      2,
+      1,
+      8,
+      0,
+      "CLIP"
+    ],
+    [
+      7,
+      2,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      8,
+      7,
+      0,
+      10,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      9,
+      8,
+      0,
+      10,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      10,
+      9,
+      0,
+      10,
+      3,
+      "LATENT"
+    ],
+    [
+      11,
+      10,
+      0,
+      11,
+      0,
+      "LATENT"
+    ],
+    [
+      12,
+      2,
+      2,
+      11,
+      1,
+      "VAE"
+    ],
+    [
+      13,
+      11,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      14,
+      3,
+      4,
+      12,
+      2,
+      "WEDGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        416,
+        110
+      ]
+    }
+  },
+  "version": 0.4
+}
