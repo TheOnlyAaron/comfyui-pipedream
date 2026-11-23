@@ -44,6 +44,18 @@
 # "auto", "422 HQ", "4444".
 # prores_profile = "auto"
 
+[load]
+# PD Load path template. The extension is optional; mark sequence frames with
+# {frame}, #### or %04d (a numbered file next to the name is found too).
+# template = "{project}/{sequence}/{shot}/{shot}_{version}"
+
+# PD Load: relative (ComfyUI input dir) or absolute (base_path). One of:
+# "relative", "absolute".
+# path_mode = "relative"
+
+# PD Load root folder for absolute mode (UNC works, as for output.base_path).
+# base_path = ""
+
 [exr]
 # EXR float precision. One of: "half", "float".
 # precision = "half"

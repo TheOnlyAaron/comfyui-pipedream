@@ -2,11 +2,12 @@ import { app } from "../../scripts/app.js";
 import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Read-only text panels: PD Output token reference                   */
+/*  Read-only text panels: PD Output token reference, PD Load info     */
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
     PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 100],
+    PDLoad: ["load_display", "What was loaded appears after execution...", "load_info", 70],
 };
 
 app.registerExtension({

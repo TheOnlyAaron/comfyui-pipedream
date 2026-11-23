@@ -314,6 +314,55 @@ def display_processor(config, config_path, in_colorspace, display, view, inverse
     return _cpu_processor(cfg_key, cfg, ("dv", in_colorspace, display, view, bool(inverse)), build)
 
 
+LUT_EXTENSIONS = (".cube", ".3dl", ".csp", ".spi1d", ".spi3d", ".spimtx", ".cub",
+                  ".clf", ".ctf", ".lut", ".cc", ".ccc", ".cdl", ".mga", ".m3d", ".hdl", ".vf")
+LUT_INTERPOLATIONS = ("best", "tetrahedral", "linear", "nearest")
+
+
+def lut_path(path: str) -> str:
+    """Clean up a LUT path (quotes, ``~``) and check the file exists."""
+    path = os.path.expanduser((path or "").strip().strip('"').strip("'"))
+    if not path:
+        raise ValueError("lut_path is empty: give the path of a LUT file (.cube, .3dl, .spi3d...).")
+    if not os.path.isfile(path):
+        raise ValueError(f"LUT file not found: {path}")
+    return path
+
+
+def lut_processor(path: str, inverse: bool = False, interpolation: str = "best"):
+    """
+    CPU processor applying a LUT file with an OCIO FileTransform.
+
+    Any format OCIO reads works (``LUT_EXTENSIONS``: .cube, .3dl, .csp,
+    .spi1d/.spi3d, CLF/CTF, CDL...).  The LUT is applied to the values as
+    they are: convert to the colorspace it expects first (e.g. with PD OCIO
+    Transform).  ``inverse`` inverts it (exact for 1D LUTs and matrices,
+    an approximation for 3D LUTs).  Cached by path, modification time and
+    settings, so an edited LUT is re-read.
+    """
+    OCIO = ocio()
+    path = lut_path(path)
+    if interpolation not in LUT_INTERPOLATIONS:
+        raise ValueError(f"Unknown LUT interpolation: {interpolation!r}")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        mtime = 0
+    cfg = OCIO.Config.CreateRaw()
+
+    def build():
+        return OCIO.FileTransform(
+            src=path,
+            interpolation=getattr(OCIO, f"INTERP_{interpolation.upper()}"),
+            direction=OCIO.TRANSFORM_DIR_INVERSE if inverse else OCIO.TRANSFORM_DIR_FORWARD,
+        )
+
+    try:
+        return _cpu_processor(("lut", path, mtime), cfg, (bool(inverse), interpolation), build)
+    except Exception as exc:
+        raise ValueError(f"Could not read LUT '{path}': {exc}") from exc
+
+
 def apply_rgb(cpu, pixels):
     """Apply a CPU processor to the RGB channels of an ``(..., C)`` float array.
 

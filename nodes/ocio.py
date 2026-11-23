@@ -1,5 +1,6 @@
 """
-PD OCIO nodes: OpenColorIO colorspace and display/view transforms.
+PD OCIO nodes: OpenColorIO colorspace and display/view transforms, and
+LUT files (PD OCIO Apply LUT).
 
 The dropdowns list the default config ($OCIO, else the built-in ACES studio
 config) when ComfyUI loads; the frontend (web/pd_ocio.js) swaps in the
@@ -8,6 +9,7 @@ the names depend on the selected config, ``VALIDATE_INPUTS`` takes over
 validation of those inputs from ComfyUI's fixed combo-list check.
 """
 
+import os
 from functools import partial
 
 import torch
@@ -149,6 +151,56 @@ class PDOCIODisplay:
     def execute(self, image, config, config_path, in_colorspace, display, view, inverse=False):
         build = partial(ocio.display_processor, config, config_path,
                         in_colorspace, display, view, inverse)
+        return (_run(build, image),)
+
+
+class PDOCIOApplyLUT:
+    """Apply a LUT file (.cube, .3dl, .spi3d, CLF...) to images with OpenColorIO."""
+
+    DISPLAY_NAME = display_name("PD OCIO Apply LUT")
+    DESCRIPTION = (
+        "Apply a LUT file to an image: .cube, .3dl, .csp, .spi1d/.spi3d, CLF/CTF, "
+        "CDL and the other formats OpenColorIO reads. The LUT sees the values as "
+        "they are, so convert to the colorspace it was made for first (PD OCIO "
+        "Transform). Works with network paths. Alpha passes through."
+    )
+    CATEGORY = _CATEGORY
+    FUNCTION = "execute"
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "lut_path": ("STRING", {
+                    "default": "",
+                    "tooltip": "Full path of the LUT file, e.g. \\\\server\\luts\\show_look.cube "
+                               "or /mnt/luts/show_look.cube.",
+                }),
+                "interpolation": (list(ocio.LUT_INTERPOLATIONS), {
+                    "default": "best",
+                    "tooltip": "3D LUTs: best (tetrahedral), tetrahedral, linear (trilinear) "
+                               "or nearest. 1D LUTs use linear for best/tetrahedral.",
+                }),
+                "inverse": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Apply the inverse of the LUT (exact for 1D LUTs, "
+                               "approximate for 3D LUTs).",
+                }),
+            },
+        }
+
+    @classmethod
+    def IS_CHANGED(cls, lut_path="", **kwargs):
+        try:
+            return f"{lut_path}:{os.path.getmtime(ocio.lut_path(lut_path))}"
+        except Exception:
+            return lut_path
+
+    def execute(self, image, lut_path, interpolation="best", inverse=False):
+        build = partial(ocio.lut_processor, lut_path, inverse, interpolation)
         return (_run(build, image),)
 
 

@@ -1,0 +1,109 @@
+"""
+Tests for core/load.py: finding single images, sequences and videos, and
+picking frames.  Decoding is covered by the ComfyUI integration run.
+
+Standard library only; run from the pack root::
+
+    python -m unittest discover -s tests
+"""
+
+import json
+import os
+import sys
+import tempfile
+import unittest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+from core import load  # noqa: E402
+
+
+class FindCase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = self.tmp.name
+
+    def touch(self, *names):
+        for name in names:
+            open(os.path.join(self.dir, name), "w").close()
+
+    def path(self, name):
+        return os.path.join(self.dir, name)
+
+    def test_single_with_and_without_extension(self):
+        self.touch("plate.png")
+        for template, fmt in (("plate.png", "auto"), ("plate", "auto"), ("plate", "png")):
+            media = load.find_media(self.path(template), fmt)
+            self.assertEqual((media["kind"], media["ext"]), ("image", "png"))
+            self.assertEqual(media["paths"], [self.path("plate.png")])
+
+    def test_sequence_marks(self):
+        self.touch("sh010.1001.exr", "sh010.1002.exr", "sh010.1004.exr", "other.1001.exr")
+        for template in ("sh010.####.exr", "sh010.%04d", f"sh010.{load.FRAME_MARK}", "sh010"):
+            media = load.find_media(self.path(template), "auto")
+            self.assertEqual(media["kind"], "sequence", template)
+            self.assertEqual(media["frames"], [1001, 1002, 1004])
+            self.assertEqual(media["pattern"], self.path("sh010.####.exr"))
+
+    def test_mark_in_folder_name_part(self):
+        self.touch("sh010_v001_0001.png", "sh010_v001_0002.png")
+        media = load.find_media(self.path("sh010_v001_####"), "png")
+        self.assertEqual(media["frames"], [1, 2])
+        self.assertEqual(media["pattern"], self.path("sh010_v001_####.png"))
+
+    def test_video(self):
+        self.touch("edit_v002.mov")
+        media = load.find_media(self.path("edit_v002"), "auto")
+        self.assertEqual((media["kind"], media["ext"]), ("video", "mov"))
+
+    def test_auto_refuses_to_guess(self):
+        self.touch("plate.png", "plate.exr")
+        with self.assertRaisesRegex(ValueError, "set format"):
+            load.find_media(self.path("plate"), "auto")
+        self.assertEqual(load.find_media(self.path("plate"), "exr")["ext"], "exr")
+
+    def test_jpeg_alias(self):
+        self.touch("ref.jpeg")
+        self.assertEqual(load.find_media(self.path("ref"), "jpg")["ext"], "jpeg")
+
+    def test_not_found(self):
+        self.touch("plate.png")
+        with self.assertRaisesRegex(load.MediaNotFound, "plate_v002"):
+            load.find_media(self.path("plate_v002"), "auto")
+        with self.assertRaisesRegex(load.MediaNotFound, "does not exist"):
+            load.find_media(self.path("nope/plate"), "png")
+
+    def test_select_frames(self):
+        self.touch(*[f"s.{n}.png" for n in (1001, 1002, 1003, 1005, 1006, 1007)])
+        media = load.find_media(self.path("s.####.png"))
+        paths, frames, missing = load.select_frames(media)
+        self.assertEqual((frames, missing), ([1001, 1002, 1003, 1005, 1006, 1007], [1004]))
+        _, frames, missing = load.select_frames(media, start_frame=1002, frame_count=3)
+        self.assertEqual((frames, missing), ([1002, 1003], [1004]))
+        _, frames, _ = load.select_frames(media, every_nth=2)
+        self.assertEqual(frames, [1001, 1003, 1005, 1007])
+        with self.assertRaisesRegex(ValueError, "after the last frame"):
+            load.select_frames(media, start_frame=2000)
+
+    def test_sidecar(self):
+        self.touch("sh010_v001.1001.png")
+        with open(self.path("sh010_v001.json"), "w") as fh:
+            json.dump({"context": {"shot": "sh010", "version": "v001"}}, fh)
+        media = load.find_media(self.path("sh010_v001"))
+        self.assertEqual(load.sidecar_path(media["pattern"], media["kind"]),
+                         self.path("sh010_v001.json"))
+        self.assertEqual(load.read_sidecar(media["pattern"], media["kind"]),
+                         {"shot": "sh010", "version": "v001"})
+        self.assertEqual(load.read_sidecar(self.path("x.png"), "image"), {})
+
+    def test_fingerprint_sees_new_frames(self):
+        self.touch("s.1001.png")
+        before = load.fingerprint([self.path("s.1001.png")])
+        os.utime(self.dir, ns=(1, 1))
+        self.assertNotEqual(before, load.fingerprint([self.path("s.1001.png")]))
+
+
+if __name__ == "__main__":
+    unittest.main()

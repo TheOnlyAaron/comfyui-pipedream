@@ -150,6 +150,22 @@ def srgb_to_linear(rgb):
     return (np.sign(v) * lin).astype(np.float32)
 
 
+def linear_to_srgb(rgb):
+    """
+    Encode linear light to sRGB, the inverse of ``srgb_to_linear``.
+
+    ``v <= 0.0031308`` maps to ``12.92 * v``; above that
+    ``1.055 * v ** (1 / 2.4) - 0.055``, continued above 1.0 and mirrored
+    for negative values.  NaN/inf are made finite first.  Returns float32.
+    """
+    import numpy as np
+
+    v = np.nan_to_num(np.asarray(rgb, dtype=np.float32), nan=0.0, posinf=1.0, neginf=0.0)
+    a = np.abs(v)
+    enc = np.where(a <= 0.0031308, a * 12.92, 1.055 * a ** (1.0 / 2.4) - 0.055)
+    return (np.sign(v) * enc).astype(np.float32)
+
+
 def rgb_frame(image):
     """
     Return one IMAGE item ``(H, W, C)`` as a float32 RGB array ``(H, W, 3)``.

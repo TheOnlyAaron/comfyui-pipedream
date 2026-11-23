@@ -2,6 +2,18 @@
 
 ## 0.2.0 (unreleased)
 
+### PD Load and PD OCIO Apply LUT
+- New **PD Load**, the inverse of PD Output: a token template (with context
+  and wedge tokens) resolved under ComfyUI's input folder or an
+  absolute/UNC base path loads a single image, an image sequence
+  (`{frame}`, `####`, `%04d`, or PD Output's `name.1001.png`) or a video.
+  Outputs images, mask, fps, frame_count, first_frame, path, context (PD
+  Output's sidecar tokens), video and audio. Frame range, every-nth, 16-bit
+  and float precision, EXR un-premultiply and `linear to sRGB`. Files are
+  re-read when they change on disk. New `[load]` settings
+- New **PD OCIO Apply LUT**: applies a LUT file (.cube, .3dl, .spi3d,
+  CLF/CTF, CDL...) forward or inverse, from a local or network path
+
 ### Renames and fixes
 - Renamed nodes (class names too, so workflows saved with the old names
   need the nodes re-added): PD Shot Token → **PD Token String**

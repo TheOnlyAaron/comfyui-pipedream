@@ -95,6 +95,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, user). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
 | **💭 PD Token String** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
 | **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. **preview wedge** lists every wedge job's path without running the graph. |
+| **💭 PD Load** | The inverse of PD Output: resolves a token template (context and wedge tokens too) to a path in ComfyUI's input folder or an absolute/UNC `base_path`, and loads the single image, image sequence or video found there. Outputs images, mask (alpha), fps, frame count, first frame, path, a context with PD Output's sidecar tokens, a `VIDEO` and audio. See [PD Load](#pd-load). |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. `group` steps wedges together; `solo` runs one row. See [Wedges](#wedges). |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
@@ -103,6 +104,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Image From Batch** | Picks one image from a batch (first, last or index; negative counts from the end), and the same frame of an optional mask. |
 | **💭 PD OCIO Transform** | Converts images between two OpenColorIO colorspaces, optionally through a look. See [OCIO](#ocio). |
 | **💭 PD OCIO Display** | Applies an OpenColorIO display/view transform (e.g. the ACES output transform for sRGB), or its inverse. See [OCIO](#ocio). |
+| **💭 PD OCIO Apply LUT** | Applies a LUT file (.cube, .3dl, .csp, .spi1d/.spi3d, CLF/CTF, CDL...) from a local or network path, forward or inverse. |
 | **💭 PD Sound** | Plays a short browser sound when this point of the flow is reached, or when the whole queue finishes. Passes any value straight through, so it can sit inline or dangle at the end. See [PD Sound](#pd-sound). |
 
 ## Video
@@ -144,6 +146,9 @@ The OCIO nodes live under **Pipedream/Color** and use [OpenColorIO](https://open
 - **config** picks the OCIO config: `$OCIO environment` (the config in the `OCIO` environment variable, or the built-in ACES studio config when it is unset), `ACES studio (built-in)` (`ocio://studio-config-latest`), `ACES cg (built-in)` (`ocio://cg-config-latest`) or `custom file`, which reads `config_path` (shown only for that choice).
 - **PD OCIO Transform** converts `in_colorspace` to `out_colorspace`. Pick a `look` to apply one of the config's looks on the way (`inverse_look` applies its inverse). Defaults: `ACEScg` (or the config's `scene_linear` role) to `sRGB - Texture` (or its `color_picking` role).
 - **PD OCIO Display** applies the `display`/`view` transform to an image in `in_colorspace`; `inverse` goes from the display back to the scene colorspace. Defaults are the config's default display and view.
+- **PD OCIO Apply LUT** applies a LUT file from `lut_path` (local or network): .cube, .3dl, .csp, .spi1d/.spi3d, CLF/CTF, CDL and the other formats OpenColorIO reads. The LUT sees the values as they are, so convert to the colorspace it was built for first (e.g. PD OCIO Transform to a log space, LUT, then back). `interpolation` is best (tetrahedral), tetrahedral, linear or nearest; `inverse` inverts it (exact for 1D LUTs, approximate for 3D). An edited LUT file is re-read.
+- **Looks** are named grades defined inside an OCIO config (often built from LUT files). The built-in ACES configs have one (ACES 1.3 gamut compression); studio configs usually add show looks. For a LUT that is not part of a config, use PD OCIO Apply LUT.
+- **Linear spaces:** the built-in configs include `Linear Rec.709 (sRGB)`, `Linear P3-D65`, `Linear Rec.2020`, `ACEScg`, `ACES2065-1` and camera linear spaces. If the lists only show two colourspaces, OpenColorIO is not installed (see [Installation](#installation)).
 - Images are processed as float32: values outside 0–1 survive linear-to-linear conversions, and alpha (a 4th channel) passes through untouched.
 - The dropdowns follow the selected config: changing `config` or `config_path` reloads the colorspace, display, view and look lists, and `view` follows `display`. Values that still exist are kept, others reset to the config's defaults. Colorspace aliases and role names (e.g. `srgb_tx`, `scene_linear`) are accepted too.
 - Names are validated against the selected config when you queue, so a workflow saved with a custom config loads and runs even though its names are not in the default lists.
@@ -240,6 +245,19 @@ A preview of what was written appears under the node, with one entry per frame f
 Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so you don't need to install `ffmpeg` or any extra package. Audio from a connected VIDEO is muxed as AAC (mp4/mov) or Opus (webm). Odd frame sizes are padded by one pixel to the even size the video codecs need. EXR uses the EXR encoder bundled in PyAV (scanline, RGB or RGBA, half or float; no PIZ/DWA compression). Note that ffmpeg's ProRes decoder reports 4444 files as `yuva444p12le` when reading them back. That is how the decoder works; the files are encoded from 10-bit `yuva444p10le`.
 
 
+## PD Load
+
+PD Load reads back what PD Output writes, or any image, sequence or video on a local or network path.
+
+- **Where:** `path_mode` `relative` reads from ComfyUI's `input` folder; `absolute` reads under `base_path` (`/mnt/shows`, `\\server\shows` or `//server/shows`). The `template` takes the same tokens as PD Output, from a connected `context` and `wedge`, so `{project}/{sequence}/{shot}/{shot}_{version}` finds the file PD Output wrote for that shot, and a wedge can load a different file per job.
+- **What:** the extension can be in the template (`plate.exr`) or picked with `format`. `auto` looks for every supported type and stops with an error if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
+- **Sequences:** mark the frame number with `{frame}`, `####` or `%04d` (`shot.####.exr`). Without a mark, a numbered file next to the name is found too, which is how PD Output names sequences (`name.1001.png`). `start_frame` (frame number, 0 = first on disk), `frame_count` (0 = all) and `every_nth` pick the frames; missing frames in the range are skipped and listed in the info panel.
+- **Video:** `start_frame` is a frame index. With the defaults, `video` is the file itself (no re-encode downstream); with a range it is the loaded frames as an in-memory `VIDEO`, with the matching audio.
+- **Precision and alpha:** everything decodes with PyAV, so 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask` (1.0 = opaque). EXR is premultiplied by its spec, so its RGB is divided by alpha on load (PD Output multiplies on write); `exr_colorspace` `linear to sRGB` reverses PD Output's `sRGB to linear`.
+- **Sidecar:** when PD Output's sidecar JSON sits next to the media, its tokens come out of `context`, with the incoming context's non-empty values on top.
+- **Changes on disk** (new frames, overwritten files) are picked up on the next queue; unchanged files stay cached, so the rest of the graph does not re-run. With a context or wedge linked, the first queue after loading a workflow re-reads once.
+- The node shows the first frame and what it loaded (pattern, frame range, size, alpha, fps, sidecar). `fps` (images and sequences only), `exr_colorspace` and the `audio` output are hidden when they do not apply.
+
 ## Wedges
 
 A wedge turns several near-identical graphs into one. Each **PD Wedge** row is an input of any type (image, prompt, model, video, LoRA...) paired with a text value; one Queue click runs the graph once per row, and the row's text becomes a file name token on PD Output.
@@ -317,6 +335,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 | Table | Keys |
 |-------|------|
 | `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps` (also PD Images To Video), `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
+| `[load]` | `template`, `path_mode`, `base_path` (PD Load) |
 | `[exr]` | `precision`, `compression`, `colorspace` |
 | `[sequence]` | `frame_padding` (also PD Token String), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
 | `[tokens]` | `open`, `close` (token delimiters, default `{` `}`; non-empty, different, no letters/digits/`_`/spaces), `date_format`, `time_format` (strftime) |
