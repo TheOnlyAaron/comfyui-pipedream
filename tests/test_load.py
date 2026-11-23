@@ -98,6 +98,19 @@ class FindCase(unittest.TestCase):
                          {"shot": "sh010", "version": "v001"})
         self.assertEqual(load.read_sidecar(self.path("x.png"), "image"), {})
 
+    def test_clean_and_split(self):
+        self.touch("my plate.JPG")
+        full = self.path("my plate.JPG")
+        self.assertEqual(load.clean_path(f'  "{full}" '), full)
+        self.assertEqual(load.clean_path(f"'{full}'"), full)
+        self.assertTrue(load.looks_absolute("C:\\Users\\x.png"))
+        self.assertTrue(load.looks_absolute("\\\\server\\share\\x.exr"))
+        self.assertFalse(load.looks_absolute("plate.exr"))
+        self.assertEqual(load.split_file(f'"{full}"'), {"folder": self.dir, "name": "my plate.JPG"})
+        self.assertIsNone(load.split_file(self.path("missing.png")))
+        self.assertIsNone(load.split_file(self.dir))
+        self.assertIsNone(load.split_file("my plate.JPG"))
+
     def test_fingerprint_sees_new_frames(self):
         self.touch("s.1001.png")
         before = load.fingerprint([self.path("s.1001.png")])

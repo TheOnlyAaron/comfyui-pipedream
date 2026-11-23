@@ -45,9 +45,10 @@
 # prores_profile = "auto"
 
 [load]
-# PD Load path template. The extension is optional; mark sequence frames with
-# {frame}, #### or %04d (a numbered file next to the name is found too).
-# template = "{project}/{sequence}/{shot}/{shot}_{version}"
+# PD Load default file: a name in base_path (or the input folder), optionally
+# with tokens such as {shot}_{version}. The extension is optional; mark
+# sequence frames with {frame}, #### or %04d.
+# file = ""
 
 # PD Load: relative (ComfyUI input dir) or absolute (base_path). One of:
 # "relative", "absolute".

@@ -57,7 +57,7 @@ USER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 EXTRA_KEY = "tokens.extra"
 RESERVED_TOKENS = ("frame",)
 # Built-in templates written with {}, rewritten to the configured delimiters when not set.
-TEMPLATE_KEYS = ("output.template", "load.template", "token_string.template")
+TEMPLATE_KEYS = ("output.template", "load.file", "token_string.template")
 
 _TOKEN_NAME = re.compile(r"^\w+$")
 
@@ -116,11 +116,10 @@ SCHEMA: dict[str, Setting] = {
     "output.prores_profile": Setting(
         str, "auto", "mov only: auto (4444 with alpha, else 422 HQ), 422 HQ or 4444.",
         choices=PRORES_CHOICES),
-    "load.template": Setting(
-        str, "{project}/{sequence}/{shot}/{shot}_{version}",
-        "PD Load path template. The extension is optional; mark sequence frames with "
-        "{frame}, #### or %04d (a numbered file next to the name is found too).",
-        check=_not_empty),
+    "load.file": Setting(
+        str, "", "PD Load default file: a name in base_path (or the input folder), "
+        "optionally with tokens such as {shot}_{version}. The extension is optional; "
+        "mark sequence frames with {frame}, #### or %04d."),
     "load.path_mode": Setting(
         str, "relative", "PD Load: relative (ComfyUI input dir) or absolute (base_path).",
         choices=PATH_MODES),

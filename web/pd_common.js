@@ -180,3 +180,17 @@ export function showOutputText(node, widget, key) {
         if (output?.[key]?.length > 0) widget.value = output[key][0];
     });
 }
+
+/**
+ * Remove the classic canvas' video-preview DOM widget.  The classic
+ * renderer keeps it after a node switches from a video preview back to an
+ * image one; Nodes 2.0 does not need this.
+ */
+export function clearClassicVideoPreview(node) {
+    const widget = findWidget(node, "video-preview");
+    if (widget) {
+        node.removeWidget(widget);
+        widget.onRemove?.();
+    }
+    node.videoContainer = undefined;
+}

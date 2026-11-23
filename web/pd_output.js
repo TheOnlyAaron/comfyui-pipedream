@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { chain, findWidget, isInputLinked, showSlots, showWidgets } from "./pd_common.js";
+import { chain, clearClassicVideoPreview, findWidget, isInputLinked, showSlots, showWidgets } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Output — hide widgets and sockets that do not apply to   */
@@ -42,16 +42,6 @@ function sync(node) {
     } finally {
         node._pdSyncing = false;
     }
-}
-
-/** The classic canvas keeps its video-preview DOM widget after switching to an image format. */
-function clearClassicVideoPreview(node) {
-    const widget = findWidget(node, "video-preview");
-    if (widget) {
-        node.removeWidget(widget);
-        widget.onRemove?.();
-    }
-    node.videoContainer = undefined;
 }
 
 app.registerExtension({

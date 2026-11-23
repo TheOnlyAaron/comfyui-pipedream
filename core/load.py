@@ -42,6 +42,37 @@ _HASHES = re.compile(r"#+")
 _PRINTF = re.compile(r"%0?(\d*)d")
 
 
+def clean_path(text: str) -> str:
+    """
+    Tidy a pasted path: surrounding whitespace and quotes go.
+
+    Windows' "Copy as path" (shift+right click) wraps the path in double
+    quotes; single quotes and stray whitespace are removed too.
+    """
+    text = (text or "").strip()
+    while len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+    return text
+
+
+def looks_absolute(text: str) -> bool:
+    """True for ``C:\\...``, ``\\\\server\\share...`` or ``/...`` paths."""
+    return bool(re.match(r"^([A-Za-z]:[\\/]|\\\\|//|/)", text or ""))
+
+
+def split_file(text: str) -> dict | None:
+    """
+    ``{"folder", "name"}`` when *text* (quotes allowed) is the full path of an
+    existing file, else None.  Used to split a pasted path into PD Load's
+    base_path and file fields.
+    """
+    path = clean_path(text)
+    if not looks_absolute(path) or not os.path.isfile(path):
+        return None
+    folder, name = os.path.split(path)
+    return {"folder": folder, "name": name}
+
+
 class MediaNotFound(FileNotFoundError):
     """No file matches the resolved template."""
 

@@ -95,7 +95,7 @@ All nodes appear under the **Pipedream** category with a 💭 prefix.
 | **💭 PD Project Context** | Top-level metadata node (project, sequence, shot, version, user). Accepts an incoming context for override chaining. Supports auto-incrementing version and version reset buttons (see [Versioning](#versioning)). |
 | **💭 PD Token String** | Resolves a token template to a string (for prompts, filenames or other nodes' paths), using an optional context from Project/Custom Context. |
 | **💭 PD Output** | Resolves a token template and writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to ComfyUI's output directory (`relative`) or an absolute/UNC path (`absolute`). Writes a sidecar JSON, previews what was written, passes the images through, and shows available tokens after execution. **preview wedge** lists every wedge job's path without running the graph. |
-| **💭 PD Load** | The inverse of PD Output: resolves a token template (context and wedge tokens too) to a path in ComfyUI's input folder or an absolute/UNC `base_path`, and loads the single image, image sequence or video found there. Outputs images, mask (alpha), fps, frame count, first frame, path, a context with PD Output's sidecar tokens, a `VIDEO` and audio. See [PD Load](#pd-load). |
+| **💭 PD Load** | Loads an image, image sequence or video from ComfyUI's input folder or any local/network folder. Paste a full file path into it and it fills in the rest. Outputs images, mask (alpha), fps, frame count, first frame, path, a context with PD Output's sidecar tokens, a `VIDEO` and audio; previews video as a playable clip. `file` can use tokens to read back what PD Output wrote. See [PD Load](#pd-load). |
 | **💭 PD Switch** | Routes one of N wildcard inputs to a single output. Inputs auto-grow when connected (2–8). |
 | **💭 PD Wedge** | Rows of input (any type) + text value; each job runs one row. Only the selected input is computed. Outputs the row's input (or its text), the text as STRING/INT/FLOAT, and a `WEDGE` chain for further wedges and PD Output. `group` steps wedges together; `solo` runs one row. See [Wedges](#wedges). |
 | **💭 PD Images To Video** | Wraps an image batch (plus optional audio) as an in-memory `VIDEO` at a given fps. Outputs the video and its frame count. |
@@ -247,16 +247,18 @@ Video and EXR are encoded with PyAV, which is part of ComfyUI's requirements, so
 
 ## PD Load
 
-PD Load reads back what PD Output writes, or any image, sequence or video on a local or network path.
+PD Load reads an image, image sequence or video from a local or network folder, or reads back what PD Output wrote.
 
-- **Where:** `path_mode` `relative` reads from ComfyUI's `input` folder; `absolute` reads under `base_path` (`/mnt/shows`, `\\server\shows` or `//server/shows`). The `template` takes the same tokens as PD Output, from a connected `context` and `wedge`, so `{project}/{sequence}/{shot}/{shot}_{version}` finds the file PD Output wrote for that shot, and a wedge can load a different file per job.
-- **What:** the extension can be in the template (`plate.exr`) or picked with `format`. `auto` looks for every supported type and stops with an error if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
-- **Sequences:** mark the frame number with `{frame}`, `####` or `%04d` (`shot.####.exr`). Without a mark, a numbered file next to the name is found too, which is how PD Output names sequences (`name.1001.png`). `start_frame` (frame number, 0 = first on disk), `frame_count` (0 = all) and `every_nth` pick the frames; missing frames in the range are skipped and listed in the info panel.
-- **Video:** `start_frame` is a frame index. With the defaults, `video` is the file itself (no re-encode downstream); with a range it is the loaded frames as an in-memory `VIDEO`, with the matching audio.
+- **Quick start:** copy a file's path (in Windows Explorer, shift+right click → *Copy as path*) and paste it into `file` or `base_path`. The quotes are removed, the path is split into `base_path` (the folder) and `file` (the name), `path_mode` switches to `absolute`, and the file loads. **load** (or the run button in the selection toolbar) runs just this node to check what it loads.
+- **Where:** `path_mode` `relative` reads from ComfyUI's `input` folder; `absolute` reads from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows` or `//server/shows`).
+- **What:** `file` can include the extension (`plate.exr`) or leave it to `format`. `auto` looks for every supported type and stops with an error if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
+- **Sequences:** mark the frame number with `####`, `%04d` or `{frame}` (`shot.####.exr`). Without a mark, a numbered file next to the name is found too, which is how PD Output names sequences (`name.1001.png`). `start_frame` (frame number, 0 = first on disk), `frame_count` (0 = all) and `every_nth` pick the frames; missing frames in the range are skipped and listed in the info panel.
+- **Video:** `start_frame` is a frame index. `fps_from_file` (on by default) uses the video's frame rate; turn it off to use `fps` as an override. Images and sequences use `fps`. With the defaults, `video` is the file itself (no re-encode downstream); with a range or an fps override it is the loaded frames as an in-memory `VIDEO`, with the matching audio.
+- **Preview:** a single image shows as an image; a sequence or video shows as a playable clip (downscaled, with audio) so you can scrub through what was loaded. The info panel lists the pattern, frame range, size, alpha, fps and sidecar.
 - **Precision and alpha:** everything decodes with PyAV, so 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask` (1.0 = opaque). EXR is premultiplied by its spec, so its RGB is divided by alpha on load (PD Output multiplies on write); `exr_colorspace` `linear to sRGB` reverses PD Output's `sRGB to linear`.
-- **Sidecar:** when PD Output's sidecar JSON sits next to the media, its tokens come out of `context`, with the incoming context's non-empty values on top.
+- **Tokens (optional):** `file` takes the same tokens as PD Output's template, from a connected `context` and `wedge`. `{shot}_{version}` with `base_path` set to the shot folder finds the file PD Output wrote for that shot, and a wedge can load a different file per job. When PD Output's sidecar JSON sits next to the media, its tokens come out of `context`, with the incoming context's non-empty values on top.
 - **Changes on disk** (new frames, overwritten files) are picked up on the next queue; unchanged files stay cached, so the rest of the graph does not re-run. With a context or wedge linked, the first queue after loading a workflow re-reads once.
-- The node shows the first frame and what it loaded (pattern, frame range, size, alpha, fps, sidecar). `fps` (images and sequences only), `exr_colorspace` and the `audio` output are hidden when they do not apply.
+- `fps_from_file` (image formats), `exr_colorspace` (formats other than exr/auto) and the `audio` output (image formats) are hidden when they do not apply.
 
 ## Wedges
 
@@ -335,7 +337,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 | Table | Keys |
 |-------|------|
 | `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps` (also PD Images To Video), `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
-| `[load]` | `template`, `path_mode`, `base_path` (PD Load) |
+| `[load]` | `file`, `path_mode`, `base_path` (PD Load) |
 | `[exr]` | `precision`, `compression`, `colorspace` |
 | `[sequence]` | `frame_padding` (also PD Token String), `start_frame`, `frame_separator` (`.`, `_` or `-`: the separator in `name.1001.exr` when the template has no `{frame}`) |
 | `[tokens]` | `open`, `close` (token delimiters, default `{` `}`; non-empty, different, no letters/digits/`_`/spaces), `date_format`, `time_format` (strftime) |

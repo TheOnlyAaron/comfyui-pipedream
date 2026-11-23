@@ -3,6 +3,13 @@
 ## 0.2.0 (unreleased)
 
 ### PD Load and PD OCIO Apply LUT
+- PD Load: `template` is now `file` (settings `load.template` →
+  `load.file`, empty by default). Paste a full file path into `file` or
+  `base_path` (quotes from Windows' "Copy as path" are fine) and it is
+  split into the two fields and loaded. A **load** button runs just this
+  node (PD Load is now an output node). `fps_from_file` uses a video's
+  frame rate, with `fps` as the override. Sequences and video preview as a
+  playable clip
 - New **PD Load**, the inverse of PD Output: a token template (with context
   and wedge tokens) resolved under ComfyUI's input folder or an
   absolute/UNC base path loads a single image, an image sequence
