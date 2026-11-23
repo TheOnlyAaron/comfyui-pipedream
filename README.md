@@ -306,7 +306,7 @@ start_frame = 1001
 frame_separator = "_"                 # name_1001.exr
 
 [tokens.extra]
-facility = "MAKE"
+facility = "FaciltyName"
 show_root = "//nas/shows"
 
 [ocio]
