@@ -6,20 +6,84 @@ Pipedream is not a visual effects node pack. It is plumbing.
 
 ## Installation
 
-Clone into your ComfyUI `custom_nodes` directory:
+Every command below uses full paths, so it works from any folder. Restart ComfyUI afterwards; the nodes appear under the **Pipedream** category.
 
-```bash
-cd ComfyUI/custom_nodes
-git clone https://github.com/theonlyaaron/comfyui-pipedream.git
+The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolorio`, BSD-3) for the OCIO nodes. Without it every other node works, and the OCIO nodes explain how to install it. Video and EXR use PyAV, which ComfyUI already installs.
+
+### ComfyUI Desktop (Windows)
+
+Desktop keeps each instance (environment) in `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Installs\<instance name>`. Open the instance in Desktop, go to its **Terminal** tab (PowerShell, with that instance's Python already active), and paste:
+
+```powershell
+$instance = "ComfyUI"   # the instance name shown in Desktop's instance list
+$nodes = "$env:LOCALAPPDATA\Comfy-Desktop\ComfyUI-Installs\$instance\ComfyUI\custom_nodes"
+git clone https://github.com/theonlyaaron/comfyui-pipedream.git "$nodes\comfyui-pipedream"
+python -m pip install -r "$nodes\comfyui-pipedream\requirements.txt"
 ```
 
-The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolorio` on PyPI, BSD-3) for the OCIO nodes, listed in `requirements.txt`. ComfyUI-Manager installs it for you; for a manual clone, install it with ComfyUI's own Python:
+Change `$instance` if your instance has another name (e.g. `"PipeDream"`). If `git clone` says the path does not exist, the instance folder is named differently: check `dir "$env:LOCALAPPDATA\Comfy-Desktop\ComfyUI-Installs"`.
 
-```bash
-python -m pip install -r ComfyUI/custom_nodes/comfyui-pipedream/requirements.txt
+> Older Desktop versions (before instances) keep custom nodes in `Documents\ComfyUI\custom_nodes` instead; use `$nodes = "$env:USERPROFILE\Documents\ComfyUI\custom_nodes"` with the same last two lines.
+
+### ComfyUI portable (Windows)
+
+Set `$portable` to your `ComfyUI_windows_portable` folder, then paste into PowerShell:
+
+```powershell
+$portable = "C:\ComfyUI_windows_portable"   # the folder holding run_nvidia_gpu.bat
+git clone https://github.com/theonlyaaron/comfyui-pipedream.git "$portable\ComfyUI\custom_nodes\comfyui-pipedream"
+& "$portable\python_embeded\python.exe" -m pip install -r "$portable\ComfyUI\custom_nodes\comfyui-pipedream\requirements.txt"
 ```
 
-Without it every other node works, and the OCIO nodes raise an error explaining how to install it. Video and EXR are written with PyAV (`av`), which ComfyUI already installs.
+### Manual install (Linux, macOS, Windows git clone)
+
+Set `COMFY` to the folder that holds ComfyUI's `main.py`, activate the Python environment you run ComfyUI with, then paste:
+
+```bash
+COMFY=~/ComfyUI   # the folder holding main.py
+git clone https://github.com/theonlyaaron/comfyui-pipedream.git "$COMFY/custom_nodes/comfyui-pipedream"
+python -m pip install -r "$COMFY/custom_nodes/comfyui-pipedream/requirements.txt"
+```
+
+### Updating, or trying a branch
+
+Restart ComfyUI and refresh the browser after any of these.
+
+ComfyUI Desktop (PowerShell, set `$instance` as above):
+
+```powershell
+$instance = "ComfyUI"
+$pack = "$env:LOCALAPPDATA\Comfy-Desktop\ComfyUI-Installs\$instance\ComfyUI\custom_nodes\comfyui-pipedream"
+git -C $pack pull
+```
+
+Portable (PowerShell):
+
+```powershell
+$pack = "C:\ComfyUI_windows_portable\ComfyUI\custom_nodes\comfyui-pipedream"
+git -C $pack pull
+```
+
+Manual install (bash):
+
+```bash
+pack=~/ComfyUI/custom_nodes/comfyui-pipedream
+git -C "$pack" pull
+```
+
+To test a development branch (e.g. `wedges`), set `$pack` / `pack` as above, then:
+
+```bash
+git -C "$pack" fetch origin
+git -C "$pack" checkout wedges
+git -C "$pack" pull
+```
+
+and `git -C "$pack" checkout main` to go back. These lines work in both PowerShell and bash.
+
+### Checking it loaded
+
+ComfyUI's console lists `comfyui-pipedream` under "Import times for custom nodes" at startup. If it says `IMPORT FAILED`, the lines above it give the reason. Make sure only one copy of the pack is installed per ComfyUI: an old copy in another `custom_nodes` folder (or a second Desktop instance) is a common reason for "my changes don't show up".
 
 ## Nodes
 
