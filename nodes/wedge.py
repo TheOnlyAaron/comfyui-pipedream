@@ -15,7 +15,14 @@ Wedges chain through ``wedge``: the upstream wedge is the first axis and
 varies fastest.  Wedges sharing a ``group`` step together instead of
 multiplying.  Row and job selection, and the WEDGE value, are described in
 ``core/wedge.py``; the rows are shown and hidden by ``web/pd_wedge.js``.
+
+The route ``POST /pipedream/wedge/plan`` takes ``{"prompt": {...}}`` (an
+API prompt) and returns ``{"total", "axes", "jobs"}``, or ``{"error", "node_id", "input_name"}``
+with status 400.  The frontend calls it when queuing and queues one prompt
+per job; it is also the starting point for headless submission.
 """
+
+import sys
 
 from ..core.common import ANY, display_name
 from ..core.wedge import (
@@ -24,6 +31,8 @@ from ..core.wedge import (
     VALUE_PREFIX,
     WedgeError,
     active_rows,
+    jobs,
+    plan,
     chain_axes,
     check_token,
     job_state,
@@ -131,3 +140,48 @@ class PDWedge:
         axis = {"token": token, "group": (group or "").strip(), "rows": texts, "row": position}
         out = {"axes": chain_axes(wedge, axis), "job": job, "total": total}
         return (value, text, to_int(text), to_float(text), out)
+
+
+def plan_prompt(prompt: dict, output_ids=None) -> dict:
+    """
+    Plan the jobs of an API *prompt*: ``{"total", "axes", "jobs"}``.
+
+    Output nodes default to every node whose class sets ``OUTPUT_NODE``.
+    Raises WedgeError when the wedges cannot run.
+    """
+    if output_ids is None:
+        import nodes as comfy_nodes  # ComfyUI's node registry
+        mappings = comfy_nodes.NODE_CLASS_MAPPINGS
+        output_ids = [
+            node_id for node_id, node in prompt.items()
+            if getattr(mappings.get(node.get("class_type")), "OUTPUT_NODE", False) is True
+        ]
+    wedge_plan = plan(prompt, output_ids)
+    return {**wedge_plan, "jobs": jobs(wedge_plan)}
+
+
+def _register_routes():
+    try:
+        from aiohttp import web
+        from server import PromptServer
+    except ImportError:
+        return
+    if getattr(PromptServer, "instance", None) is None:
+        return
+
+    @PromptServer.instance.routes.post("/pipedream/wedge/plan")
+    async def wedge_plan_route(request):
+        try:
+            body = await request.json()
+            prompt = body.get("prompt") or {}
+            result = plan_prompt(prompt, body.get("outputs") or None)
+        except WedgeError as exc:
+            return web.json_response({"error": str(exc), "node_id": exc.node_id,
+                                      "input_name": exc.input_name}, status=400)
+        except Exception as exc:  # malformed request
+            print(f"[Pipedream] Error: wedge plan failed: {exc}", file=sys.stderr)
+            return web.json_response({"error": f"Wedge plan failed: {exc}"}, status=400)
+        return web.json_response(result)
+
+
+_register_routes()
