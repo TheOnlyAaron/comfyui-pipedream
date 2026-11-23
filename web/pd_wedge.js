@@ -88,6 +88,11 @@ export const CONFIRM_ABOVE = 20;
 const ROW_KEY = "pd_wedge_row";
 const JOB_KEY = "pd_wedge_job";
 const TOTAL_KEY = "pd_wedge_total";
+const PREVIEW_KEY = "pd_wedge_preview";
+const SOURCE_INPUTS = ["images", "video", "alpha"];
+
+/** The unwrapped ``api.queuePrompt``, for prompts that must not be expanded. */
+let queueOnce = null;
 
 function hasWedge(output) {
     return Object.values(output ?? {}).some(n => n?.class_type === "PDWedge");
@@ -167,6 +172,7 @@ function toast(severity, detail) {
  */
 function wrapQueuePrompt() {
     const original = api.queuePrompt;
+    queueOnce = (number, data, options) => original.call(api, number, data, options);
     api.queuePrompt = async function (number, data, options) {
         if (!hasWedge(data?.output)) return original.call(this, number, data, options);
         const plan = await fetchPlan(data.output, options?.partialExecutionTargets);
@@ -187,6 +193,105 @@ function wrapQueuePrompt() {
     };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Preview — list every job's path on PD Output without running       */
+/* ------------------------------------------------------------------ */
+
+function isLink(value) {
+    return Array.isArray(value) && value.length === 2 && Number.isInteger(value[1]);
+}
+
+/** ``roots`` and every node they read from. */
+export function ancestors(output, roots) {
+    const seen = new Set();
+    const stack = [...roots];
+    while (stack.length) {
+        const id = String(stack.pop());
+        if (seen.has(id) || !output[id]) continue;
+        seen.add(id);
+        for (const value of Object.values(output[id].inputs ?? {})) {
+            if (isLink(value)) stack.push(value[0]);
+        }
+    }
+    return seen;
+}
+
+/**
+ * The preview prompt for PD Output ``id``: its images/video/alpha are
+ * unlinked and only what it still reads from is kept (context, wedges,
+ * whatever feeds their text).  Wedges are flagged so they compute none of
+ * their row inputs, and PD Output gets the request it lists paths for.
+ */
+export function previewPrompt(output, id, request) {
+    const target = { ...output[id], inputs: { ...output[id].inputs } };
+    for (const name of SOURCE_INPUTS) delete target.inputs[name];
+    target.inputs[PREVIEW_KEY] = JSON.stringify(request);
+    const source = { ...output, [id]: target };
+    const pruned = {};
+    for (const key of ancestors(source, [id])) {
+        pruned[key] = source[key].class_type === "PDWedge"
+            ? { ...source[key], inputs: { ...source[key].inputs, [PREVIEW_KEY]: true } }
+            : source[key];
+    }
+    return pruned;
+}
+
+/** Prompt id of a graph node (``outer:inner`` inside subgraphs). */
+function promptId(output, node) {
+    const id = String(node.id);
+    if (output[id]?.class_type === node.comfyClass) return id;
+    return Object.keys(output).find(k => k.endsWith(`:${id}`) && output[k].class_type === node.comfyClass);
+}
+
+/**
+ * Put the preview text in PD Output's panel when the preview prompt runs.
+ * The app only routes results of prompts it queued itself, so this
+ * listens for the preview's own ``executed`` event.
+ */
+function showPreview(node, promptIdValue, id) {
+    const onExecuted = ({ detail }) => {
+        if (detail?.prompt_id !== promptIdValue) return;
+        if (String(detail.node) !== id && String(detail.display_node) !== id) return;
+        const text = detail.output?.token_reference?.[0];
+        const panel = findWidget(node, "token_display");
+        if (text && panel) panel.value = text;
+        node.setDirtyCanvas?.(true, true);
+        done();
+    };
+    const onError = ({ detail }) => {
+        if (detail?.prompt_id === promptIdValue) done();
+    };
+    const done = () => {
+        api.removeEventListener("executed", onExecuted);
+        api.removeEventListener("execution_error", onError);
+    };
+    api.addEventListener("executed", onExecuted);
+    api.addEventListener("execution_error", onError);
+}
+
+async function previewWedge(node) {
+    try {
+        const { output, workflow } = await app.graphToPrompt();
+        const id = promptId(output, node);
+        if (!id) {
+            toast("warn", "This PD Output is bypassed or not part of the prompt.");
+            return;
+        }
+        const [all, own] = await Promise.all([fetchPlan(output), fetchPlan(output, [id])]);
+        const failed = all.error ? all : own.error ? own : null;
+        if (failed) {
+            toast("error", failed.error);
+            return;
+        }
+        const request = { total: all.total, axes: own.axes.map(a => ({ tokens: a.tokens, length: a.length })) };
+        const send = queueOnce ?? ((n, d) => api.queuePrompt(n, d));
+        const response = await send(0, { output: previewPrompt(output, id, request), workflow });
+        if (response?.prompt_id) showPreview(node, response.prompt_id, id);
+    } catch (error) {
+        toast("error", `Preview failed: ${error.message ?? error}`);
+    }
+}
+
 app.registerExtension({
     name: "Pipedream.Wedge",
 
@@ -195,6 +300,14 @@ app.registerExtension({
     },
 
     async nodeCreated(node) {
+        if (node.comfyClass === "PDOutput") {
+            const button = node.addWidget("button", "preview wedge", null, () => previewWedge(node),
+                                          { serialize: false });
+            button.serialize = false;
+            button.tooltip = "List the path of every job (wedge rows) in the panel below "
+                + "without running the graph. Shows the job count and clashing paths.";
+            return;
+        }
         if (node.comfyClass !== "PDWedge") return;
         for (let n = 1; n <= MAX_ROWS; n++) {
             const widget = findWidget(node, VALUE + n);

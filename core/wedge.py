@@ -23,10 +23,15 @@ The ``WEDGE`` value passed down a chain of wedges (and on to PD Output)
 is a dict::
 
     {"axes": [{"token": "product", "group": "", "rows": ["red", "blue"],
-               "row": 1}, ...],
+               "row": 1, "solo": False}, ...],
      "job": 3, "total": 6}
 
-``axes`` lists the chained wedges, upstream first.
+``axes`` lists the chained wedges, upstream first; ``solo`` marks a wedge
+pinned to one row.
+
+A preview run sets ``PREVIEW_KEY`` on the wedges: they then compute none of
+their row inputs (``value`` is None) and PD Output lists the paths of every
+job from the chain (``chain_jobs``) instead of writing.
 """
 
 import re
@@ -36,6 +41,7 @@ MAX_ROWS = 16
 INPUT_PREFIX = "input_"
 VALUE_PREFIX = "value_"
 
+PREVIEW_KEY = "pd_wedge_preview"
 ROW_KEY = "pd_wedge_row"
 JOB_KEY = "pd_wedge_job"
 TOTAL_KEY = "pd_wedge_total"
@@ -225,59 +231,100 @@ def _chain_depth(prompt: dict, node_id: str) -> int:
     return depth
 
 
+def solo_position(rows: list[dict], solo) -> int | None:
+    """Position of row number *solo* among the active *rows*; None when solo is off (0)."""
+    try:
+        solo = int(solo or 0)
+    except (TypeError, ValueError):
+        solo = 0
+    if solo <= 0:
+        return None
+    for position, row in enumerate(rows):
+        if row["row"] == solo:
+            return position
+    raise WedgeError(f"PD Wedge solo row {solo} is empty; pick a row in use or 0 for all rows.",
+                     input_name="solo")
+
+
+def build_axes(items: list[dict]) -> dict:
+    """
+    Group wedge *items* into axes and count the jobs.
+
+    Each item is ``{"key", "token", "group", "rows", "pinned"}``: ``rows``
+    is its row count and ``pinned`` the solo row position or None.  Items
+    are already in axis order.  Ungrouped items are an axis each; items with
+    the same group share one axis and must have the same row count.  An
+    axis with a pinned member runs only that row (length 1).
+
+    Returns ``{"axes": [{"group", "nodes", "tokens", "rows", "length",
+    "pinned"}], "total"}``; ``nodes`` holds the item keys.
+    """
+    axes, by_group = [], {}
+    for item in items:
+        if item["rows"] == 0:
+            raise WedgeError(
+                f"PD Wedge '{item['token']}' has no rows: link an input or type a value.",
+                item["key"], f"{VALUE_PREFIX}1")
+        group = item["group"]
+        axis = by_group.get(group) if group else None
+        if axis is None:
+            axis = {"group": group, "nodes": [], "tokens": [], "rows": item["rows"], "pinned": None}
+            axes.append(axis)
+            if group:
+                by_group[group] = axis
+        elif axis["rows"] != item["rows"]:
+            raise WedgeError(
+                f"PD Wedges in group '{group}' need the same number of rows: "
+                f"{', '.join(axis['tokens'])} {axis['rows']}, '{item['token']}' {item['rows']}.",
+                item["key"], "group")
+        if item["pinned"] is not None and axis["pinned"] is None:
+            axis["pinned"] = item["pinned"]
+        axis["nodes"].append(item["key"])
+        axis["tokens"].append(item["token"])
+
+    total = 1
+    for axis in axes:
+        axis["length"] = 1 if axis["pinned"] is not None else axis["rows"]
+        total *= axis["length"]
+    if total > MAX_JOBS:
+        raise WedgeError(f"The wedges make {total} jobs; the limit is {MAX_JOBS}.")
+    return {"axes": axes, "total": total}
+
+
 def plan(prompt: dict, output_ids) -> dict:
     """
     Work out the jobs for *prompt*.
 
-    Only wedges that an output node in *output_ids* reads from count.  Each
-    ungrouped wedge is an axis; wedges with the same ``group`` share one
-    axis and must have the same number of rows.  Axes are ordered by chain
-    position (upstream first), then node id; the first axis varies
-    fastest.
-
-    Returns ``{"axes": [{"group", "nodes", "tokens", "length"}], "total"}``
-    (``total`` is 1 and ``axes`` empty without wedges).  Raises WedgeError
-    for a wedge without rows, a mismatched group or too many jobs.
+    Only wedges that an output node in *output_ids* reads from count.  Axes
+    are ordered by chain position (upstream first), then node id; the first
+    axis varies fastest.  Grouping and solo are as in ``build_axes``, whose
+    result this returns (``total`` is 1 and ``axes`` empty without wedges).
+    Raises WedgeError for a wedge without rows, an empty solo row, a
+    mismatched group or too many jobs.
     """
     used = ancestors(prompt, output_ids)
     wedges = sorted(
         (n for n in used if prompt[n].get("class_type") == CLASS_TYPE),
         key=lambda n: (_chain_depth(prompt, n), _id_key(n)),
     )
-    axes, by_group = [], {}
+    items = []
     for node_id in wedges:
         inputs = prompt[node_id]["inputs"]
-        token = str(inputs.get("token", "")).strip() or f"#{node_id}"
-        length = len(active_rows(inputs))
-        if length == 0:
-            raise WedgeError(f"PD Wedge '{token}' has no rows: link an input or type a value.",
-                             node_id, f"{VALUE_PREFIX}1")
+        rows = active_rows(inputs)
         group = inputs.get("group")
-        group = group.strip() if isinstance(group, str) else ""
-        axis = by_group.get(group) if group else None
-        if axis is None:
-            axis = {"group": group, "nodes": [], "tokens": [], "length": length}
-            axes.append(axis)
-            if group:
-                by_group[group] = axis
-        elif axis["length"] != length:
-            sizes = ", ".join(f"'{t}' {n}" for t, n in zip(axis["tokens"], axis["lengths"]))
-            raise WedgeError(
-                f"PD Wedges in group '{group}' need the same number of rows: "
-                f"{sizes}, '{token}' {length}.",
-                node_id, "group",
-            )
-        axis["nodes"].append(node_id)
-        axis["tokens"].append(token)
-        axis.setdefault("lengths", []).append(length)
-
-    total = 1
-    for axis in axes:
-        del axis["lengths"]
-        total *= axis["length"]
-    if total > MAX_JOBS:
-        raise WedgeError(f"The wedges make {total} jobs; the limit is {MAX_JOBS}.")
-    return {"axes": axes, "total": total}
+        try:
+            pinned = solo_position(rows, inputs.get("solo"))
+        except WedgeError as exc:
+            exc.node_id = node_id
+            raise
+        items.append({
+            "key": node_id,
+            "token": str(inputs.get("token", "")).strip() or f"#{node_id}",
+            "group": group.strip() if isinstance(group, str) else "",
+            "rows": len(rows),
+            "pinned": pinned,
+        })
+    return build_axes(items)
 
 
 def jobs(wedge_plan: dict) -> list[dict]:
@@ -286,11 +333,37 @@ def jobs(wedge_plan: dict) -> list[dict]:
     for job in range(wedge_plan["total"]):
         rows, rest = {}, job
         for axis in wedge_plan["axes"]:
-            row = rest % axis["length"]
-            rest //= axis["length"]
+            if axis["pinned"] is not None:
+                row = axis["pinned"]
+            else:
+                row = rest % axis["length"]
+                rest //= axis["length"]
             for node_id in axis["nodes"]:
                 rows[node_id] = row
         result.append(rows)
+    return result
+
+
+def chain_jobs(wedge: dict | None) -> list[dict]:
+    """
+    Return the file name tokens of every job of a WEDGE chain, in job order.
+
+    Used by the preview: the chain's axes carry every row's text, so the
+    tokens of all jobs can be listed from one run.  Without a wedge there
+    is one job with no tokens.
+    """
+    if not wedge:
+        return [{}]
+    chain = wedge.get("axes", [])
+    built = build_axes([
+        {"key": i, "token": a["token"], "group": a.get("group", ""),
+         "rows": len(a["rows"]), "pinned": a["row"] if a.get("solo") else None}
+        for i, a in enumerate(chain)
+    ])
+    result = []
+    for job, rows in enumerate(jobs(built)):
+        axes = [{**a, "row": rows[i]} for i, a in enumerate(chain)]
+        result.append(wedge_tokens({"axes": axes, "job": job, "total": built["total"]}))
     return result
 
 

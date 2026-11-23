@@ -22,7 +22,15 @@
   adds `{<token>}` and `{<token>_idx}` for each wedge, plus `{wedge_idx}`
   and `{wedge_total}`, over the context tokens; the sidecar records the job
   and each wedge's row under `wedge`
-- PD Rasterizer is removed; a wedge preview replaces it
+- PD Wedge `solo`: run only that row number (0: every row), for a test
+  render. In a group it pins the whole group
+- PD Output "preview wedge" button: lists the path of every job in the
+  token panel without running the graph or writing anything. Only what
+  feeds the file name runs (context, wedges); wedges compute none of their
+  row inputs. Shows the job count and warns about wedges not chained into
+  the node, paths written by more than one job, and existing files when
+  overwrite is off
+- PD Rasterizer is removed; PD Output's wedge preview replaces it
 
 ### Alpha masks and premultiplication
 - PD Video To Images and PD Video Frame have a new `mask` output (after
