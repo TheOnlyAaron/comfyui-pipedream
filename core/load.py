@@ -30,7 +30,7 @@ import os
 import re
 import sys
 
-FRAME_MARK = "@@PDFRAME@@"
+from .paths import FRAME_MARK
 
 IMAGE_EXTS = ("exr", "png", "jpg", "jpeg", "webp", "tif", "tiff", "dpx", "bmp")
 VIDEO_EXTS = ("mp4", "mov", "webm", "mkv", "avi", "m4v")

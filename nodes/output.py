@@ -29,11 +29,11 @@ Widget defaults come from the facility/user settings (``core/settings.py``).
 
 import json
 import os
-import re
 import sys
 from datetime import datetime
 
 from ..core import settings
+from ..core.comfy import output_directory, temp_directory
 from ..core.common import display_name
 from ..core.media import (
     EXR_COLORSPACES,
@@ -58,47 +58,12 @@ from ..core.media import (
     video_codec,
     write_sidecar,
 )
+from ..core.paths import FRAME_MARK, check_inside, resolve_root, strip_frame
 from ..core.tokens import auto_tokens, format_token_reference, resolve_tokens, with_extra, wrap
 from ..core.video import comfy_video_api
 from ..core.wedge import PREVIEW_KEY, WedgeError, chain_jobs, wedge_metadata, wedge_tokens
 
-# ComfyUI's folder_paths is available at runtime inside custom nodes.
-try:
-    import folder_paths  # type: ignore[import-not-found]
-except ImportError:
-    folder_paths = None
-
-DEFAULT_TEMPLATE = settings.SCHEMA["output.template"].default
 ALPHA_TYPES = "IMAGE,MASK,VIDEO"
-
-# Stands in for {frame} while the path is built; replaced per frame.
-_FRAME_MARK = "@@PDFRAME@@"
-_FRAME_WITH_SEP = re.compile(r"[._-]?" + re.escape(_FRAME_MARK))
-
-
-def get_output_directory() -> str:
-    """Return ComfyUI's output directory, with a cwd fallback outside ComfyUI."""
-    if folder_paths is not None:
-        return folder_paths.get_output_directory()
-    fallback = os.path.join(os.getcwd(), "output")
-    print(
-        "[Pipedream] Warning: folder_paths not available, "
-        f"using fallback output dir: {fallback}",
-        file=sys.stderr,
-    )
-    return fallback
-
-
-def get_temp_directory() -> str | None:
-    """Return ComfyUI's temp directory, or None outside ComfyUI."""
-    if folder_paths is not None:
-        return folder_paths.get_temp_directory()
-    return None
-
-
-def strip_frame(text: str) -> str:
-    """Remove the {frame} placeholder from *text*, with one separator before it."""
-    return _FRAME_WITH_SEP.sub("", text)
 
 
 def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: bool,
@@ -108,36 +73,21 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
 
     *resolved* is the template with tokens filled in (relative to *root*,
     no extension), *pattern* the full path with extension.  Both hold
-    ``_FRAME_MARK`` where the frame number goes when *numbered*.  Raises
+    ``FRAME_MARK`` where the frame number goes when *numbered*.  Raises
     ValueError for a missing base_path, or a relative path that escapes the
     output directory.
     """
-    resolved = resolve_tokens(template, {**tokens, "frame": _FRAME_MARK},
+    resolved = resolve_tokens(template, {**tokens, "frame": FRAME_MARK},
                               frame_padding=frame_padding)
     if not numbered:
         resolved = strip_frame(resolved)
-    elif _FRAME_MARK not in resolved:
-        resolved = f"{resolved}{settings.get('sequence.frame_separator')}{_FRAME_MARK}"
+    elif FRAME_MARK not in resolved:
+        resolved = f"{resolved}{settings.get('sequence.frame_separator')}{FRAME_MARK}"
 
-    output_dir = get_output_directory()
-    if path_mode == "relative":
-        root = output_dir
-    else:
-        if not base_path or not base_path.strip():
-            raise ValueError(
-                "[Pipedream] Absolute path mode needs a base_path "
-                "(e.g. /mnt/projects or \\\\server\\share)."
-            )
-        root = base_path.strip()
-
+    root = resolve_root(path_mode, base_path, output_directory(), "PD Output")
     pattern = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
     if path_mode == "relative":
-        out_abs = os.path.abspath(output_dir)
-        if os.path.commonpath([os.path.abspath(pattern), out_abs]) != out_abs:
-            raise ValueError(
-                f"[Pipedream] Resolved path escapes the output directory: "
-                f"'{strip_frame(pattern)}'. Use absolute path mode for other locations."
-            )
+        check_inside(pattern, root, "PD Output", "output")
     return resolved, root, pattern
 
 
@@ -184,8 +134,8 @@ def wedge_preview(request: dict, path_mode, base_path, template, file_format,
         ctx = with_extra({**base, **job_tokens})
         resolved, root, pattern = resolve_pattern(template, {**tokens, **ctx}, frame_padding,
                                                   numbered, path_mode, base_path, file_format)
-        rows.append((job_tokens.get("wedge_idx", "000"), resolved.replace(_FRAME_MARK, hashes),
-                     pattern.replace(_FRAME_MARK, f"{settings.get('sequence.start_frame'):0{frame_padding}d}")))
+        rows.append((job_tokens.get("wedge_idx", "000"), resolved.replace(FRAME_MARK, hashes),
+                     pattern.replace(FRAME_MARK, f"{settings.get('sequence.start_frame'):0{frame_padding}d}")))
 
     chained = {a["token"] for a in (wedge or {}).get("axes", [])}
     other = [a for a in request.get("axes", []) if not set(a.get("tokens", [])) & chained]
@@ -459,10 +409,10 @@ class PDOutput:
         resolved, root, pattern = resolve_pattern(template, tokens, frame_padding, numbered,
                                                   path_mode, base_path, file_format)
         tokens["frame"] = frame_label if numbered else ""
-        output_dir = get_output_directory()
+        output_dir = output_directory()
 
         if numbered:
-            paths = [pattern.replace(_FRAME_MARK, f"{start_frame + i:0{frame_padding}d}")
+            paths = [pattern.replace(FRAME_MARK, f"{start_frame + i:0{frame_padding}d}")
                      for i in range(count)]
         else:
             paths = [pattern]
@@ -499,7 +449,7 @@ class PDOutput:
                 "node": "PDOutput",
                 "timestamp": now.isoformat(timespec="seconds"),
                 "template": template,
-                "resolved": resolved.replace(_FRAME_MARK, hashes),
+                "resolved": resolved.replace(FRAME_MARK, hashes),
                 "path_mode": path_mode,
                 "base_path": root,
                 "format": file_format,
@@ -528,7 +478,7 @@ class PDOutput:
                     "last": last,
                     "count": count,
                     "padding": frame_padding,
-                    "pattern": pattern.replace(_FRAME_MARK, hashes),
+                    "pattern": pattern.replace(FRAME_MARK, hashes),
                 }
             if is_video:
                 has_audio = bool(audio) and audio.get("waveform") is not None
@@ -550,7 +500,7 @@ class PDOutput:
             sidecar = write_sidecar(sidecar_path, metadata) or ""
 
         previews, animated = build_preview(
-            frames, written, is_video, fps, output_dir, get_temp_directory()
+            frames, written, is_video, fps, output_dir, temp_directory(), audio
         )
 
         if numbered:

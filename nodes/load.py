@@ -34,101 +34,65 @@ and a changed context or wedge re-runs the node through ComfyUI's cache.
 
 import os
 import sys
-import uuid
 
 from ..core import settings
+from ..core.comfy import input_directory, server_routes, temp_directory
 from ..core.common import display_name
 from ..core.load import (
     EXR_COLORSPACES,
     clean_path,
+    looks_absolute,
     split_file,
     FORMATS,
-    FRAME_MARK,
     find_media,
     fingerprint,
     read_images,
     read_sidecar,
     select_frames,
 )
-from ..core.media import PATH_MODES, frames_to_uint8, normalize_path, save_video
+from ..core.media import PATH_MODES, normalize_path, preview_clip, preview_name, preview_still
+from ..core.paths import FRAME_MARK, check_inside, resolve_root
 from ..core.tokens import auto_tokens, resolve_tokens, with_extra
 from ..core.video import comfy_video_api, images_to_video, read_frames
 from ..core.wedge import wedge_tokens
-
-try:
-    import folder_paths  # type: ignore[import-not-found]
-except ImportError:
-    folder_paths = None
 
 # Per node: the last resolved path, and whether context/wedge were linked
 # (IS_CHANGED only sees widget values, so it re-checks the last path then).
 _LAST_RESOLVED: dict = {}
 _LINKED: dict = {}
-_PREVIEW_SIZE = 512
-_PREVIEW_FRAMES = 1000
-
-
-def input_directory() -> str:
-    """ComfyUI's input directory, with a cwd fallback outside ComfyUI."""
-    if folder_paths is not None:
-        return folder_paths.get_input_directory()
-    return os.path.join(os.getcwd(), "input")
 
 
 def resolve_path(path_mode: str, base_path: str, file: str, tokens: dict) -> str:
-    """Resolve *file* to a full path (frame mark kept), checking relative paths stay inside input."""
-    file, base_path = clean_path(file), clean_path(base_path)
+    """
+    Resolve *file* to a full path (frame mark kept).  A *file* that is
+    already a full path (e.g. PD Output's ``path``) is used as is;
+    otherwise it is joined to the root, and relative paths must stay inside
+    ComfyUI's input folder.
+    """
+    file = clean_path(file)
     if not file:
         raise ValueError("[Pipedream] PD Load: file is empty. Type a file name, or paste "
                          "the full path of a file into file or base_path.")
     resolved = resolve_tokens(file, {**tokens, "frame": FRAME_MARK})
-    if path_mode == "relative":
-        root = input_directory()
-    else:
-        if not base_path:
-            raise ValueError("[Pipedream] PD Load absolute mode needs a base_path "
-                             "(e.g. /mnt/projects or \\\\server\\share).")
-        root = base_path
+    if looks_absolute(resolved):
+        return normalize_path(resolved)
+    root = resolve_root(path_mode, clean_path(base_path), input_directory(), "PD Load")
     full = normalize_path(os.path.join(root, resolved))
     if path_mode == "relative":
-        inside = os.path.abspath(root)
-        if os.path.commonpath([os.path.abspath(full), inside]) != inside:
-            raise ValueError(f"[Pipedream] PD Load: '{resolved}' is outside the input "
-                             "directory. Use absolute path mode for other locations.")
+        check_inside(full, root, "PD Load", "input")
     return full
 
 
 def _preview(images, fps: float, audio=None) -> tuple[list[dict], bool]:
-    """
-    The node's preview in the temp directory: a PNG of a single frame, or a
-    playable H.264 mp4 (with the audio) of several, downscaled to
-    ``_PREVIEW_SIZE``.  Returns ``(entries, animated)``.
-    """
-    if folder_paths is None:
+    """The node's preview: a PNG of a single frame, or a playable mp4 of several."""
+    temp = temp_directory()
+    if temp is None:
         return [], False
     try:
-        import torch.nn.functional as F
-        from PIL import Image
-
-        temp = folder_paths.get_temp_directory()
-        os.makedirs(temp, exist_ok=True)
-        name = f"pd_load_{uuid.uuid4().hex[:8]}"
+        name = preview_name("pd_load")
         if int(images.shape[0]) == 1:
-            img = Image.fromarray(frames_to_uint8(images[:1])[0])
-            img.thumbnail((_PREVIEW_SIZE, _PREVIEW_SIZE))
-            img.save(os.path.join(temp, name + ".png"), compress_level=1)
-            return [{"filename": name + ".png", "subfolder": "", "type": "temp"}], False
-        frames = images[:_PREVIEW_FRAMES]
-        h, w = int(frames.shape[1]), int(frames.shape[2])
-        scale = min(1.0, _PREVIEW_SIZE / max(h, w))
-        if scale < 1.0:
-            size = (max(2, int(h * scale)), max(2, int(w * scale)))
-            frames = F.interpolate(frames.permute(0, 3, 1, 2), size=size, mode="area")
-            frames = frames.permute(0, 2, 3, 1)
-        path = os.path.join(temp, name + ".mp4")
-        save_video(frames.clamp(0, 1), path, "mp4", fps=fps, crf=23, overwrite=True,
-                   audio=audio)
-        return [{"filename": name + ".mp4", "subfolder": "", "type": "temp"}], True
+            return [preview_still(images[0], temp, name)], False
+        return [preview_clip(images, fps, temp, name, audio)], True
     except Exception as exc:
         print(f"[Pipedream] Warning: PD Load preview failed: {exc}", file=sys.stderr)
         return [], False
@@ -197,7 +161,8 @@ class PDLoad:
                     "default": s("load.file"),
                     "tooltip": "File to load, e.g. plate.exr, or shot.####.exr for a sequence "
                                "(also {frame} or %04d). The extension is optional (see format). "
-                               "Tokens such as {shot}_{version} come from context and wedge.",
+                               "Tokens such as {shot}_{version} come from context and wedge. "
+                               "A full path (e.g. PD Output's path) ignores base_path.",
                 }),
                 "format": (list(FORMATS), {
                     "default": "auto",
@@ -217,14 +182,14 @@ class PDLoad:
                     "default": 1, "min": 1, "max": 1000,
                     "tooltip": "Load every nth frame (fps is divided to match).",
                 }),
+            },
+            "optional": {
                 "sequence_from_file": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "When file is one frame of a sequence (shot.1001.exr with "
                                "shot.1002.exr next to it), load the whole sequence. Off: "
                                "load just that frame.",
                 }),
-            },
-            "optional": {
                 "context": ("PROJECT_CONTEXT", {
                     "tooltip": "Tokens for file, from PD Project/Custom Context.",
                 }),
@@ -353,16 +318,9 @@ class PDLoad:
         }
 
 
-def _register_routes():
-    try:
-        from aiohttp import web
-        from server import PromptServer
-    except ImportError:
-        return
-    if getattr(PromptServer, "instance", None) is None:
-        return
-
-    @PromptServer.instance.routes.post("/pipedream/load/check")
+routes, web = server_routes()
+if routes is not None:
+    @routes.post("/pipedream/load/check")
     async def load_check_route(request):
         """``{"path"}`` -> ``{"folder", "name"}`` when it is an existing file, else ``{}``."""
         try:
@@ -370,6 +328,3 @@ def _register_routes():
             return web.json_response(split_file(str(body.get("path", ""))) or {})
         except Exception as exc:
             return web.json_response({"error": str(exc)}, status=400)
-
-
-_register_routes()

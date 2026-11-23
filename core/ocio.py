@@ -314,8 +314,6 @@ def display_processor(config, config_path, in_colorspace, display, view, inverse
     return _cpu_processor(cfg_key, cfg, ("dv", in_colorspace, display, view, bool(inverse)), build)
 
 
-LUT_EXTENSIONS = (".cube", ".3dl", ".csp", ".spi1d", ".spi3d", ".spimtx", ".cub",
-                  ".clf", ".ctf", ".lut", ".cc", ".ccc", ".cdl", ".mga", ".m3d", ".hdl", ".vf")
 LUT_INTERPOLATIONS = ("best", "tetrahedral", "linear", "nearest")
 
 
@@ -333,8 +331,8 @@ def lut_processor(path: str, inverse: bool = False, interpolation: str = "best")
     """
     CPU processor applying a LUT file with an OCIO FileTransform.
 
-    Any format OCIO reads works (``LUT_EXTENSIONS``: .cube, .3dl, .csp,
-    .spi1d/.spi3d, CLF/CTF, CDL...).  The LUT is applied to the values as
+    Any format OCIO reads works (.cube, .3dl, .csp, .spi1d/.spi3d,
+    CLF/CTF, CDL...).  The LUT is applied to the values as
     they are: convert to the colorspace it expects first (e.g. with PD OCIO
     Transform).  ``inverse`` inverts it (exact for 1D LUTs and matrices,
     an approximation for 3D LUTs).  Cached by path, modification time and

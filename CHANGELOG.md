@@ -2,6 +2,21 @@
 
 ## 0.2.0 (unreleased)
 
+### Workflows, docs and cleanup
+- Example workflows 01 (output basics), 02 (load and read back), 03 (video
+  utilities) and 04 (colour with OCIO) run without a model, using ComfyUI's
+  `input/example.png`; 05 and 06 (wedges) are unchanged
+- README tightened; node names stay on one line in the table
+- PD Load: a full path in `file` (e.g. PD Output's `path`) is used as is,
+  whatever `path_mode` and `base_path` say. `sequence_from_file` is an
+  optional input, so API prompts without it keep working
+- PD Output previews ProRes and other video it cannot show directly as a
+  playable mp4 (was an animated WebP), the same as PD Load
+- Shared code: `core/paths.py` (frame mark, root folder and inside-folder
+  checks for PD Output and PD Load), `core/comfy.py` (ComfyUI folders and
+  server routes), preview helpers in `core/media.py`, and
+  `trackPreviewMedia` in `web/pd_common.js`
+
 ### PD Load and PD OCIO Apply LUT
 - PD Load: `template` is now `file` (settings `load.template` →
   `load.file`, empty by default). Paste a full file path into `file` or

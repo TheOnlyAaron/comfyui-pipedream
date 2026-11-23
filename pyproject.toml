@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-pipedream"
 version = "0.2.0"
-description = "Production pipeline utility nodes for ComfyUI — output naming and writing, token strings, video utilities, OCIO color transforms, sound cues, wedge iteration and switching."
+description = "Production pipeline utility nodes for ComfyUI — token-based output and loading on local and network paths, wedges, video utilities, OCIO color and LUTs, sound cues and switching."
 license = "MIT"
 requires-python = ">=3.10"
 authors = [{ name = "Aaron Dabelow" }]

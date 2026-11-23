@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { chain, clearClassicVideoPreview, findWidget, isInputLinked, showSlots, showWidgets } from "./pd_common.js";
+import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Output — hide widgets and sockets that do not apply to   */
@@ -14,7 +14,6 @@ import { chain, clearClassicVideoPreview, findWidget, isInputLinked, showSlots, 
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
 const ALPHA_IMAGE_FORMATS = ["png", "exr", "webp"];
-const VIDEO_EXTS = /\.(mp4|webm|mov|mkv)$/i;
 
 function sync(node) {
     if (node._pdSyncing) return;
@@ -58,15 +57,7 @@ app.registerExtension({
         // Deferred so a slot is never removed inside the link operation that unlinked it.
         chain(node, "onConnectionsChange", () => queueMicrotask(() => sync(node)));
 
-        // The frontend previews any node with a VIDEO input as video unless
-        // previewMediaType says otherwise; our previews are usually images.
-        node.previewMediaType = "image";
-        chain(node, "onExecuted", function (output) {
-            const isVideo = output?.animated?.some(Boolean) &&
-                output?.images?.some(i => VIDEO_EXTS.test(i?.filename ?? ""));
-            this.previewMediaType = isVideo ? "video" : "image";
-            if (!isVideo && !globalThis.LiteGraph?.vueNodesMode) clearClassicVideoPreview(this);
-        });
+        trackPreviewMedia(node);
 
         sync(node);
     },

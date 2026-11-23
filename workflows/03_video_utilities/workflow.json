@@ -1,0 +1,1461 @@
+{
+  "id": "48f05ddb-e4be-4311-9485-4018567fff93",
+  "revision": 0,
+  "last_node_id": 12,
+  "last_link_id": 11,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [
+        0,
+        -330
+      ],
+      "size": [
+        600,
+        290
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
+      ],
+      "widgets_values_named": {
+        "text": "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "PDLoad",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        274.373046875,
+        740
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "file",
+          "name": "file",
+          "type": "STRING",
+          "widget": {
+            "name": "file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "widget": {
+            "name": "frame_count"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "every_nth",
+          "name": "every_nth",
+          "type": "INT",
+          "widget": {
+            "name": "every_nth"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence_from_file",
+          "name": "sequence_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "sequence_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps_from_file",
+          "name": "fps_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "fps_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            1
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "first_frame",
+          "name": "first_frame",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "title": "Source image",
+      "properties": {
+        "Node name for S&R": "PDLoad"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "example.png",
+        "auto",
+        0,
+        0,
+        1,
+        true,
+        true,
+        24,
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "file": "example.png",
+        "format": "auto",
+        "start_frame": 0,
+        "frame_count": 0,
+        "every_nth": 1,
+        "sequence_from_file": true,
+        "fps_from_file": true,
+        "fps": 24,
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 3,
+      "type": "RepeatImageBatch",
+      "pos": [
+        420,
+        0
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1
+        },
+        {
+          "localized_name": "amount",
+          "name": "amount",
+          "type": "INT",
+          "widget": {
+            "name": "amount"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RepeatImageBatch"
+      },
+      "widgets_values": [
+        48
+      ],
+      "widgets_values_named": {
+        "amount": 48
+      }
+    },
+    {
+      "id": 4,
+      "type": "PDImagesToVideo",
+      "pos": [
+        420,
+        200
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            3,
+            6,
+            7
+          ]
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDImagesToVideo"
+      },
+      "widgets_values": [
+        24
+      ],
+      "widgets_values_named": {
+        "fps": 24
+      }
+    },
+    {
+      "id": 5,
+      "type": "PDOutput",
+      "pos": [
+        820,
+        0
+      ],
+      "size": [
+        420,
+        618
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 3
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "template",
+          "name": "template",
+          "type": "STRING",
+          "widget": {
+            "name": "template"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_padding",
+          "name": "frame_padding",
+          "type": "INT",
+          "widget": {
+            "name": "frame_padding"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "crf",
+          "name": "crf",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "crf"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "prores_profile",
+          "name": "prores_profile",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "prores_profile"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "create_dirs",
+          "name": "create_dirs",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "create_dirs"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "overwrite",
+          "name": "overwrite",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "overwrite"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "save_metadata",
+          "name": "save_metadata",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_metadata"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_precision",
+          "name": "exr_precision",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_precision"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_compression",
+          "name": "exr_compression",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_compression"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": [
+            4,
+            5
+          ]
+        },
+        {
+          "localized_name": "path_sidecar",
+          "name": "path_sidecar",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "path_all",
+          "name": "path_all",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDOutput"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "pipedream_demo/clip_review",
+        "mp4",
+        1001,
+        4,
+        24,
+        18,
+        "auto",
+        true,
+        true,
+        true,
+        "half",
+        "zip",
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "template": "pipedream_demo/clip_review",
+        "format": "mp4",
+        "start_frame": 1001,
+        "frame_padding": 4,
+        "fps": 24,
+        "crf": 18,
+        "prores_profile": "auto",
+        "create_dirs": true,
+        "overwrite": true,
+        "save_metadata": true,
+        "exr_precision": "half",
+        "exr_compression": "zip",
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 6,
+      "type": "PDLoad",
+      "pos": [
+        1300,
+        0
+      ],
+      "size": [
+        274.373046875,
+        794.373046875
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "file",
+          "name": "file",
+          "type": "STRING",
+          "widget": {
+            "name": "file"
+          },
+          "link": 4
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "widget": {
+            "name": "frame_count"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "every_nth",
+          "name": "every_nth",
+          "type": "INT",
+          "widget": {
+            "name": "every_nth"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence_from_file",
+          "name": "sequence_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "sequence_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps_from_file",
+          "name": "fps_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "fps_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "first_frame",
+          "name": "first_frame",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "title": "Read back the mp4",
+      "properties": {
+        "Node name for S&R": "PDLoad"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "",
+        "auto",
+        0,
+        0,
+        1,
+        true,
+        true,
+        24,
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "file": "",
+        "format": "auto",
+        "start_frame": 0,
+        "frame_count": 0,
+        "every_nth": 1,
+        "sequence_from_file": true,
+        "fps_from_file": true,
+        "fps": 24,
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 7,
+      "type": "PDSound",
+      "pos": [
+        1300,
+        1180
+      ],
+      "size": [
+        270,
+        414
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "shape": 7,
+          "type": "*",
+          "link": 5
+        },
+        {
+          "localized_name": "enabled",
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enabled"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "play_when",
+          "name": "play_when",
+          "type": "COMBO",
+          "widget": {
+            "name": "play_when"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sound",
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "volume",
+          "name": "volume",
+          "type": "FLOAT",
+          "widget": {
+            "name": "volume"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_url",
+          "name": "custom_url",
+          "type": "STRING",
+          "widget": {
+            "name": "custom_url"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "when_cached",
+          "name": "when_cached",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "when_cached"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "error_tone",
+          "name": "error_tone",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "error_tone"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDSound"
+      },
+      "widgets_values": [
+        true,
+        "queue finished",
+        "chime",
+        0.6,
+        "",
+        false,
+        true
+      ],
+      "widgets_values_named": {
+        "enabled": true,
+        "play_when": "queue finished",
+        "sound": "chime",
+        "volume": 0.6,
+        "custom_url": "",
+        "when_cached": false,
+        "error_tone": true
+      }
+    },
+    {
+      "id": 8,
+      "type": "PDVideoGetFrame",
+      "pos": [
+        420,
+        420
+      ],
+      "size": [
+        270,
+        138
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "link": 6
+        },
+        {
+          "localized_name": "mode",
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "index",
+          "name": "index",
+          "type": "INT",
+          "widget": {
+            "name": "index"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            9
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "frame_index",
+          "name": "frame_index",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDVideoGetFrame"
+      },
+      "widgets_values": [
+        "last",
+        0
+      ],
+      "widgets_values_named": {
+        "mode": "last",
+        "index": 0
+      }
+    },
+    {
+      "id": 9,
+      "type": "PDVideoToImages",
+      "pos": [
+        420,
+        640
+      ],
+      "size": [
+        270,
+        186
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "link": 7
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_limit",
+          "name": "frame_limit",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "frame_limit"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "step",
+          "name": "step",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "step"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            8
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDVideoToImages"
+      },
+      "widgets_values": [
+        12,
+        12,
+        2
+      ],
+      "widgets_values_named": {
+        "start_frame": 12,
+        "frame_limit": 12,
+        "step": 2
+      }
+    },
+    {
+      "id": 10,
+      "type": "PDImageFromBatch",
+      "pos": [
+        420,
+        900
+      ],
+      "size": [
+        270,
+        142
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 8
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "shape": 7,
+          "type": "MASK",
+          "link": null
+        },
+        {
+          "localized_name": "mode",
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "index",
+          "name": "index",
+          "type": "INT",
+          "widget": {
+            "name": "index"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            10
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "frame_index",
+          "name": "frame_index",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDImageFromBatch"
+      },
+      "widgets_values": [
+        "index",
+        -1
+      ],
+      "widgets_values_named": {
+        "mode": "index",
+        "index": -1
+      }
+    },
+    {
+      "id": 11,
+      "type": "PDSwitch",
+      "pos": [
+        420,
+        1120
+      ],
+      "size": [
+        270,
+        142
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "index",
+          "name": "index",
+          "shape": 7,
+          "type": "INT",
+          "link": null
+        },
+        {
+          "localized_name": "input_1",
+          "name": "input_1",
+          "shape": 7,
+          "type": "*",
+          "link": 9
+        },
+        {
+          "localized_name": "input_2",
+          "name": "input_2",
+          "shape": 7,
+          "type": "*",
+          "link": 10
+        },
+        {
+          "localized_name": "mode",
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "select",
+          "name": "select",
+          "type": "INT",
+          "widget": {
+            "name": "select"
+          },
+          "link": null
+        },
+        {
+          "name": "input_3",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "output",
+          "name": "output",
+          "type": "*",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDSwitch"
+      },
+      "widgets_values": [
+        "manual",
+        0
+      ],
+      "widgets_values_named": {
+        "mode": "manual",
+        "select": 0
+      }
+    },
+    {
+      "id": 12,
+      "type": "PreviewImage",
+      "pos": [
+        820,
+        1120
+      ],
+      "size": [
+        420,
+        360
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "title": "Switched frame",
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      4,
+      0,
+      5,
+      3,
+      "VIDEO"
+    ],
+    [
+      4,
+      5,
+      0,
+      6,
+      4,
+      "STRING"
+    ],
+    [
+      5,
+      5,
+      0,
+      7,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      4,
+      0,
+      8,
+      0,
+      "VIDEO"
+    ],
+    [
+      7,
+      4,
+      0,
+      9,
+      0,
+      "VIDEO"
+    ],
+    [
+      8,
+      9,
+      0,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      9,
+      8,
+      0,
+      11,
+      1,
+      "IMAGE"
+    ],
+    [
+      10,
+      10,
+      0,
+      11,
+      2,
+      "IMAGE"
+    ],
+    [
+      11,
+      11,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.62,
+      "offset": [
+        40,
+        380
+      ]
+    }
+  },
+  "version": 0.4
+}

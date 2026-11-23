@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, clearClassicVideoPreview, findWidget, showSlots, showWidgets } from "./pd_common.js";
+import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Load                                                     */
@@ -16,7 +16,6 @@ import { chain, clearClassicVideoPreview, findWidget, showSlots, showWidgets } f
 /* ------------------------------------------------------------------ */
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm", "mkv"];
-const VIDEO_EXTS = /\.(mp4|webm|mov|mkv)$/i;
 const ABSOLUTE = /^([A-Za-z]:[\\/]|\\\\|\/\/|\/)/;
 
 function sync(node) {
@@ -107,15 +106,7 @@ app.registerExtension({
         button.serialize = false;
         button.tooltip = "Run just this node to check what it loads (preview and info below).";
 
-        // Images by default; a multi-frame load previews as a video (an mp4 in temp).
-        node.previewMediaType = "image";
-        chain(node, "onExecuted", function (output) {
-            const isVideo = output?.animated?.some(Boolean) &&
-                output?.images?.some(i => VIDEO_EXTS.test(i?.filename ?? ""));
-            this.previewMediaType = isVideo ? "video" : "image";
-            if (!isVideo && !globalThis.LiteGraph?.vueNodesMode) clearClassicVideoPreview(this);
-        });
-
+        trackPreviewMedia(node);
         chain(node, "onConfigure", () => sync(node));
         chain(node, "onConnectionsChange", () => queueMicrotask(() => sync(node)));
         sync(node);

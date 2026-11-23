@@ -25,6 +25,7 @@ per job; it is also the starting point for headless submission.
 
 import sys
 
+from ..core.comfy import server_routes
 from ..core.common import ANY, display_name
 from ..core.wedge import (
     INPUT_PREFIX,
@@ -175,16 +176,9 @@ def plan_prompt(prompt: dict, output_ids=None) -> dict:
     return {**wedge_plan, "jobs": jobs(wedge_plan)}
 
 
-def _register_routes():
-    try:
-        from aiohttp import web
-        from server import PromptServer
-    except ImportError:
-        return
-    if getattr(PromptServer, "instance", None) is None:
-        return
-
-    @PromptServer.instance.routes.post("/pipedream/wedge/plan")
+routes, web = server_routes()
+if routes is not None:
+    @routes.post("/pipedream/wedge/plan")
     async def wedge_plan_route(request):
         try:
             body = await request.json()
@@ -197,6 +191,3 @@ def _register_routes():
             print(f"[Pipedream] Error: wedge plan failed: {exc}", file=sys.stderr)
             return web.json_response({"error": f"Wedge plan failed: {exc}"}, status=400)
         return web.json_response(result)
-
-
-_register_routes()
