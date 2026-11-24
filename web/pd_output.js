@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
@@ -10,6 +11,13 @@ import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewM
 /*    the alpha input for formats without alpha (jpg/mp4/webm, ProRes  */
 /*    422 HQ); the video output for image formats.                     */
 /*  Linked widgets and sockets are never hidden.                       */
+/*                                                                     */
+/*  "Explore Output" shows the last written file in Explorer/Finder.   */
+/*  The path is kept in node.properties, so it survives a save.        */
+/*                                                                     */
+/*  Dropping or opening a PD Output sidecar .json reopens the workflow */
+/*  stored in it (or its API prompt, for sidecars written before the   */
+/*  workflow was stored) instead of failing as a broken workflow.      */
 /* ------------------------------------------------------------------ */
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
@@ -43,8 +51,64 @@ function sync(node) {
     }
 }
 
+const LAST_OUTPUT = "pd_last_output";
+
+function toast(severity, detail) {
+    if (app.extensionManager?.toast?.add) {
+        app.extensionManager.toast.add({ severity, summary: "PD Output", detail, life: 4000 });
+    } else {
+        alert(detail);
+    }
+}
+
+async function explore(node) {
+    const path = node.properties?.[LAST_OUTPUT];
+    if (!path) {
+        toast("warn", "Nothing written yet: run the node first.");
+        return;
+    }
+    try {
+        const response = await api.fetchApi("/pipedream/output/reveal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+        });
+        const result = await response.json();
+        if (result.error) toast("error", result.error);
+    } catch (error) {
+        toast("error", String(error));
+    }
+}
+
+function isSidecar(data) {
+    return data && typeof data === "object" && data.node === "PDOutput" && "context" in data;
+}
+
+/** Wrap app.loadGraphData so a PD Output sidecar loads the workflow it stores. */
+function acceptSidecars() {
+    const original = app.loadGraphData;
+    if (typeof original !== "function" || original._pdSidecar) return;
+    const wrapped = async function (graphData, ...rest) {
+        if (!isSidecar(graphData)) return original.call(this, graphData, ...rest);
+        if (Array.isArray(graphData.workflow?.nodes)) {
+            return original.call(this, graphData.workflow, ...rest);
+        }
+        if (graphData.prompt && typeof app.loadApiJson === "function") {
+            const name = typeof rest[2] === "string" ? rest[2] : "sidecar";
+            return app.loadApiJson(graphData.prompt, name);
+        }
+        toast("error", "This sidecar holds no workflow.");
+    };
+    wrapped._pdSidecar = true;
+    app.loadGraphData = wrapped;
+}
+
 app.registerExtension({
     name: "Pipedream.Output",
+
+    setup() {
+        acceptSidecars();
+    },
 
     async nodeCreated(node) {
         if (node.comfyClass !== "PDOutput") return;
@@ -58,6 +122,18 @@ app.registerExtension({
         chain(node, "onConnectionsChange", () => queueMicrotask(() => sync(node)));
 
         trackPreviewMedia(node);
+
+        const button = node.addWidget("button", "Explore Output", null, () => explore(node),
+                                      { serialize: false });
+        button.serialize = false;
+        button.tooltip = "Show the last written file in Explorer (Finder on macOS).";
+        chain(node, "onExecuted", (output) => {
+            const path = output?.pd_written?.[0];
+            if (path) {
+                node.properties ??= {};
+                node.properties[LAST_OUTPUT] = path;
+            }
+        });
 
         sync(node);
     },

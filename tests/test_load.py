@@ -91,6 +91,21 @@ class FindCase(unittest.TestCase):
         bare = load.find_media(self.path("0002.jpg"), sequence_from_file=True)
         self.assertEqual((bare["frames"], bare["pattern"]), ([1, 2], self.path("####.jpg")))
 
+    def test_sequence_from_file_sizes_differ(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        for name, size in (("photo_01.jpg", (632, 468)), ("photo_02.jpg", (620, 467)),
+                           ("photo_03.jpg", (632, 468)), ("plate_1.jpg", (64, 32)),
+                           ("plate_2.jpg", (64, 32))):
+            Image.new("RGB", size).save(self.path(name))
+        photo = load.find_media(self.path("photo_02.jpg"), sequence_from_file=True)
+        self.assertEqual((photo["kind"], photo["paths"]), ("image", [self.path("photo_02.jpg")]))
+        self.assertIn("632x468", photo["note"])
+        plate = load.find_media(self.path("plate_2.jpg"), sequence_from_file=True)
+        self.assertEqual((plate["kind"], plate["note"]), ("sequence", ""))
+
     def test_select_frames(self):
         self.touch(*[f"s.{n}.png" for n in (1001, 1002, 1003, 1005, 1006, 1007)])
         media = load.find_media(self.path("s.####.png"))

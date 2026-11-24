@@ -19,8 +19,8 @@ A connected PD Wedge chain adds its tokens (``{<token>}``,
 
 Each write can produce a sidecar JSON with the resolved tokens, template,
 written paths, frame range, alpha convention, wedge job and the ComfyUI
-prompt.  The
-node shows a preview of what was written, returns the written paths,
+prompt and workflow (drop the sidecar on ComfyUI to reopen the workflow,
+see ``web/pd_output.js``).  The node shows a preview of what was written, returns the written paths,
 passes the images through, returns a VIDEO for written video, and feeds
 the token reference panel in ``web/pipedream.js``.
 
@@ -33,7 +33,7 @@ import sys
 from datetime import datetime
 
 from ..core import settings
-from ..core.comfy import output_directory, temp_directory
+from ..core.comfy import output_directory, reveal_in_file_manager, server_routes, temp_directory
 from ..core.common import display_name
 from ..core.media import (
     EXR_COLORSPACES,
@@ -331,7 +331,8 @@ class PDOutput:
                                "Load Image's mask is inverted: put Invert Mask in between.",
                 }),
             },
-            "hidden": {"prompt": "PROMPT", "unique_id": "UNIQUE_ID"},
+            "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO",
+                       "unique_id": "UNIQUE_ID"},
         }
 
     def execute(self, path_mode, base_path, template, format,
@@ -346,7 +347,7 @@ class PDOutput:
                 exr_precision=settings.get("exr.precision"),
                 exr_compression=settings.get("exr.compression"),
                 exr_colorspace=settings.get("exr.colorspace"), alpha=None, prompt=None,
-                unique_id=None):
+                extra_pnginfo=None, unique_id=None):
         """Write the source and return the ui payload plus outputs.
 
         Omitted optional inputs (e.g. from an API prompt) use the settings
@@ -471,6 +472,7 @@ class PDOutput:
                 },
                 "settings": {"sources": list(settings.sources)},
                 "prompt": prompt,
+                "workflow": (extra_pnginfo or {}).get("workflow"),
             }
             if numbered:
                 metadata["sequence"] = {
@@ -512,6 +514,8 @@ class PDOutput:
                           f"{first:0{frame_padding}d})")
         ui = {"token_reference": [format_token_reference(
             ctx, frame_padding=frame_padding, frame_info=frame_info)]}
+        if written:
+            ui["pd_written"] = [final]
         if previews:
             ui["images"] = previews
             if animated:
@@ -526,3 +530,16 @@ class PDOutput:
             "ui": ui,
             "result": (final, sidecar, "\n".join(written), passthrough, video_out),
         }
+
+
+routes, web = server_routes()
+if routes is not None:
+    @routes.post("/pipedream/output/reveal")
+    async def reveal_route(request):
+        """``{"path"}``: show that file (or its folder) in the file manager of the ComfyUI machine."""
+        try:
+            body = await request.json()
+            return web.json_response(reveal_in_file_manager(str(body.get("path", "")),
+                                                            request.remote))
+        except Exception as exc:
+            return web.json_response({"error": str(exc)}, status=400)

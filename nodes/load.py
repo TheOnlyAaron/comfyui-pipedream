@@ -187,7 +187,8 @@ class PDLoad:
                 "sequence_from_file": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "When file is one frame of a sequence (shot.1001.exr with "
-                               "shot.1002.exr next to it), load the whole sequence. Off: "
+                               "shot.1002.exr next to it), load the whole sequence. Files "
+                               "of different sizes (numbered photos) stay single. Off: "
                                "load just that frame.",
                 }),
                 "context": ("PROJECT_CONTEXT", {
@@ -303,6 +304,8 @@ class PDLoad:
                      + (", audio" if audio else ""))
         if sidecar:
             lines.append(f"sidecar: {len(sidecar)} token(s) ({', '.join(sorted(sidecar))})")
+        if media.get("note"):
+            lines.append(f"! {media['note']}")
         if missing:
             lines.append(f"! missing frames (skipped): {_ranges(missing)}")
 
