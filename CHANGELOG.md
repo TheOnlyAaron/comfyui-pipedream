@@ -2,6 +2,15 @@
 
 ## 0.2.0 (unreleased)
 
+### PD Output and PD Load fixes
+- PD Output: **Explore Output** button shows the last written file in
+  Explorer/Finder; the path is saved with the workflow
+- PD Output: the sidecar stores the workflow, and dropping a sidecar on
+  ComfyUI reopens it (older sidecars open from their API prompt) instead of
+  failing with "e is not iterable"
+- PD Load: `sequence_from_file` leaves numbered files of different sizes
+  (photos) as single images instead of failing on the size check
+
 ### Workflows, docs and cleanup
 - Example workflows 01 (output basics), 02 (load and read back), 03 (video
   utilities) and 04 (colour with OCIO) run without a model, using ComfyUI's
