@@ -147,6 +147,7 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 Loads an image, image sequence or video, and reads back what PD Output wrote.
 
 - **Paste a path:** copy a file's path (Explorer: shift+right click → *Copy as path*) into `file` or `base_path`. Quotes are removed, the path is split into folder and name, `path_mode` switches to `absolute`, and the file loads. **load** (or the selection toolbar's run button) runs just this node.
+- **Drop files:** drag files from Explorer onto the drop zone (or anywhere on the node in the classic canvas). Browsers don't reveal a dropped file's path, so the files are copied to ComfyUI's `input/pipedream` folder (overwriting same-named files) and loaded from there in `relative` mode. Drop every frame of a sequence, plus its sidecar for the tokens. For files on a share, pasting the path loads them in place without copying.
 - **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Output's `path`) is used as is.
 - **What:** `file` may include the extension or leave it to `format`; `auto` tries every type and stops if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
 - **Sequences:** mark the frame with `####`, `%04d` or `{frame}`; PD Output's `name.1001.png` is found without a mark. `start_frame` (frame number, 0 = first), `frame_count` (0 = all) and `every_nth` pick frames; gaps are skipped and listed. `sequence_from_file` (on): a file that is one frame of a sequence loads the whole sequence, unless the frames differ in size (numbered photos such as `IMG_0001.jpg` stay single images).
@@ -197,8 +198,8 @@ The OCIO nodes (**Pipedream/Color**) need OpenColorIO 2.3+.
 Wire anything through `value` (passed on untouched), or leave it dangling.
 
 - `play_when` **node reached** plays when the node runs, so several nodes can announce stages; **queue finished** plays once the queue drains (the error tone if a prompt failed).
-- Cached nodes don't run and aren't forced to; `when_cached` also plays for them. Errors play `error_tone`.
-- Sounds: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` (synthesized) or a `custom URL`; each node has its own sound, volume and test buttons. Sounds play in the tab that queued the prompt.
+- Cached nodes don't run and aren't forced to; `when_cached` also plays for them. Errors play `error_tone`, a buzzer.
+- Sounds: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` (synthesized) or a `custom URL`; each node has its own sound, volume and **test sound** button. Sounds play in the tab that queued the prompt.
 
 ## Alpha and premultiplication
 

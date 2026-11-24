@@ -133,9 +133,48 @@ def _sequence_of(path: str, ext: str, entries: list[str]):
     return [os.path.join(folder, e) for _, e in frames], [n for n, _ in frames]
 
 
+def _exr_size(fh):
+    """``(width, height)`` from an EXR header's dataWindow, or None."""
+    import struct
+
+    head = fh.read(8)
+    if len(head) < 8 or head[:4] != b"\x76\x2f\x31\x01":
+        return None
+    data = fh.read(65536)
+    pos = 0
+    while pos < len(data) and data[pos] != 0:
+        name_end = data.index(b"\0", pos)
+        type_end = data.index(b"\0", name_end + 1)
+        size = struct.unpack_from("<i", data, type_end + 1)[0]
+        value = type_end + 5
+        if data[pos:name_end] == b"dataWindow":
+            x0, y0, x1, y1 = struct.unpack_from("<4i", data, value)
+            return x1 - x0 + 1, y1 - y0 + 1
+        pos = value + size
+    return None
+
+
+def _dpx_size(fh):
+    """``(width, height)`` from a DPX image header, or None."""
+    import struct
+
+    head = fh.read(784)
+    if len(head) < 784 or head[:4] not in (b"SDPX", b"XPDS"):
+        return None
+    order = ">" if head[:4] == b"SDPX" else "<"
+    return struct.unpack_from(order + "2I", head, 772)
+
+
 def _image_size(path: str):
-    """``(width, height)`` from the file header (Pillow, no decode), or None when unreadable."""
+    """
+    ``(width, height)`` from the file header without decoding, or None when
+    unreadable: EXR and DPX headers are parsed here, other formats by Pillow.
+    """
     try:
+        ext = os.path.splitext(path)[1].lower()
+        if ext in (".exr", ".dpx"):
+            with open(path, "rb") as fh:
+                return _exr_size(fh) if ext == ".exr" else _dpx_size(fh)
         from PIL import Image
 
         with Image.open(path) as img:
@@ -147,8 +186,8 @@ def _image_size(path: str):
 def _sizes_differ(paths: list[str], picked: str):
     """
     ``(other, size, picked_size)`` when the first, last or picked frame of a
-    guessed sequence differ in size, else None.  Unreadable headers (EXR,
-    DPX, which Pillow does not open) count as matching.
+    guessed sequence differ in size, else None.  Unreadable headers count
+    as matching.
     """
     picked_size = _image_size(picked)
     if picked_size is None:
