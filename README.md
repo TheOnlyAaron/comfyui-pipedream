@@ -130,7 +130,7 @@ PD Project Context (project=DITC, sequence=sq010)
 
 ## PD Output
 
-Resolves `template` under ComfyUI's output folder (`relative`) or `base_path` (`absolute`, UNC works) and writes `images` or a connected `video`.
+Resolves `file` (the `template` input in API prompts and settings) under ComfyUI's output folder (`relative`) or `base_path` (`absolute`, UNC works) and writes `images` or a connected `video`.
 
 - **Formats:** png, exr, jpg, webp (one file per frame), mp4 (H.264), mov (ProRes), webm (VP9). A `video` input keeps its frame rate and audio; with an image format its frames become a sequence.
 - **Sequences:** `{frame}` places the frame number (`{shot}_{version}.{frame}` → `sh010_v001.1001.exr`), starting at `start_frame` with `frame_padding` digits. Without `{frame}`, batches of more than one frame get `.1001` before the extension (`sequence.frame_separator` can make it `_` or `-`); a single image gets no number. Video formats drop `{frame}`.

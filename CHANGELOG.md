@@ -8,6 +8,9 @@
 - PD Output: the sidecar stores the workflow, and dropping a sidecar on
   ComfyUI reopens it (older sidecars open from their API prompt) instead of
   failing with "e is not iterable"
+- PD Output: the `template` widget reads `file`, like PD Load (the input
+  name is unchanged, so saved workflows and API prompts keep working). An
+  empty file name now stops with an error instead of writing nothing
 - PD Load: `sequence_from_file` leaves numbered files of different sizes
   (photos) as single images instead of failing on the size check
 

@@ -123,6 +123,11 @@ app.registerExtension({
 
         trackPreviewMedia(node);
 
+        // Shown as "file" like PD Load; the input stays "template" so saved workflows
+        // and API prompts keep working.
+        const templateWidget = findWidget(node, "template");
+        if (templateWidget) templateWidget.label = "file";
+
         const button = node.addWidget("button", "Explore Output", null, () => explore(node),
                                       { serialize: false });
         button.serialize = false;
