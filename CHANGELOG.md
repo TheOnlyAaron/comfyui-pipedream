@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+### PD Profiler (new)
+- Connect it to anything: it profiles only what that input reads from
+  (models, latent shapes, VRAM per stage, RAM, time), so several flows in
+  one graph each get their own numbers. No outputs; put it after PD Output
+  or branch it off a flow
+- **profile** evaluates without queuing anything; queued runs add measured
+  node times, the run's VRAM peak (optionally per node), the models
+  ComfyUI holds and the input received
+- Models are read from their file headers (safetensors, GGUF) and
+  identified with ComfyUI's own detection; memory uses ComfyUI's own
+  formulas (`memory_required`, VAE `memory_used_decode`, tiled per tile)
+- Flags sizes ComfyUI rounds down (1080 → 1072 on 16-px models) and frame
+  counts off the 4k+1 / 8k+1 grid
+- `vram_gb` / `ram_gb` emulate another machine; **use this machine**
+  restores this one's values
+- Wedges: follows only the selected row; time estimates spell out once
+  per queue + jobs × per job
+- API nodes count as zero and are flagged
+- `export_sidecar` writes `<name>.profile.json` next to PD Output's file
+  (link its `path`), into a folder, or into `output/pipedream_profiles`
+- New settings: `profiler.enabled`, `profiler.vram_gb`, `profiler.ram_gb`,
+  `profiler.vram_per_node`, `profiler.export_sidecar`
+
+### Example workflows
+- 06 Wedge basics adds PD Profiler with a sidecar per job
+
 ## 0.2.1 (2026-11-24)
 
 ### Example workflows

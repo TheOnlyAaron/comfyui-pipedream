@@ -142,3 +142,21 @@
 
 # PD Sound default trigger. One of: "node reached", "queue finished".
 # play_when = "node reached"
+
+[profiler]
+# PD Profiler runs with queued runs and reports what was measured.
+# enabled = true
+
+# PD Profiler: GPU memory to budget against in GB, e.g. the farm's cards. 0:
+# the machine ComfyUI runs on. Range 0.0..1024.0.
+# vram_gb = 0.0
+
+# PD Profiler: system memory to budget against in GB. 0: the machine ComfyUI
+# runs on. Range 0.0..8192.0.
+# ram_gb = 0.0
+
+# PD Profiler: measure each node's VRAM peak during runs.
+# vram_per_node = false
+
+# PD Profiler: write the profile as JSON after each run.
+# export_sidecar = false

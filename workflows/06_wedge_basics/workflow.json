@@ -1,8 +1,8 @@
 {
   "id": "63a52ae2-949d-4cb6-90c9-2940fdedf037",
   "revision": 0,
-  "last_node_id": 5,
-  "last_link_id": 5,
+  "last_node_id": 6,
+  "last_link_id": 7,
   "nodes": [
     {
       "id": 1,
@@ -832,7 +832,9 @@
           "localized_name": "path",
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": [
+            7
+          ]
         },
         {
           "localized_name": "path_sidecar",
@@ -850,7 +852,9 @@
           "localized_name": "images",
           "name": "images",
           "type": "IMAGE",
-          "links": null
+          "links": [
+            6
+          ]
         }
       ],
       "properties": {
@@ -890,6 +894,101 @@
         "exr_compression": "zip",
         "exr_colorspace": "as is"
       }
+    },
+    {
+      "id": 6,
+      "type": "PDProfiler",
+      "pos": [
+        1300,
+        0
+      ],
+      "size": [
+        560,
+        450
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "source",
+          "name": "source",
+          "type": "*",
+          "link": 6
+        },
+        {
+          "localized_name": "enabled",
+          "name": "enabled",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enabled"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "vram_gb",
+          "name": "vram_gb",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "vram_gb"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "ram_gb",
+          "name": "ram_gb",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "ram_gb"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "vram_per_node",
+          "name": "vram_per_node",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "vram_per_node"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "export_sidecar",
+          "name": "export_sidecar",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "export_sidecar"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "path",
+          "name": "path",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "path"
+          },
+          "link": 7
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PDProfiler"
+      },
+      "widgets_values": [
+        true,
+        0,
+        0,
+        false,
+        true,
+        ""
+      ]
     }
   ],
   "links": [
@@ -932,6 +1031,22 @@
       5,
       2,
       "WEDGE"
+    ],
+    [
+      6,
+      5,
+      3,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      7,
+      5,
+      0,
+      6,
+      6,
+      "STRING"
     ]
   ],
   "groups": [],

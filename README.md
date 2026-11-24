@@ -112,6 +112,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 | **PD&nbsp;OCIO&nbsp;Display** | Applies an OCIO display/view transform (e.g. ACES for sRGB), or its inverse. |
 | **PD&nbsp;OCIO&nbsp;Apply&nbsp;LUT** | Applies a LUT file (.cube, .3dl, .spi3d, CLF...), forward or inverse. |
 | **PD&nbsp;Sound** | Plays a browser sound when its point in the graph runs, or when the queue finishes. [More](#pd-sound) |
+| **PD&nbsp;Profiler** | Profiles everything upstream of its input: models, latent sizes, VRAM and RAM per stage, time, API nodes. Evaluates without running; measures real runs. [More](#pd-profiler) |
 
 ## Example workflows
 
@@ -124,7 +125,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 | 03 | [Video frames](workflows/03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
 | 04 | [Sound](workflows/04_sound/) | Inline and queue-finished sound cues, error buzzer |
 | 05 | [Colour with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
-| 06 | [Wedge basics](workflows/06_wedge_basics/) | One wedge, three sizes, three files; no model |
+| 06 | [Wedge basics](workflows/06_wedge_basics/) | One wedge, three sizes, three files, profiled; no model |
 | 07 | [Prompt wedge](workflows/07_prompt_wedge/) | One wedge of three prompts: 3 jobs, same seed |
 | 08 | [Product matrix](workflows/08_product_matrix/) | Grouped and chained wedges: 3 products × 2 looks |
 
@@ -229,6 +230,23 @@ Wire anything through `value` (passed on untouched), or leave it dangling.
 - `play_when` **node reached** plays when the node runs, so several nodes can announce stages; **queue finished** plays once the queue drains (the error tone if a prompt failed).
 - Cached nodes don't run and aren't forced to; `when_cached` also plays for them. Errors play `error_tone`, a buzzer.
 - Sounds: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` (synthesized) or a `custom URL`; each node has its own sound, volume and **test sound** button. Sounds play in the tab that queued the prompt.
+
+## PD Profiler
+
+Like a profile node in Nuke: connect `source` to anything and it reports on everything that input reads from, and nothing else, so several flows in one graph each get their own numbers. It has no outputs: put it after PD Output (on its `images`) or branch it off a flow. Core Save nodes have no outputs; branch off what feeds them.
+
+- **profile** evaluates without queuing anything. **Queued runs** (`enabled`) add what was measured. Nothing needs typing in: the numbers come from the graph, the model files, ComfyUI's own formulas and this machine.
+- **Models:** each loader's file is identified from its header (safetensors and GGUF tensor tables; no weights are loaded) with ComfyUI's own model detection, so renamed files still match. It reports parameters, data type and the bytes ComfyUI keeps in memory. LoRAs are listed. If detection fails, the name is matched instead and the report says so.
+- **Latent:** the exact shape from the latent node's widgets, with ComfyUI's rounding down. A size that loses pixels (1080 high on a 16-px model decodes to 1072) or a frame count that isn't 4k+1 / 8k+1 is flagged with the values to use.
+- **Memory by stage**, because ComfyUI frees each model before the next: text encode, each sampler (weights + ComfyUI's `memory_required` + latent; Wan 2.2's two experts are two stages), each VAE decode (weights + ComfyUI's decode estimate, per tile for tiled decode). Each stage reads fits / offloads (with how much) / over budget against the VRAM budget. The peak is the largest stage. RAM: model weights plus decoded frames (float32).
+- **Budget:** `vram_gb` / `ram_gb` emulate another machine, such as a farm node's card; 0 means this machine. **use this machine** fills in this machine's values.
+- **Time:** after a run, each node's time is kept on the node (saved with the workflow). Later evaluations scale sampler times by steps and latent size. With wedges: a once-per-queue part (loaders, encoders, nodes before the wedge) plus the per-job part times the job count.
+- **Wedges:** only the selected row's branch is followed (the queued row, else `solo`, else row 1). The report shows the job count and says when rows read from different branches.
+- **API nodes** count as zero (they run off-site) and are flagged at the top, since their inputs leave the machine.
+- **Measured runs** add the time of each upstream node (or cached), the run's VRAM peak, the models ComfyUI holds and the input received. `vram_per_node` also measures each node's VRAM peak; it resets torch's peak counter as each node starts, so it is off by default (see its tooltip).
+- **Sidecar** (`export_sidecar`): the profile as JSON after each run. Link PD Output's `path` to `path` and it is written next to the output as `<name>.profile.json` (frame number dropped). Otherwise it goes into a typed folder, or `output/pipedream_profiles/`.
+
+Memory figures are ComfyUI's own estimates (the ones it loads and offloads by), not a guarantee. Text encoder activations and custom samplers with their own memory handling aren't modelled. Without a GPU, the profile uses ComfyUI's GPU formulas and 16-bit data types.
 
 ## Alpha and premultiplication
 
