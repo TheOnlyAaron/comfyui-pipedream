@@ -5,7 +5,8 @@ graph itself, the model file headers and ComfyUI's own formulas.
 ``build_profile(prompt, node_id, env)`` walks upstream from *node_id* in
 an API prompt (the graph as it will run: subgraphs flattened, bypassed
 nodes removed) and returns a JSON-friendly report; ``format_report``
-turns it into the text shown on the node.
+turns it into the text shown on the node and ``build_chart`` into the
+data for the chart (``web/pd_profiler_chart.js``).  See docs/profiler.md.
 
 The walk follows links; at a PD Wedge only the selected row's input is
 followed (the queued row, else the solo row, else row 1), so one wedge

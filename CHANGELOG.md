@@ -26,6 +26,8 @@
   times and peak after a run; a RAM bar of models and pixels
 - `export_sidecar` writes `<name>.profile.json` next to PD Output's file
   (link its `path`), into a folder, or into `output/pipedream_profiles`
+- [docs/profiler.md](docs/profiler.md): where each number comes from, the
+  sidecar format, use without the browser
 - New settings: `profiler.enabled`, `profiler.vram_gb`, `profiler.ram_gb`,
   `profiler.vram_per_node`, `profiler.export_sidecar`
 

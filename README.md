@@ -249,6 +249,8 @@ Like a profile node in Nuke: connect `source` to anything and it reports on ever
 
 Memory figures are ComfyUI's own estimates (the ones it loads and offloads by), not a guarantee. Text encoder activations and custom samplers with their own memory handling aren't modelled. Without a GPU, the profile uses ComfyUI's GPU formulas and 16-bit data types.
 
+How each number is worked out, the sidecar format and use without the browser: [docs/profiler.md](docs/profiler.md).
+
 ## Alpha and premultiplication
 
 Inside ComfyUI, IMAGE + MASK are **straight** and every Pipedream mask uses **1.0 = opaque**. Pipedream never premultiplies inside the graph; files follow their format's convention, recorded in the sidecar:
