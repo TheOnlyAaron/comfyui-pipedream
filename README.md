@@ -1,6 +1,6 @@
 # ComfyUI-PipeDream
 
-Production pipeline nodes for ComfyUI: token-based output and loading on local and network paths, wedges, video utilities, OCIO colour and sound cues.
+Production pipeline nodes for ComfyUI: token-based output and loading on local and network paths, wedges, video utilities, OCIO color and sound cues.
 
 Pipedream is not a visual effects node pack. It is plumbing.
 
@@ -108,7 +108,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 | **PD&nbsp;Video&nbsp;To&nbsp;Images** | Decodes a `VIDEO` to images, mask, audio and fps; only the frame range you ask for. |
 | **PD&nbsp;Video&nbsp;Get&nbsp;Frame** | One frame (first, last, index; negative counts from the end) without decoding the whole clip. |
 | **PD&nbsp;Image&nbsp;From&nbsp;Batch** | One image from a batch (first, last, index), with its mask. |
-| **PD&nbsp;OCIO&nbsp;Transform** | Converts between OpenColorIO colourspaces, optionally through a look. [More](#ocio) |
+| **PD&nbsp;OCIO&nbsp;Transform** | Converts between OpenColorIO colorspaces, optionally through a look. [More](#ocio) |
 | **PD&nbsp;OCIO&nbsp;Display** | Applies an OCIO display/view transform (e.g. ACES for sRGB), or its inverse. |
 | **PD&nbsp;OCIO&nbsp;Apply&nbsp;LUT** | Applies a LUT file (.cube, .3dl, .spi3d, CLF...), forward or inverse. |
 | **PD&nbsp;Sound** | Plays a browser sound when its point in the graph runs, or when the queue finishes. [More](#pd-sound) |
@@ -123,7 +123,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 | 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar, read back with `sequence_mode` |
 | 03 | [Video frames](workflows/03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
 | 04 | [Sound](workflows/04_sound/) | Inline and queue-finished sound cues, error buzzer |
-| 05 | [Colour with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
+| 05 | [Color with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
 | 06 | [Wedge basics](workflows/06_wedge_basics/) | One wedge, three sizes, three files; no model |
 | 07 | [Prompt wedge](workflows/07_prompt_wedge/) | One wedge of three prompts: 3 jobs, same seed |
 | 08 | [Product matrix](workflows/08_product_matrix/) | Grouped and chained wedges: 3 products × 2 looks |
@@ -219,7 +219,7 @@ The OCIO nodes (**Pipedream/Color**) need OpenColorIO 2.3+.
 - **PD OCIO Transform:** `in_colorspace` → `out_colorspace`, optionally through a config **look** (a named grade defined in the config; the built-in configs have one, studio configs add show looks).
 - **PD OCIO Display:** `display`/`view` transform, or `inverse` back to the scene space.
 - **PD OCIO Apply LUT:** any LUT file OCIO reads, from a local or network path; `inverse` is exact for 1D LUTs, approximate for 3D. The LUT sees the values as they are, so convert to its expected space first.
-- **Linear spaces** such as `Linear Rec.709 (sRGB)`, `Linear Rec.2020`, `ACEScg` are in the built-in configs. If the lists show only two colourspaces, OpenColorIO is not installed.
+- **Linear spaces** such as `Linear Rec.709 (sRGB)`, `Linear Rec.2020`, `ACEScg` are in the built-in configs. If the lists show only two colorspaces, OpenColorIO is not installed.
 - Float32 throughout (values outside 0–1 survive), alpha untouched; configs, processors and LUTs are cached and re-read when the file changes.
 
 ## PD Sound

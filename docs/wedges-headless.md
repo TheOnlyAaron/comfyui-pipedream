@@ -27,7 +27,7 @@ for job, rows in enumerate(plan["jobs"]):
 ## Options
 
 1. **Submit route (recommended first step).** `POST /pipedream/wedge/queue` takes the same body as `/prompt` (prompt, client_id, extra_data, front, number). It plans, then queues each job through ComfyUI's own path: `PromptServer.instance` validation plus `prompt_queue.put`, the same as `server.py`'s `post_prompt`. It returns `{"prompt_ids": [...], "total"}`. Clients opt in by changing the URL. The plain `/prompt` keeps its meaning, so the frontend wrapper and this route can never both expand the same prompt.
-2. **Transparent expansion.** `PromptServer.instance.add_on_prompt_handler` sees every `/prompt` body before it's queued. It could queue jobs 1..N-1 itself and return job 0. The prompt would need a marker (e.g. the `pd_wedge_row` keys already present) so prompts the frontend already expanded aren't expanded again. This is more invisible, and so more surprising. It's also tied to an internal hook whose behaviour has changed between ComfyUI versions.
+2. **Transparent expansion.** `PromptServer.instance.add_on_prompt_handler` sees every `/prompt` body before it's queued. It could queue jobs 1..N-1 itself and return job 0. The prompt would need a marker (e.g. the `pd_wedge_row` keys already present) so prompts the frontend already expanded aren't expanded again. This is more invisible, and so more surprising. It's also tied to an internal hook whose behavior has changed between ComfyUI versions.
 3. **Client-side helper.** A small `pipedream_submit.py` (stdlib only) wraps the snippet above for Deadline or other farm scripts. It works against any ComfyUI with the pack installed and needs no server changes.
 
 ## Things to decide when we build it

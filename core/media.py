@@ -1,7 +1,7 @@
 """
 Media and file helpers for PD Output.
 
-Path normalization, alpha and colour helpers, image sequence writing,
+Path normalization, alpha and color helpers, image sequence writing,
 video and EXR encoding through PyAV (the ``av`` package that ships with
 ComfyUI), preview image generation for the node UI, and sidecar metadata
 writing.  No dependencies beyond what ComfyUI already installs.

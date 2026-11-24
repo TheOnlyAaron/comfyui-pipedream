@@ -3,9 +3,9 @@
 ## 0.2.1 (2026-11-24)
 
 ### Example workflows
-- Reorganised so each topic has its own workflow and every node appears in
+- Reorganized so each topic has its own workflow and every node appears in
   at least one: 01 Tokens, 02 Load and save, 03 Video frames, 04 Sound
-  (new), 05 Colour with OCIO, 06 Wedge basics (new, no model needed),
+  (new), 05 Color with OCIO, 06 Wedge basics (new, no model needed),
   07 Prompt wedge, 08 Product matrix. The old 01–06 folders are replaced
 
 ### PD Tokens To String
@@ -56,7 +56,7 @@
 
 ### Workflows, docs and cleanup
 - Example workflows 01 (output basics), 02 (load and read back), 03 (video
-  utilities) and 04 (colour with OCIO) run without a model, using ComfyUI's
+  utilities) and 04 (color with OCIO) run without a model, using ComfyUI's
   `input/example.png`; 05 and 06 (wedges) are unchanged
 - README tightened; node names stay on one line in the table
 - PD Load: a full path in `file` (e.g. PD Output's `path`) is used as is,
