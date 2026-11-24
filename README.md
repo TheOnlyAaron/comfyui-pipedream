@@ -1,4 +1,4 @@
-# ComfyUI-Pipedream
+# ComfyUI-PipeDream
 
 Production pipeline nodes for ComfyUI: token-based output and loading on local and network paths, wedges, video utilities, OCIO colour and sound cues.
 
@@ -9,6 +9,10 @@ Pipedream is not a visual effects node pack. It is plumbing.
 The commands use full paths, so they work from any folder. Restart ComfyUI afterwards; the nodes appear under **Pipedream**.
 
 The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolorio`, BSD-3), for the OCIO nodes. Everything else works without it. Video and EXR use PyAV, which ComfyUI already ships.
+
+### ComfyUI Manager
+
+Search for **PipeDream** in ComfyUI Manager's Custom Nodes Manager and install it, or from a terminal run `comfy node install PipeDream`. Manager installs the dependencies; restart ComfyUI afterwards. The latest registry version is the stable release; Manager's **nightly** is the newest commit on `main`.
 
 ### ComfyUI Desktop (Windows)
 

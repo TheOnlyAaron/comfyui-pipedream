@@ -1,16 +1,17 @@
 [project]
-name = "comfyui-pipedream"
+name = "PipeDream"
 version = "0.2.0"
 description = "Production pipeline utility nodes for ComfyUI — token-based output and loading on local and network paths, wedges, video utilities, OCIO color and LUTs, sound cues and switching."
-license = "MIT"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "Aaron Dabelow" }]
 dependencies = ["opencolorio>=2.3"]
 
 [project.urls]
-Repository = "https://github.com/theonlyaaron/comfyui-pipedream"
+Repository = "https://github.com/TheOnlyAaron/comfyui-pipedream"
+Documentation = "https://github.com/TheOnlyAaron/comfyui-pipedream#readme"
+"Bug Tracker" = "https://github.com/TheOnlyAaron/comfyui-pipedream/issues"
 
 [tool.comfy]
-PublisherId = "pipedream"
-DisplayName = "Pipedream"
-Icon = ""
+PublisherId = "theonlyaaron"
+DisplayName = "PipeDream"

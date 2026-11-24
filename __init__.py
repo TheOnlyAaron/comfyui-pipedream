@@ -7,7 +7,21 @@ wedge iteration and input switching for VFX/animation workflows.  Nodes are clas
 attribute, registered through ``NODE_CLASS_MAPPINGS``.
 """
 
-__version__ = "0.2.0"
+import os
+import re
+
+
+def _read_version() -> str:
+    """The version from pyproject.toml, the single source (the registry publishes from it)."""
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "pyproject.toml"), encoding="utf-8") as fh:
+            match = re.search(r'^version\s*=\s*"([^"]+)"', fh.read(), re.MULTILINE)
+        return match.group(1) if match else "unknown"
+    except OSError:
+        return "unknown"
+
+
+__version__ = _read_version()
 
 from .nodes import ALL_NODES
 

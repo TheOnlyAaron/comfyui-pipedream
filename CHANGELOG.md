@@ -2,6 +2,13 @@
 
 ## 0.2.0 (unreleased)
 
+### Comfy Registry
+- Published to the Comfy Registry as `PipeDream` (publisher `theonlyaaron`),
+  so it installs from ComfyUI Manager. A GitHub Action publishes whenever
+  the version in `pyproject.toml` changes on `main`
+- `pyproject.toml` is the single source of the version (`__version__`
+  reads it); registry license format; `.comfyignore` leaves tests out
+
 ### PD Output and PD Load fixes
 - PD Output: **Explore Output** button shows the last written file in
   Explorer/Finder; the path is saved with the workflow
