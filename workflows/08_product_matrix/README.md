@@ -1,4 +1,4 @@
-# 06 — Product matrix
+# 08 — Product matrix
 
 One base image, three products, two looks: 6 outputs from one graph.
 

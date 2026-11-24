@@ -1,7 +1,7 @@
 {
-  "id": "3fb7c965-35c7-4984-93e6-4158eba83a51",
+  "id": "63a52ae2-949d-4cb6-90c9-2940fdedf037",
   "revision": 0,
-  "last_node_id": 7,
+  "last_node_id": 5,
   "last_link_id": 5,
   "nodes": [
     {
@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
+        "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       ],
       "widgets_values_named": {
-        "text": "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
+        "text": "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -39,7 +39,7 @@
       ],
       "size": [
         274.373046875,
-        740
+        532
       ],
       "flags": {},
       "order": 1,
@@ -123,12 +123,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -221,7 +221,6 @@
           "links": null
         }
       ],
-      "title": "Source image",
       "properties": {
         "Node name for S&R": "PDLoad"
       },
@@ -233,7 +232,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -246,7 +245,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"
@@ -254,17 +253,320 @@
     },
     {
       "id": 3,
-      "type": "PDOCIOTransform",
+      "type": "PDWedge",
+      "pos": [
+        0,
+        620
+      ],
+      "size": [
+        270,
+        282
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "label": "1: studio",
+          "localized_name": "input_1",
+          "name": "input_1",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "localized_name": "token",
+          "name": "token",
+          "type": "STRING",
+          "widget": {
+            "name": "token"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "group",
+          "name": "group",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "group"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "solo",
+          "name": "solo",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "solo"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_1",
+          "name": "value_1",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_1"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_2",
+          "name": "value_2",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_2"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_3",
+          "name": "value_3",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_4",
+          "name": "value_4",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_4"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_5",
+          "name": "value_5",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_5"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_6",
+          "name": "value_6",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_6"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_7",
+          "name": "value_7",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_7"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_8",
+          "name": "value_8",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_8"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_9",
+          "name": "value_9",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_9"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_10",
+          "name": "value_10",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_10"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_11",
+          "name": "value_11",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_11"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_12",
+          "name": "value_12",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_12"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_13",
+          "name": "value_13",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_13"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_14",
+          "name": "value_14",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_14"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_15",
+          "name": "value_15",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_15"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_16",
+          "name": "value_16",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_16"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": null
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "int",
+          "name": "int",
+          "type": "INT",
+          "links": [
+            2,
+            3
+          ]
+        },
+        {
+          "localized_name": "float",
+          "name": "float",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "type": "WEDGE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDWedge"
+      },
+      "widgets_values": [
+        "size",
+        "",
+        0,
+        "256",
+        "512",
+        "1024",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "token": "size",
+        "group": "",
+        "solo": 0,
+        "value_1": "256",
+        "value_2": "512",
+        "value_3": "1024",
+        "value_4": "",
+        "value_5": "",
+        "value_6": "",
+        "value_7": "",
+        "value_8": "",
+        "value_9": "",
+        "value_10": "",
+        "value_11": "",
+        "value_12": "",
+        "value_13": "",
+        "value_14": "",
+        "value_15": "",
+        "value_16": ""
+      }
+    },
+    {
+      "id": 4,
+      "type": "ImageScale",
       "pos": [
         420,
         0
       ],
       "size": [
-        400,
-        250
+        315,
+        130
       ],
       "flags": {},
-      "order": 3,
+      "order": 0,
       "mode": 0,
       "inputs": [
         {
@@ -274,106 +576,75 @@
           "link": 1
         },
         {
-          "localized_name": "config",
-          "name": "config",
+          "localized_name": "upscale_method",
+          "name": "upscale_method",
           "type": "COMBO",
           "widget": {
-            "name": "config"
+            "name": "upscale_method"
           },
           "link": null
         },
         {
-          "localized_name": "config_path",
-          "name": "config_path",
-          "type": "STRING",
+          "localized_name": "width",
+          "name": "width",
+          "type": "INT",
           "widget": {
-            "name": "config_path"
+            "name": "width"
           },
-          "link": null
+          "link": 2
         },
         {
-          "localized_name": "in_colorspace",
-          "name": "in_colorspace",
+          "localized_name": "height",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 3
+        },
+        {
+          "localized_name": "crop",
+          "name": "crop",
           "type": "COMBO",
           "widget": {
-            "name": "in_colorspace"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "out_colorspace",
-          "name": "out_colorspace",
-          "type": "COMBO",
-          "widget": {
-            "name": "out_colorspace"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "look",
-          "name": "look",
-          "shape": 7,
-          "type": "COMBO",
-          "widget": {
-            "name": "look"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "inverse_look",
-          "name": "inverse_look",
-          "shape": 7,
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "inverse_look"
+            "name": "crop"
           },
           "link": null
         }
       ],
       "outputs": [
         {
-          "localized_name": "image",
-          "name": "image",
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            2,
-            3
+            4
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOCIOTransform"
+        "Node name for S&R": "ImageScale"
       },
       "widgets_values": [
-        "ACES studio (built-in)",
-        "",
-        "sRGB Encoded Rec.709 (sRGB)",
-        "ACEScg",
-        "none",
-        false
-      ],
-      "widgets_values_named": {
-        "config": "ACES studio (built-in)",
-        "config_path": "",
-        "in_colorspace": "sRGB Encoded Rec.709 (sRGB)",
-        "out_colorspace": "ACEScg",
-        "look": "none",
-        "inverse_look": false
-      }
+        "lanczos",
+        512,
+        512,
+        "center"
+      ]
     },
     {
-      "id": 4,
+      "id": 5,
       "type": "PDOutput",
       "pos": [
-        880,
+        820,
         0
       ],
       "size": [
         420,
-        506
+        620
       ],
       "flags": {},
-      "order": 4,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -381,7 +652,7 @@
           "name": "images",
           "shape": 7,
           "type": "IMAGE",
-          "link": 2
+          "link": 4
         },
         {
           "localized_name": "context",
@@ -395,7 +666,7 @@
           "name": "wedge",
           "shape": 7,
           "type": "WEDGE",
-          "link": null
+          "link": 5
         },
         {
           "localized_name": "video",
@@ -588,8 +859,8 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/color_acescg",
-        "exr",
+        "pipedream_demo/wedge/example_{size}",
+        "png",
         1001,
         4,
         24,
@@ -605,8 +876,8 @@
       "widgets_values_named": {
         "path_mode": "relative",
         "base_path": "",
-        "template": "pipedream_demo/color_acescg",
-        "format": "exr",
+        "template": "pipedream_demo/wedge/example_{size}",
+        "format": "png",
         "start_frame": 1001,
         "frame_padding": 4,
         "fps": 24,
@@ -619,220 +890,6 @@
         "exr_compression": "zip",
         "exr_colorspace": "as is"
       }
-    },
-    {
-      "id": 5,
-      "type": "PDOCIODisplay",
-      "pos": [
-        420,
-        330
-      ],
-      "size": [
-        400,
-        546
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "link": 3
-        },
-        {
-          "localized_name": "config",
-          "name": "config",
-          "type": "COMBO",
-          "widget": {
-            "name": "config"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "config_path",
-          "name": "config_path",
-          "type": "STRING",
-          "widget": {
-            "name": "config_path"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "in_colorspace",
-          "name": "in_colorspace",
-          "type": "COMBO",
-          "widget": {
-            "name": "in_colorspace"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "display",
-          "name": "display",
-          "type": "COMBO",
-          "widget": {
-            "name": "display"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "view",
-          "name": "view",
-          "type": "COMBO",
-          "widget": {
-            "name": "view"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "inverse",
-          "name": "inverse",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "inverse"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            4
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDOCIODisplay"
-      },
-      "widgets_values": [
-        "ACES studio (built-in)",
-        "",
-        "ACEScg",
-        "sRGB - Display",
-        "ACES 2.0 - SDR 100 nits (Rec.709)",
-        false
-      ],
-      "widgets_values_named": {
-        "config": "ACES studio (built-in)",
-        "config_path": "",
-        "in_colorspace": "ACEScg",
-        "display": "sRGB - Display",
-        "view": "ACES 2.0 - SDR 100 nits (Rec.709)",
-        "inverse": false
-      }
-    },
-    {
-      "id": 6,
-      "type": "PDOCIOApplyLUT",
-      "pos": [
-        420,
-        920
-      ],
-      "size": [
-        400,
-        498
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 4,
-      "inputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "link": 4
-        },
-        {
-          "localized_name": "lut_path",
-          "name": "lut_path",
-          "type": "STRING",
-          "widget": {
-            "name": "lut_path"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "interpolation",
-          "name": "interpolation",
-          "type": "COMBO",
-          "widget": {
-            "name": "interpolation"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "inverse",
-          "name": "inverse",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "inverse"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            5
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDOCIOApplyLUT"
-      },
-      "widgets_values": [
-        "",
-        "best",
-        false
-      ],
-      "widgets_values_named": {
-        "lut_path": "",
-        "interpolation": "best",
-        "inverse": false
-      }
-    },
-    {
-      "id": 7,
-      "type": "PreviewImage",
-      "pos": [
-        880,
-        920
-      ],
-      "size": [
-        420,
-        360
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 5
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "links": null
-        }
-      ],
-      "title": "Display (sRGB, ACES view)",
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
     }
   ],
   "links": [
@@ -840,50 +897,50 @@
       1,
       2,
       0,
-      3,
+      4,
       0,
       "IMAGE"
     ],
     [
       2,
       3,
-      0,
+      2,
       4,
-      0,
-      "IMAGE"
+      2,
+      "INT"
     ],
     [
       3,
       3,
-      0,
-      5,
-      0,
-      "IMAGE"
+      2,
+      4,
+      3,
+      "INT"
     ],
     [
       4,
-      5,
+      4,
       0,
-      6,
+      5,
       0,
       "IMAGE"
     ],
     [
       5,
-      6,
-      0,
-      7,
-      0,
-      "IMAGE"
+      3,
+      4,
+      5,
+      2,
+      "WEDGE"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.62,
+      "scale": 0.9,
       "offset": [
-        40,
+        80,
         380
       ]
     }

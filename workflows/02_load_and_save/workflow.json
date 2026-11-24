@@ -1,8 +1,8 @@
 {
-  "id": "48f05ddb-e4be-4311-9485-4018567fff93",
+  "id": "1009073d-d1b5-40e6-b8e7-492a57f5fde2",
   "revision": 0,
-  "last_node_id": 12,
-  "last_link_id": 11,
+  "last_node_id": 8,
+  "last_link_id": 6,
   "nodes": [
     {
       "id": 1,
@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
+        "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Explore Input opens its folder.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Explore Output shows the files.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
       ],
       "widgets_values_named": {
-        "text": "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
+        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -123,12 +123,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -233,7 +233,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -246,7 +246,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"
@@ -264,7 +264,7 @@
         58
       ],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -297,76 +297,119 @@
         "Node name for S&R": "RepeatImageBatch"
       },
       "widgets_values": [
-        48
+        5
       ],
       "widgets_values_named": {
-        "amount": 48
+        "amount": 5
       }
     },
     {
       "id": 4,
-      "type": "PDImagesToVideo",
+      "type": "PDProjectContext",
       "pos": [
         420,
-        200
+        220
       ],
       "size": [
-        270,
-        78
+        297.4765625,
+        226
       ],
       "flags": {},
-      "order": 4,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 2
-        },
-        {
-          "localized_name": "audio",
-          "name": "audio",
+          "localized_name": "context",
+          "name": "context",
           "shape": 7,
-          "type": "AUDIO",
+          "type": "PROJECT_CONTEXT",
           "link": null
         },
         {
-          "localized_name": "fps",
-          "name": "fps",
-          "type": "FLOAT",
+          "localized_name": "project",
+          "name": "project",
+          "type": "STRING",
           "widget": {
-            "name": "fps"
+            "name": "project"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence",
+          "name": "sequence",
+          "type": "STRING",
+          "widget": {
+            "name": "sequence"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "shot",
+          "name": "shot",
+          "type": "STRING",
+          "widget": {
+            "name": "shot"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "version",
+          "name": "version",
+          "type": "STRING",
+          "widget": {
+            "name": "version"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "user",
+          "name": "user",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "user"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "auto_increment_version",
+          "name": "auto_increment_version",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_increment_version"
           },
           "link": null
         }
       ],
       "outputs": [
         {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
           "links": [
-            3,
-            6,
-            7
+            3
           ]
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
         }
       ],
       "properties": {
-        "Node name for S&R": "PDImagesToVideo"
+        "Node name for S&R": "PDProjectContext"
       },
       "widgets_values": [
-        24
+        "demo",
+        "",
+        "sh020",
+        "v001",
+        "",
+        false
       ],
       "widgets_values_named": {
-        "fps": 24
+        "project": "demo",
+        "sequence": "",
+        "shot": "sh020",
+        "version": "v001",
+        "user": "",
+        "auto_increment_version": false
       }
     },
     {
@@ -378,7 +421,7 @@
       ],
       "size": [
         420,
-        618
+        714
       ],
       "flags": {},
       "order": 5,
@@ -389,14 +432,14 @@
           "name": "images",
           "shape": 7,
           "type": "IMAGE",
-          "link": null
+          "link": 2
         },
         {
           "localized_name": "context",
           "name": "context",
           "shape": 7,
           "type": "PROJECT_CONTEXT",
-          "link": null
+          "link": 3
         },
         {
           "localized_name": "wedge",
@@ -410,7 +453,14 @@
           "name": "video",
           "shape": 7,
           "type": "VIDEO",
-          "link": 3
+          "link": null
+        },
+        {
+          "localized_name": "alpha",
+          "name": "alpha",
+          "shape": 7,
+          "type": "IMAGE,MASK,VIDEO",
+          "link": null
         },
         {
           "localized_name": "path_mode",
@@ -563,8 +613,7 @@
           "name": "path",
           "type": "STRING",
           "links": [
-            4,
-            5
+            4
           ]
         },
         {
@@ -584,11 +633,6 @@
           "name": "images",
           "type": "IMAGE",
           "links": null
-        },
-        {
-          "name": "video",
-          "type": "VIDEO",
-          "links": null
         }
       ],
       "properties": {
@@ -597,8 +641,8 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/clip_review",
-        "mp4",
+        "pipedream_demo/{project}/{shot}/{shot}_{version}",
+        "exr",
         1001,
         4,
         24,
@@ -609,13 +653,13 @@
         true,
         "half",
         "zip",
-        "as is"
+        "sRGB to linear"
       ],
       "widgets_values_named": {
         "path_mode": "relative",
         "base_path": "",
-        "template": "pipedream_demo/clip_review",
-        "format": "mp4",
+        "template": "pipedream_demo/{project}/{shot}/{shot}_{version}",
+        "format": "exr",
         "start_frame": 1001,
         "frame_padding": 4,
         "fps": 24,
@@ -626,7 +670,7 @@
         "save_metadata": true,
         "exr_precision": "half",
         "exr_compression": "zip",
-        "exr_colorspace": "as is"
+        "exr_colorspace": "sRGB to linear"
       }
     },
     {
@@ -638,10 +682,10 @@
       ],
       "size": [
         274.373046875,
-        794.373046875
+        532
       ],
       "flags": {},
-      "order": 8,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -722,12 +766,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -767,7 +811,9 @@
           "localized_name": "images",
           "name": "images",
           "type": "IMAGE",
-          "links": null
+          "links": [
+            5
+          ]
         },
         {
           "localized_name": "mask",
@@ -803,7 +849,9 @@
           "localized_name": "context",
           "name": "context",
           "type": "PROJECT_CONTEXT",
-          "links": null
+          "links": [
+            6
+          ]
         },
         {
           "localized_name": "video",
@@ -818,7 +866,7 @@
           "links": null
         }
       ],
-      "title": "Read back the mp4",
+      "title": "Read back (file from PD Output path)",
       "properties": {
         "Node name for S&R": "PDLoad"
       },
@@ -830,10 +878,10 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
-        "as is"
+        "linear to sRGB"
       ],
       "widgets_values_named": {
         "path_mode": "relative",
@@ -843,503 +891,32 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
-        "exr_colorspace": "as is"
+        "exr_colorspace": "linear to sRGB"
       }
     },
     {
       "id": 7,
-      "type": "PDSound",
+      "type": "PreviewImage",
       "pos": [
-        1300,
-        1180
-      ],
-      "size": [
-        270,
-        414
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "value",
-          "name": "value",
-          "shape": 7,
-          "type": "*",
-          "link": 5
-        },
-        {
-          "localized_name": "enabled",
-          "name": "enabled",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "enabled"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "play_when",
-          "name": "play_when",
-          "type": "COMBO",
-          "widget": {
-            "name": "play_when"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "sound",
-          "name": "sound",
-          "type": "COMBO",
-          "widget": {
-            "name": "sound"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "volume",
-          "name": "volume",
-          "type": "FLOAT",
-          "widget": {
-            "name": "volume"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "custom_url",
-          "name": "custom_url",
-          "type": "STRING",
-          "widget": {
-            "name": "custom_url"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "when_cached",
-          "name": "when_cached",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "when_cached"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "error_tone",
-          "name": "error_tone",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "error_tone"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "value",
-          "name": "value",
-          "type": "*",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDSound"
-      },
-      "widgets_values": [
-        true,
-        "queue finished",
-        "chime",
-        0.6,
-        "",
-        false,
-        true
-      ],
-      "widgets_values_named": {
-        "enabled": true,
-        "play_when": "queue finished",
-        "sound": "chime",
-        "volume": 0.6,
-        "custom_url": "",
-        "when_cached": false,
-        "error_tone": true
-      }
-    },
-    {
-      "id": 8,
-      "type": "PDVideoGetFrame",
-      "pos": [
-        420,
-        420
-      ],
-      "size": [
-        270,
-        138
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
-          "link": 6
-        },
-        {
-          "localized_name": "mode",
-          "name": "mode",
-          "type": "COMBO",
-          "widget": {
-            "name": "mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "index",
-          "name": "index",
-          "type": "INT",
-          "widget": {
-            "name": "index"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            9
-          ]
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "localized_name": "frame_index",
-          "name": "frame_index",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "type": "FLOAT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDVideoGetFrame"
-      },
-      "widgets_values": [
-        "last",
+        1720,
         0
       ],
-      "widgets_values_named": {
-        "mode": "last",
-        "index": 0
-      }
-    },
-    {
-      "id": 9,
-      "type": "PDVideoToImages",
-      "pos": [
-        420,
-        640
-      ],
       "size": [
-        270,
-        186
+        360,
+        420
       ],
       "flags": {},
       "order": 7,
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
-          "link": 7
-        },
-        {
-          "localized_name": "start_frame",
-          "name": "start_frame",
-          "shape": 7,
-          "type": "INT",
-          "widget": {
-            "name": "start_frame"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "frame_limit",
-          "name": "frame_limit",
-          "shape": 7,
-          "type": "INT",
-          "widget": {
-            "name": "frame_limit"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "step",
-          "name": "step",
-          "shape": 7,
-          "type": "INT",
-          "widget": {
-            "name": "step"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
           "localized_name": "images",
           "name": "images",
           "type": "IMAGE",
-          "links": [
-            8
-          ]
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "localized_name": "audio",
-          "name": "audio",
-          "type": "AUDIO",
-          "links": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "type": "FLOAT",
-          "links": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDVideoToImages"
-      },
-      "widgets_values": [
-        12,
-        12,
-        2
-      ],
-      "widgets_values_named": {
-        "start_frame": 12,
-        "frame_limit": 12,
-        "step": 2
-      }
-    },
-    {
-      "id": 10,
-      "type": "PDImageFromBatch",
-      "pos": [
-        420,
-        900
-      ],
-      "size": [
-        270,
-        142
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 8
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "shape": 7,
-          "type": "MASK",
-          "link": null
-        },
-        {
-          "localized_name": "mode",
-          "name": "mode",
-          "type": "COMBO",
-          "widget": {
-            "name": "mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "index",
-          "name": "index",
-          "type": "INT",
-          "widget": {
-            "name": "index"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            10
-          ]
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "localized_name": "frame_index",
-          "name": "frame_index",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDImageFromBatch"
-      },
-      "widgets_values": [
-        "index",
-        -1
-      ],
-      "widgets_values_named": {
-        "mode": "index",
-        "index": -1
-      }
-    },
-    {
-      "id": 11,
-      "type": "PDSwitch",
-      "pos": [
-        420,
-        1120
-      ],
-      "size": [
-        270,
-        142
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "index",
-          "name": "index",
-          "shape": 7,
-          "type": "INT",
-          "link": null
-        },
-        {
-          "localized_name": "input_1",
-          "name": "input_1",
-          "shape": 7,
-          "type": "*",
-          "link": 9
-        },
-        {
-          "localized_name": "input_2",
-          "name": "input_2",
-          "shape": 7,
-          "type": "*",
-          "link": 10
-        },
-        {
-          "localized_name": "mode",
-          "name": "mode",
-          "type": "COMBO",
-          "widget": {
-            "name": "mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "select",
-          "name": "select",
-          "type": "INT",
-          "widget": {
-            "name": "select"
-          },
-          "link": null
-        },
-        {
-          "name": "input_3",
-          "type": "*",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "output",
-          "name": "output",
-          "type": "*",
-          "links": [
-            11
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDSwitch"
-      },
-      "widgets_values": [
-        "manual",
-        0
-      ],
-      "widgets_values_named": {
-        "mode": "manual",
-        "select": 0
-      }
-    },
-    {
-      "id": 12,
-      "type": "PreviewImage",
-      "pos": [
-        820,
-        1120
-      ],
-      "size": [
-        420,
-        360
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 11
+          "link": 5
         }
       ],
       "outputs": [
@@ -1350,9 +927,71 @@
           "links": null
         }
       ],
-      "title": "Switched frame",
+      "title": "Read-back frames",
       "properties": {
         "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 8,
+      "type": "PDTokensToString",
+      "pos": [
+        1720,
+        480
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": 6
+        },
+        {
+          "localized_name": "template",
+          "name": "template",
+          "type": "STRING",
+          "widget": {
+            "name": "template"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_padding",
+          "name": "frame_padding",
+          "type": "INT",
+          "widget": {
+            "name": "frame_padding"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "resolved",
+          "name": "resolved",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Tokens from the sidecar",
+      "properties": {
+        "Node name for S&R": "PDTokensToString"
+      },
+      "widgets_values": [
+        "{project} / {shot} / {version}",
+        4
+      ],
+      "widgets_values_named": {
+        "template": "{project} / {shot} / {version}",
+        "frame_padding": 4
       }
     }
   ],
@@ -1369,7 +1008,7 @@
       2,
       3,
       0,
-      4,
+      5,
       0,
       "IMAGE"
     ],
@@ -1378,72 +1017,32 @@
       4,
       0,
       5,
-      3,
-      "VIDEO"
-    ],
-    [
-      4,
-      5,
-      0,
-      6,
-      4,
-      "STRING"
-    ],
-    [
-      5,
-      5,
-      0,
-      7,
-      0,
-      "STRING"
-    ],
-    [
-      6,
-      4,
-      0,
-      8,
-      0,
-      "VIDEO"
-    ],
-    [
-      7,
-      4,
-      0,
-      9,
-      0,
-      "VIDEO"
-    ],
-    [
-      8,
-      9,
-      0,
-      10,
-      0,
-      "IMAGE"
-    ],
-    [
-      9,
-      8,
-      0,
-      11,
       1,
+      "PROJECT_CONTEXT"
+    ],
+    [
+      4,
+      5,
+      0,
+      6,
+      4,
+      "STRING"
+    ],
+    [
+      5,
+      6,
+      0,
+      7,
+      0,
       "IMAGE"
     ],
     [
-      10,
-      10,
+      6,
+      6,
+      6,
+      8,
       0,
-      11,
-      2,
-      "IMAGE"
-    ],
-    [
-      11,
-      11,
-      0,
-      12,
-      0,
-      "IMAGE"
+      "PROJECT_CONTEXT"
     ]
   ],
   "groups": [],

@@ -2,12 +2,16 @@ import { app } from "../../scripts/app.js";
 import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Read-only text panels: PD Output token reference, PD Load info     */
+/*  Read-only text panels: PD Output token reference, PD Load info,    */
+/*  PD Tokens To String result (with a "preview" button that runs just */
+/*  that node and its inputs).                                         */
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
     PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 100],
     PDLoad: ["load_display", "What was loaded appears after execution...", "load_info", 70],
+    PDTokensToString: ["resolved_display", "Press preview to see the resolved text...",
+                       "resolved_text", 50],
 };
 
 app.registerExtension({
@@ -17,6 +21,12 @@ app.registerExtension({
         const panel = TEXT_PANELS[node.comfyClass];
         if (!panel) return;
         const [name, placeholder, key, minHeight] = panel;
+        if (node.comfyClass === "PDTokensToString") {
+            const button = node.addWidget("button", "preview", null,
+                () => app.queuePrompt(0, 1, [String(node.id)]), { serialize: false });
+            button.serialize = false;
+            button.tooltip = "Run just this node and its inputs to see the resolved text below.";
+        }
         showOutputText(node, addReadOnlyText(node, name, placeholder, minHeight), key);
     },
 });

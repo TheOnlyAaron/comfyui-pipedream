@@ -5,7 +5,7 @@ import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Load                                                     */
 /*    - Hide what does not apply: base_path in relative mode;          */
-/*      sequence_from_file for video formats; fps_from_file for image  */
+/*      sequence_mode for video formats; fps_from_file for image       */
 /*      formats; exr_colorspace unless exr or auto; the audio output   */
 /*      for image formats.                                             */
 /*    - Paste a full file path (quotes allowed) into file or           */
@@ -35,7 +35,7 @@ function sync(node) {
         const isImage = format !== "auto" && !VIDEO_FORMATS.includes(format);
         showWidgets(node, {
             base_path: mode === "absolute",
-            sequence_from_file: !VIDEO_FORMATS.includes(format),
+            sequence_mode: !VIDEO_FORMATS.includes(format),
             fps_from_file: !isImage,
             exr_colorspace: format === "auto" || format === "exr",
         });
@@ -96,6 +96,23 @@ async function onPathEdited(node, name) {
 
 const UPLOAD_SUBFOLDER = "pipedream";
 
+/**
+ * Workflows saved before 0.2.1 hold the sequence_from_file boolean, which
+ * lands in sequence_mode by position (or only in widgets_values_named):
+ * true becomes auto, false single file.
+ */
+function migrateSequenceMode(node, info) {
+    const widget = findWidget(node, "sequence_mode");
+    if (!widget) return;
+    const named = info?.widgets_values_named;
+    let old = typeof widget.value === "boolean" ? widget.value : undefined;
+    if (old === undefined && named && !("sequence_mode" in named) &&
+        typeof named.sequence_from_file === "boolean") {
+        old = named.sequence_from_file;
+    }
+    if (old !== undefined) widget.value = old ? "auto" : "single file";
+}
+
 function toast(severity, detail) {
     app.extensionManager?.toast?.add?.({ severity, summary: "PD Load", detail, life: 4000 });
 }
@@ -116,7 +133,7 @@ async function uploadFile(file) {
 /**
  * Load dropped files: in place when the browser exposes their path,
  * otherwise uploaded.  The first media file by name is loaded, so with
- * sequence_from_file a dropped sequence loads from its first frame.
+ * sequence_mode auto a dropped sequence loads from its first frame.
  */
 async function onFilesDropped(node, fileList) {
     const files = [...fileList].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
@@ -262,7 +279,10 @@ app.registerExtension({
         };
 
         trackPreviewMedia(node);
-        chain(node, "onConfigure", () => sync(node));
+        chain(node, "onConfigure", (info) => {
+            migrateSequenceMode(node, info);
+            sync(node);
+        });
         chain(node, "onConnectionsChange", () => queueMicrotask(() => sync(node)));
         sync(node);
     },

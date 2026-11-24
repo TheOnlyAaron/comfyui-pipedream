@@ -1,8 +1,8 @@
 {
-  "id": "013307b3-e079-4fc8-91c5-7172a581579a",
+  "id": "3fb7c965-35c7-4984-93e6-4158eba83a51",
   "revision": 0,
-  "last_node_id": 9,
-  "last_link_id": 7,
+  "last_node_id": 7,
+  "last_link_id": 5,
   "nodes": [
     {
       "id": 1,
@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_from_file loads the whole sequence, linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
       ],
       "widgets_values_named": {
-        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_from_file loads the whole sequence, linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "text": "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -123,12 +123,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -233,7 +233,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -246,7 +246,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"
@@ -254,17 +254,17 @@
     },
     {
       "id": 3,
-      "type": "RepeatImageBatch",
+      "type": "PDOCIOTransform",
       "pos": [
         420,
         0
       ],
       "size": [
-        270,
-        58
+        400,
+        250
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -274,157 +274,106 @@
           "link": 1
         },
         {
-          "localized_name": "amount",
-          "name": "amount",
-          "type": "INT",
+          "localized_name": "config",
+          "name": "config",
+          "type": "COMBO",
           "widget": {
-            "name": "amount"
+            "name": "config"
           },
           "link": null
-        }
-      ],
-      "outputs": [
+        },
         {
-          "localized_name": "IMAGE",
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            2
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RepeatImageBatch"
-      },
-      "widgets_values": [
-        5
-      ],
-      "widgets_values_named": {
-        "amount": 5
-      }
-    },
-    {
-      "id": 4,
-      "type": "PDProjectContext",
-      "pos": [
-        420,
-        220
-      ],
-      "size": [
-        297.4765625,
-        226
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
+          "localized_name": "config_path",
+          "name": "config_path",
+          "type": "STRING",
+          "widget": {
+            "name": "config_path"
+          },
+          "link": null
+        },
         {
-          "localized_name": "context",
-          "name": "context",
+          "localized_name": "in_colorspace",
+          "name": "in_colorspace",
+          "type": "COMBO",
+          "widget": {
+            "name": "in_colorspace"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "out_colorspace",
+          "name": "out_colorspace",
+          "type": "COMBO",
+          "widget": {
+            "name": "out_colorspace"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "look",
+          "name": "look",
           "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": null
-        },
-        {
-          "localized_name": "project",
-          "name": "project",
-          "type": "STRING",
+          "type": "COMBO",
           "widget": {
-            "name": "project"
+            "name": "look"
           },
           "link": null
         },
         {
-          "localized_name": "sequence",
-          "name": "sequence",
-          "type": "STRING",
-          "widget": {
-            "name": "sequence"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "shot",
-          "name": "shot",
-          "type": "STRING",
-          "widget": {
-            "name": "shot"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "version",
-          "name": "version",
-          "type": "STRING",
-          "widget": {
-            "name": "version"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "user",
-          "name": "user",
-          "shape": 7,
-          "type": "STRING",
-          "widget": {
-            "name": "user"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "auto_increment_version",
-          "name": "auto_increment_version",
+          "localized_name": "inverse_look",
+          "name": "inverse_look",
           "shape": 7,
           "type": "BOOLEAN",
           "widget": {
-            "name": "auto_increment_version"
+            "name": "inverse_look"
           },
           "link": null
         }
       ],
       "outputs": [
         {
-          "localized_name": "context",
-          "name": "context",
-          "type": "PROJECT_CONTEXT",
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
           "links": [
+            2,
             3
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "PDProjectContext"
+        "Node name for S&R": "PDOCIOTransform"
       },
       "widgets_values": [
-        "demo",
+        "ACES studio (built-in)",
         "",
-        "sh020",
-        "v001",
-        "",
+        "sRGB Encoded Rec.709 (sRGB)",
+        "ACEScg",
+        "none",
         false
       ],
       "widgets_values_named": {
-        "project": "demo",
-        "sequence": "",
-        "shot": "sh020",
-        "version": "v001",
-        "user": "",
-        "auto_increment_version": false
+        "config": "ACES studio (built-in)",
+        "config_path": "",
+        "in_colorspace": "sRGB Encoded Rec.709 (sRGB)",
+        "out_colorspace": "ACEScg",
+        "look": "none",
+        "inverse_look": false
       }
     },
     {
-      "id": 5,
+      "id": 4,
       "type": "PDOutput",
       "pos": [
-        820,
+        880,
         0
       ],
       "size": [
         420,
-        714
+        506
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -439,7 +388,7 @@
           "name": "context",
           "shape": 7,
           "type": "PROJECT_CONTEXT",
-          "link": 3
+          "link": null
         },
         {
           "localized_name": "wedge",
@@ -612,9 +561,7 @@
           "localized_name": "path",
           "name": "path",
           "type": "STRING",
-          "links": [
-            4
-          ]
+          "links": null
         },
         {
           "localized_name": "path_sidecar",
@@ -641,7 +588,7 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/{project}/{shot}/{shot}_{version}",
+        "pipedream_demo/color_acescg",
         "exr",
         1001,
         4,
@@ -653,12 +600,12 @@
         true,
         "half",
         "zip",
-        "sRGB to linear"
+        "as is"
       ],
       "widgets_values_named": {
         "path_mode": "relative",
         "base_path": "",
-        "template": "pipedream_demo/{project}/{shot}/{shot}_{version}",
+        "template": "pipedream_demo/color_acescg",
         "format": "exr",
         "start_frame": 1001,
         "frame_padding": 4,
@@ -670,246 +617,201 @@
         "save_metadata": true,
         "exr_precision": "half",
         "exr_compression": "zip",
-        "exr_colorspace": "sRGB to linear"
+        "exr_colorspace": "as is"
       }
     },
     {
-      "id": 6,
-      "type": "PDLoad",
+      "id": 5,
+      "type": "PDOCIODisplay",
       "pos": [
-        1300,
-        0
+        420,
+        330
       ],
       "size": [
-        274.373046875,
-        532
+        400,
+        546
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "context",
-          "name": "context",
-          "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": null
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "link": 3
         },
         {
-          "localized_name": "wedge",
-          "name": "wedge",
-          "shape": 7,
-          "type": "WEDGE",
-          "link": null
-        },
-        {
-          "localized_name": "path_mode",
-          "name": "path_mode",
+          "localized_name": "config",
+          "name": "config",
           "type": "COMBO",
           "widget": {
-            "name": "path_mode"
+            "name": "config"
           },
           "link": null
         },
         {
-          "localized_name": "base_path",
-          "name": "base_path",
+          "localized_name": "config_path",
+          "name": "config_path",
           "type": "STRING",
           "widget": {
-            "name": "base_path"
+            "name": "config_path"
           },
           "link": null
         },
         {
-          "localized_name": "file",
-          "name": "file",
-          "type": "STRING",
-          "widget": {
-            "name": "file"
-          },
-          "link": 4
-        },
-        {
-          "localized_name": "format",
-          "name": "format",
+          "localized_name": "in_colorspace",
+          "name": "in_colorspace",
           "type": "COMBO",
           "widget": {
-            "name": "format"
+            "name": "in_colorspace"
           },
           "link": null
         },
         {
-          "localized_name": "start_frame",
-          "name": "start_frame",
-          "type": "INT",
-          "widget": {
-            "name": "start_frame"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "widget": {
-            "name": "frame_count"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "every_nth",
-          "name": "every_nth",
-          "type": "INT",
-          "widget": {
-            "name": "every_nth"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
-          "shape": 7,
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "sequence_from_file"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "fps_from_file",
-          "name": "fps_from_file",
-          "shape": 7,
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "fps_from_file"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "shape": 7,
-          "type": "FLOAT",
-          "widget": {
-            "name": "fps"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "exr_colorspace",
-          "name": "exr_colorspace",
-          "shape": 7,
+          "localized_name": "display",
+          "name": "display",
           "type": "COMBO",
           "widget": {
-            "name": "exr_colorspace"
+            "name": "display"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "view",
+          "name": "view",
+          "type": "COMBO",
+          "widget": {
+            "name": "view"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "inverse",
+          "name": "inverse",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "inverse"
           },
           "link": null
         }
       ],
       "outputs": [
         {
-          "localized_name": "images",
-          "name": "images",
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDOCIODisplay"
+      },
+      "widgets_values": [
+        "ACES studio (built-in)",
+        "",
+        "ACEScg",
+        "sRGB - Display",
+        "ACES 2.0 - SDR 100 nits (Rec.709)",
+        false
+      ],
+      "widgets_values_named": {
+        "config": "ACES studio (built-in)",
+        "config_path": "",
+        "in_colorspace": "ACEScg",
+        "display": "sRGB - Display",
+        "view": "ACES 2.0 - SDR 100 nits (Rec.709)",
+        "inverse": false
+      }
+    },
+    {
+      "id": 6,
+      "type": "PDOCIOApplyLUT",
+      "pos": [
+        420,
+        920
+      ],
+      "size": [
+        400,
+        498
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 4,
+      "inputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "link": 4
+        },
+        {
+          "localized_name": "lut_path",
+          "name": "lut_path",
+          "type": "STRING",
+          "widget": {
+            "name": "lut_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "interpolation",
+          "name": "interpolation",
+          "type": "COMBO",
+          "widget": {
+            "name": "interpolation"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "inverse",
+          "name": "inverse",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "inverse"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
           "type": "IMAGE",
           "links": [
             5
           ]
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "type": "FLOAT",
-          "links": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "first_frame",
-          "name": "first_frame",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "path",
-          "name": "path",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "localized_name": "context",
-          "name": "context",
-          "type": "PROJECT_CONTEXT",
-          "links": [
-            6
-          ]
-        },
-        {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
-          "links": null
-        },
-        {
-          "localized_name": "audio",
-          "name": "audio",
-          "type": "AUDIO",
-          "links": null
         }
       ],
-      "title": "Read back (file from PD Output path)",
       "properties": {
-        "Node name for S&R": "PDLoad"
+        "Node name for S&R": "PDOCIOApplyLUT"
       },
       "widgets_values": [
-        "relative",
         "",
-        "",
-        "auto",
-        0,
-        0,
-        1,
-        true,
-        true,
-        24,
-        "linear to sRGB"
+        "best",
+        false
       ],
       "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_from_file": true,
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "linear to sRGB"
+        "lut_path": "",
+        "interpolation": "best",
+        "inverse": false
       }
     },
     {
       "id": 7,
       "type": "PreviewImage",
       "pos": [
-        1720,
-        0
+        880,
+        920
       ],
       "size": [
-        360,
-        420
+        420,
+        360
       ],
       "flags": {},
-      "order": 7,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -927,111 +829,10 @@
           "links": null
         }
       ],
-      "title": "Read-back frames",
+      "title": "Display (sRGB, ACES view)",
       "properties": {
         "Node name for S&R": "PreviewImage"
       }
-    },
-    {
-      "id": 8,
-      "type": "PDTokensToString",
-      "pos": [
-        1720,
-        480
-      ],
-      "size": [
-        360,
-        160
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "context",
-          "name": "context",
-          "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": 6
-        },
-        {
-          "localized_name": "template",
-          "name": "template",
-          "type": "STRING",
-          "widget": {
-            "name": "template"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "frame_padding",
-          "name": "frame_padding",
-          "type": "INT",
-          "widget": {
-            "name": "frame_padding"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "resolved",
-          "name": "resolved",
-          "type": "STRING",
-          "links": [
-            7
-          ]
-        }
-      ],
-      "title": "Tokens from the sidecar",
-      "properties": {
-        "Node name for S&R": "PDTokensToString"
-      },
-      "widgets_values": [
-        "{project} / {shot} / {version}",
-        4
-      ],
-      "widgets_values_named": {
-        "template": "{project} / {shot} / {version}",
-        "frame_padding": 4
-      }
-    },
-    {
-      "id": 9,
-      "type": "PreviewAny",
-      "pos": [
-        1720,
-        700
-      ],
-      "size": [
-        360,
-        140
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "source",
-          "name": "source",
-          "type": "*",
-          "link": 7
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "STRING",
-          "name": "STRING",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "title": "Sidecar tokens",
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "widgets_values_named": {}
     }
   ],
   "links": [
@@ -1047,25 +848,25 @@
       2,
       3,
       0,
-      5,
+      4,
       0,
       "IMAGE"
     ],
     [
       3,
-      4,
+      3,
       0,
       5,
-      1,
-      "PROJECT_CONTEXT"
+      0,
+      "IMAGE"
     ],
     [
       4,
       5,
       0,
       6,
-      4,
-      "STRING"
+      0,
+      "IMAGE"
     ],
     [
       5,
@@ -1074,22 +875,6 @@
       7,
       0,
       "IMAGE"
-    ],
-    [
-      6,
-      6,
-      6,
-      8,
-      0,
-      "PROJECT_CONTEXT"
-    ],
-    [
-      7,
-      8,
-      0,
-      9,
-      0,
-      "STRING"
     ]
   ],
   "groups": [],

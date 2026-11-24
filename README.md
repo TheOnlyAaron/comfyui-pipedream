@@ -99,7 +99,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 |------|--------------|
 | **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. |
 | **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). |
-| **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. |
+| **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. **preview** shows the result on the node. |
 | **PD&nbsp;Output** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-output) |
 | **PD&nbsp;Load** | Loads an image, sequence or video from any local or network path; paste a path to fill it in. [More](#pd-load) |
 | **PD&nbsp;Wedge** | Runs the graph once per row of inputs (any type), for comparison matrices. [More](#wedges) |
@@ -115,16 +115,18 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 
 ## Example workflows
 
-Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–04 run as is (they use ComfyUI's `input/example.png` and write to `output/pipedream_demo/`); 05–06 need a checkpoint.
+Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 run as is (they use ComfyUI's `input/example.png` and write to `output/pipedream_demo/`); 05 needs `opencolorio`, 07–08 need a checkpoint. Every node appears in at least one.
 
 | # | Workflow | Shows |
 |---|----------|-------|
-| 01 | [Output basics](workflows/01_output_basics/) | Context tokens, PD Output, sidecar, PD Tokens To String |
-| 02 | [Load and read back](workflows/02_load_and_read_back/) | PD Load, EXR sequence out, read back with its sidecar tokens |
-| 03 | [Video utilities](workflows/03_video_utilities/) | Images to video, mp4 out, get frame, decode a range, switch, sound |
-| 04 | [Colour with OCIO](workflows/04_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
-| 05 | [Prompt wedge](workflows/05_prompt_wedge/) | One wedge of three prompts: 3 jobs, same seed |
-| 06 | [Product matrix](workflows/06_product_matrix/) | Grouped and chained wedges: 3 products × 2 looks |
+| 01 | [Tokens](workflows/01_tokens/) | Project and custom context, PD Tokens To String with **preview**, automatic tokens |
+| 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar, read back with `sequence_mode` |
+| 03 | [Video frames](workflows/03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
+| 04 | [Sound](workflows/04_sound/) | Inline and queue-finished sound cues, error buzzer |
+| 05 | [Colour with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
+| 06 | [Wedge basics](workflows/06_wedge_basics/) | One wedge, three sizes, three files; no model |
+| 07 | [Prompt wedge](workflows/07_prompt_wedge/) | One wedge of three prompts: 3 jobs, same seed |
+| 08 | [Product matrix](workflows/08_product_matrix/) | Grouped and chained wedges: 3 products × 2 looks |
 
 ## Tokens
 
@@ -174,7 +176,10 @@ Loads an image, image sequence or video, and reads back what PD Output wrote.
 - **Drop files:** drag files from Explorer onto the drop zone (or anywhere on the node in the classic canvas). Browsers don't reveal a dropped file's path, so the files are copied to ComfyUI's `input/pipedream` folder (overwriting same-named files) and loaded from there in `relative` mode. Drop every frame of a sequence, plus its sidecar for the tokens. For files on a share, pasting the path loads them in place without copying.
 - **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Output's `path`) is used as is.
 - **What:** `file` may include the extension or leave it to `format`; `auto` tries every type and stops if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
-- **Sequences:** mark the frame with `####`, `%04d` or `{frame}`; PD Output's `name.1001.png` is found without a mark. `start_frame` (frame number, 0 = first), `frame_count` (0 = all) and `every_nth` pick frames; gaps are skipped and listed. `sequence_from_file` (on): a file that is one frame of a sequence loads the whole sequence, unless the frames differ in size (numbered photos such as `IMG_0001.jpg` stay single images).
+- **Sequences:** mark the frame with `####`, `%04d` or `{frame}`; PD Output's `name.1001.png` is found without a mark. `start_frame` (frame number, 0 = first), `frame_count` (0 = all) and `every_nth` pick frames; gaps are skipped and listed. `sequence_mode` decides what a single numbered file loads (`shot.1002.exr` with `shot.1001.exr` next to it):
+  - **auto** (default) loads the whole sequence unless one of these says it's a single image: PD Output's sidecar (a single image's own `name.json` has no `sequence`; a sequence's `name.json` names its pattern), frames of different sizes, or unpadded numbers of different lengths (`seed_1` … `seed_10`, typical of wedges). Otherwise it guesses a sequence. The info panel says what it decided and why.
+  - **single file** loads just that file; **sequence** loads every file named like it.
+  - A frame mark (`####`) always loads a sequence. Workflows saved with the old `sequence_from_file` switch convert on load (on → auto, off → single file).
 - **Video:** `start_frame` is a frame index. `fps_from_file` (on) uses the video's rate; off, `fps` overrides it (images always use `fps`). With defaults, `video` is the file itself; otherwise the loaded frames as an in-memory VIDEO with matching audio.
 - **Quality:** 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask`; EXR is un-premultiplied, and `exr_colorspace` `linear to sRGB` reverses PD Output's `sRGB to linear`.
 - **Preview:** one frame shows as an image, several as a playable clip; the panel lists the pattern, frames, size, alpha, fps and sidecar.

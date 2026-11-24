@@ -40,12 +40,14 @@ from ..core.comfy import input_directory, reveal_in_file_manager, server_routes,
 from ..core.common import display_name
 from ..core.load import (
     EXR_COLORSPACES,
+    SEQUENCE_MODES,
     clean_path,
     looks_absolute,
     split_file,
     FORMATS,
     find_media,
     fingerprint,
+    normalize_sequence_mode,
     read_images,
     read_sidecar,
     select_frames,
@@ -96,6 +98,16 @@ def _preview(images, fps: float, audio=None) -> tuple[list[dict], bool]:
     except Exception as exc:
         print(f"[Pipedream] Warning: PD Load preview failed: {exc}", file=sys.stderr)
         return [], False
+
+
+def _mode(sequence_mode, legacy: dict) -> str:
+    """
+    The sequence mode to use: *sequence_mode*, or the old
+    ``sequence_from_file`` boolean from an API prompt written before 0.2.1.
+    """
+    if "sequence_from_file" in legacy and sequence_mode in (None, "auto"):
+        return normalize_sequence_mode(legacy["sequence_from_file"])
+    return normalize_sequence_mode(sequence_mode)
 
 
 def _ranges(numbers: list[int]) -> str:
@@ -184,12 +196,14 @@ class PDLoad:
                 }),
             },
             "optional": {
-                "sequence_from_file": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "When file is one frame of a sequence (shot.1001.exr with "
-                               "shot.1002.exr next to it), load the whole sequence. Files "
-                               "of different sizes (numbered photos) stay single. Off: "
-                               "load just that frame.",
+                "sequence_mode": (list(SEQUENCE_MODES), {
+                    "default": "auto",
+                    "tooltip": "When file is one numbered image (shot.1001.exr): "
+                               "auto: load the whole sequence it belongs to, unless PD "
+                               "Output's sidecar, different frame sizes or unpadded numbers "
+                               "(wedge outputs) say it is a single image; the panel says "
+                               "why. single file: just this file. sequence: every file "
+                               "named like it. A frame mark (####) always loads a sequence.",
                 }),
                 "context": ("PROJECT_CONTEXT", {
                     "tooltip": "Tokens for file, from PD Project/Custom Context.",
@@ -219,10 +233,16 @@ class PDLoad:
         }
 
     @classmethod
+    def VALIDATE_INPUTS(cls, sequence_mode="auto"):
+        """Accept the old sequence_from_file booleans in sequence_mode (converted on execute)."""
+        return True
+
+    @classmethod
     def IS_CHANGED(cls, path_mode="relative", base_path="", file="", format="auto",
-                   unique_id=None, context=None, wedge=None, sequence_from_file=True,
+                   unique_id=None, context=None, wedge=None, sequence_mode="auto",
                    **kwargs):
-        widgets = (path_mode, base_path, file, format, bool(sequence_from_file),
+        sequence_mode = _mode(sequence_mode, kwargs)
+        widgets = (path_mode, base_path, file, format, sequence_mode,
                    tuple(sorted((k, str(v)) for k, v in kwargs.items())))
         resolved = None
         if context is None and wedge is None and not _LINKED.get(str(unique_id)):
@@ -234,23 +254,25 @@ class PDLoad:
         if resolved is None:
             resolved = _LAST_RESOLVED.get(str(unique_id))
         try:
-            paths = (find_media(resolved, format, sequence_from_file)["paths"]
+            paths = (find_media(resolved, format, sequence_mode)["paths"]
                      if resolved else [])
         except Exception:
             paths = []
         return repr((widgets, resolved, fingerprint(paths)))
 
     def execute(self, path_mode, base_path, file, format, start_frame=0, frame_count=0,
-                every_nth=1, sequence_from_file=True, context=None, wedge=None,
+                every_nth=1, sequence_mode="auto", context=None, wedge=None,
                 fps_from_file=True,
-                fps=settings.get("output.fps"), exr_colorspace="as is", unique_id=None):
+                fps=settings.get("output.fps"), exr_colorspace="as is", unique_id=None,
+                **legacy):
+        sequence_mode = _mode(sequence_mode, legacy)
         incoming = dict(context) if context else {}
         tokens = auto_tokens()
         tokens.update(with_extra({**incoming, **wedge_tokens(wedge)}))
         full = resolve_path(path_mode, base_path, file, tokens)
         _LAST_RESOLVED[str(unique_id)] = full
         _LINKED[str(unique_id)] = context is not None or wedge is not None
-        media = find_media(full, format, sequence_from_file)
+        media = find_media(full, format, sequence_mode)
 
         missing, audio = [], None
         if media["kind"] == "video":
@@ -275,7 +297,13 @@ class PDLoad:
                 first = frames[0]
             else:
                 loaded, first = media["paths"], 0
-            images, mask, has_alpha = read_images(loaded, exr_colorspace)
+            try:
+                images, mask, has_alpha = read_images(loaded, exr_colorspace)
+            except ValueError as exc:
+                if media["kind"] == "sequence" and "first frame is" in str(exc):
+                    raise ValueError(f"{exc} If these are separate images, set sequence_mode "
+                                     "to single file.") from exc
+                raise
             rate = float(fps) / max(1, int(every_nth))
             count = int(images.shape[0])
             video = images_to_video(images, rate)
@@ -305,7 +333,7 @@ class PDLoad:
         if sidecar:
             lines.append(f"sidecar: {len(sidecar)} token(s) ({', '.join(sorted(sidecar))})")
         if media.get("note"):
-            lines.append(f"! {media['note']}")
+            lines.append(media["note"])
         if missing:
             lines.append(f"! missing frames (skipped): {_ranges(missing)}")
 

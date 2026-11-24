@@ -76,23 +76,23 @@ class FindCase(unittest.TestCase):
         with self.assertRaisesRegex(load.MediaNotFound, "does not exist"):
             load.find_media(self.path("nope/plate"), "png")
 
-    def test_sequence_from_file(self):
+    def test_sequence_auto(self):
         self.touch("sh010.1001.exr", "sh010.1002.exr", "sh010.1003.exr", "lone_0007.png",
                    "v2.png", "v3.png")
         one = load.find_media(self.path("sh010.1002.exr"))
         self.assertEqual((one["kind"], one["frames"]), ("image", [0]))
-        seq = load.find_media(self.path("sh010.1002.exr"), sequence_from_file=True)
+        seq = load.find_media(self.path("sh010.1002.exr"), sequence_mode="auto")
         self.assertEqual((seq["kind"], seq["frames"]), ("sequence", [1001, 1002, 1003]))
         self.assertEqual(seq["pattern"], self.path("sh010.####.exr"))
         self.assertEqual(load.find_media(self.path("lone_0007.png"),
-                                         sequence_from_file=True)["kind"], "image")
+                                         sequence_mode="auto")["kind"], "image")
         self.assertEqual(load.find_media(self.path("v2.png"),
-                                         sequence_from_file=True)["kind"], "sequence")
+                                         sequence_mode="auto")["kind"], "sequence")
         self.touch("0001.jpg", "0002.jpg")
-        bare = load.find_media(self.path("0002.jpg"), sequence_from_file=True)
+        bare = load.find_media(self.path("0002.jpg"), sequence_mode="auto")
         self.assertEqual((bare["frames"], bare["pattern"]), ([1, 2], self.path("####.jpg")))
 
-    def test_sequence_from_file_sizes_differ(self):
+    def test_sequence_auto_sizes_differ(self):
         try:
             from PIL import Image
         except ImportError:
@@ -101,11 +101,12 @@ class FindCase(unittest.TestCase):
                            ("photo_03.jpg", (632, 468)), ("plate_1.jpg", (64, 32)),
                            ("plate_2.jpg", (64, 32))):
             Image.new("RGB", size).save(self.path(name))
-        photo = load.find_media(self.path("photo_02.jpg"), sequence_from_file=True)
+        photo = load.find_media(self.path("photo_02.jpg"), sequence_mode="auto")
         self.assertEqual((photo["kind"], photo["paths"]), ("image", [self.path("photo_02.jpg")]))
         self.assertIn("632x468", photo["note"])
-        plate = load.find_media(self.path("plate_2.jpg"), sequence_from_file=True)
-        self.assertEqual((plate["kind"], plate["note"]), ("sequence", ""))
+        plate = load.find_media(self.path("plate_2.jpg"), sequence_mode="auto")
+        self.assertEqual(plate["kind"], "sequence")
+        self.assertIn("guessed", plate["note"])
 
     def write_exr_header(self, name, width, height):
         """A minimal EXR header (magic, version, compression and dataWindow)."""
@@ -122,15 +123,79 @@ class FindCase(unittest.TestCase):
         self.write_exr_header("a.exr", 512, 256)
         self.assertEqual(load._image_size(self.path("a.exr")), (512, 256))
 
-    def test_sequence_from_file_exr_sizes_differ(self):
+    def test_sequence_auto_exr_sizes_differ(self):
         for name, size in (("Sr388_256.exr", 256), ("Sr388_512.exr", 512),
                            ("sh_1001.exr", 64), ("sh_1002.exr", 64)):
             self.write_exr_header(name, size, size)
-        wedge = load.find_media(self.path("Sr388_512.exr"), sequence_from_file=True)
+        wedge = load.find_media(self.path("Sr388_512.exr"), sequence_mode="auto")
         self.assertEqual(wedge["kind"], "image")
         self.assertIn("256x256", wedge["note"])
-        seq = load.find_media(self.path("sh_1002.exr"), sequence_from_file=True)
+        seq = load.find_media(self.path("sh_1002.exr"), sequence_mode="auto")
         self.assertEqual(seq["frames"], [1001, 1002])
+
+    def write_sidecar(self, name, sequence_pattern=None):
+        data = {"node": "PDOutput", "context": {}}
+        if sequence_pattern:
+            data["sequence"] = {"first": 1001, "last": 1002, "pattern": sequence_pattern}
+        with open(self.path(name), "w") as fh:
+            json.dump(data, fh)
+
+    def test_sequence_modes(self):
+        self.touch("sh010.1001.exr", "sh010.1002.exr", "lone_0007.png")
+        one = load.find_media(self.path("sh010.1002.exr"), sequence_mode="single file")
+        self.assertEqual((one["kind"], one["note"]), ("image", ""))
+        forced = load.find_media(self.path("sh010.1002.exr"), sequence_mode="sequence")
+        self.assertEqual(forced["frames"], [1001, 1002])
+        alone = load.find_media(self.path("lone_0007.png"), sequence_mode="sequence")
+        self.assertEqual(alone["kind"], "image")
+        self.assertIn("no other numbered files", alone["note"])
+        marked = load.find_media(self.path("sh010.####.exr"), sequence_mode="single file")
+        self.assertEqual(marked["kind"], "sequence")
+
+    def test_auto_sidecar_single(self):
+        self.touch("seed_101.png", "seed_102.png")
+        self.write_sidecar("seed_101.json")
+        media = load.find_media(self.path("seed_101.png"), sequence_mode="auto")
+        self.assertEqual(media["kind"], "image")
+        self.assertIn("seed_101.json has no sequence", media["note"])
+        self.assertIn("set sequence_mode to sequence", media["note"])
+        forced = load.find_media(self.path("seed_101.png"), sequence_mode="sequence")
+        self.assertEqual(forced["kind"], "sequence")
+
+    def test_auto_sidecar_sequence(self):
+        self.touch("sh010.1001.exr", "sh010.1002.exr")
+        self.write_sidecar("sh010.json", "D:\\shots\\sh010.####.exr")
+        media = load.find_media(self.path("sh010.1002.exr"), sequence_mode="auto")
+        self.assertEqual(media["kind"], "sequence")
+        self.assertIn("from sidecar sh010.json", media["note"])
+
+    def test_auto_sidecar_other_pattern_ignored(self):
+        self.touch("sh010.1001.exr", "sh010.1002.exr")
+        self.write_sidecar("sh010.json", "/shots/sh010_####.exr")
+        media = load.find_media(self.path("sh010.1002.exr"), sequence_mode="auto")
+        self.assertEqual(media["kind"], "sequence")
+        self.assertIn("guessed", media["note"])
+
+    def test_auto_unpadded_numbers(self):
+        self.touch("seed_1.png", "seed_2.png", "seed_10.png", "take_01.png", "take_02.png",
+                   "take_10.png")
+        seed = load.find_media(self.path("seed_2.png"), sequence_mode="auto")
+        self.assertEqual(seed["kind"], "image")
+        self.assertIn("unpadded numbers (seed_1.png ... seed_10.png)", seed["note"])
+        take = load.find_media(self.path("take_02.png"), sequence_mode="auto")
+        self.assertEqual(take["kind"], "sequence")
+
+    def test_auto_same_size_photos_stay_a_sequence(self):
+        self.touch("IMG_0001.jpg", "IMG_0002.jpg")
+        media = load.find_media(self.path("IMG_0002.jpg"), sequence_mode="auto")
+        self.assertEqual(media["kind"], "sequence")
+        self.assertIn("set sequence_mode to single file", media["note"])
+
+    def test_normalize_sequence_mode(self):
+        for value, mode in ((True, "auto"), (False, "single file"), ("false", "single file"),
+                            ("Sequence", "sequence"), ("single file", "single file"),
+                            ("bogus", "auto"), (None, "auto")):
+            self.assertEqual(load.normalize_sequence_mode(value), mode, value)
 
     def test_select_frames(self):
         self.touch(*[f"s.{n}.png" for n in (1001, 1002, 1003, 1005, 1006, 1007)])

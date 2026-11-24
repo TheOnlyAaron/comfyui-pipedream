@@ -1,6 +1,31 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.1 (2026-11-24)
+
+### Example workflows
+- Reorganised so each topic has its own workflow and every node appears in
+  at least one: 01 Tokens, 02 Load and save, 03 Video frames, 04 Sound
+  (new), 05 Colour with OCIO, 06 Wedge basics (new, no model needed),
+  07 Prompt wedge, 08 Product matrix. The old 01–06 folders are replaced
+
+### PD Tokens To String
+- **preview** button runs just the node (and its context) and shows the
+  resolved text on the node; the panel also updates on every run. It is now
+  an output node, so it runs even with nothing connected to its output
+
+### PD Load
+- `sequence_mode` (**auto** / **single file** / **sequence**) replaces the
+  `sequence_from_file` switch. Saved workflows and API prompts convert
+  (on → auto, off → single file); the example workflows are updated
+- **auto** decides whether a single numbered file loads its sequence from
+  PD Output's sidecar first (a single image's own sidecar has no
+  `sequence`; a sequence's sidecar names its pattern), then frame sizes,
+  then unpadded numbers of different lengths (wedge outputs such as
+  `seed_1` … `seed_10`); otherwise it guesses a sequence
+- The info panel says what was decided, why, and which `sequence_mode`
+  overrides it; the frame-size error suggests **single file**
+
+## 0.2.0 (2026-11-24)
 
 ### Comfy Registry
 - Published to the Comfy Registry as `PipeDream` (publisher `theonlyaaron`),
