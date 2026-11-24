@@ -1,4 +1,4 @@
-# 05 — Prompt wedge
+# 07 — Prompt wedge
 
 One PD Wedge with three rows. Each row pairs a prompt (a String (Multiline) node linked to `input_n`) with a short name (`value_n`): `studio`, `kitchen`, `night`. The wedge's `value` goes to the positive CLIP Text Encode; its `wedge` output goes to PD Output, where the name is `{look}`.
 

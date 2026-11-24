@@ -1,4 +1,4 @@
-# 04 — Colour with OCIO
+# 05 — Colour with OCIO
 
 Colourspace, display and LUT transforms with OpenColorIO. Runs as is once `opencolorio` is installed (see the main README).
 

@@ -1,0 +1,553 @@
+{
+  "id": "ccfb5374-deea-434a-91e5-579fe4aa11e6",
+  "revision": 0,
+  "last_node_id": 5,
+  "last_link_id": 2,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [
+        0,
+        -330
+      ],
+      "size": [
+        600,
+        290
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Sound cues.\n\n1. The PD Sound in the middle is inline: the images pass through it unchanged, and it plays ding when the flow reaches it (play_when: node reached).\n2. The PD Sound on its own plays chime once the whole queue has finished (a node with nothing connected always waits for the queue).\n3. If a run fails, the inline node plays the error buzzer instead (error_tone). Try it: type a file name that doesn't exist into PD Load and run.\n\nPress test sound to hear a node's sound. Sounds play in the browser tab that queued the run."
+      ],
+      "widgets_values_named": {
+        "text": "Sound cues.\n\n1. The PD Sound in the middle is inline: the images pass through it unchanged, and it plays ding when the flow reaches it (play_when: node reached).\n2. The PD Sound on its own plays chime once the whole queue has finished (a node with nothing connected always waits for the queue).\n3. If a run fails, the inline node plays the error buzzer instead (error_tone). Try it: type a file name that doesn't exist into PD Load and run.\n\nPress test sound to hear a node's sound. Sounds play in the browser tab that queued the run."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "PDLoad",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        274.373046875,
+        532
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "localized_name": "path_mode",
+          "name": "path_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "path_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_path",
+          "name": "base_path",
+          "type": "STRING",
+          "widget": {
+            "name": "base_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "file",
+          "name": "file",
+          "type": "STRING",
+          "widget": {
+            "name": "file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "start_frame",
+          "name": "start_frame",
+          "type": "INT",
+          "widget": {
+            "name": "start_frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "widget": {
+            "name": "frame_count"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "every_nth",
+          "name": "every_nth",
+          "type": "INT",
+          "widget": {
+            "name": "every_nth"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "sequence_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps_from_file",
+          "name": "fps_from_file",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "fps_from_file"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "exr_colorspace",
+          "name": "exr_colorspace",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "exr_colorspace"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            1
+          ]
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "frame_count",
+          "name": "frame_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "first_frame",
+          "name": "first_frame",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "path",
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": null
+        },
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDLoad"
+      },
+      "widgets_values": [
+        "relative",
+        "",
+        "example.png",
+        "auto",
+        0,
+        0,
+        1,
+        "auto",
+        true,
+        24,
+        "as is"
+      ],
+      "widgets_values_named": {
+        "path_mode": "relative",
+        "base_path": "",
+        "file": "example.png",
+        "format": "auto",
+        "start_frame": 0,
+        "frame_count": 0,
+        "every_nth": 1,
+        "sequence_mode": "auto",
+        "fps_from_file": true,
+        "fps": 24,
+        "exr_colorspace": "as is"
+      }
+    },
+    {
+      "id": 3,
+      "type": "PDSound",
+      "pos": [
+        420,
+        0
+      ],
+      "size": [
+        270,
+        414
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "shape": 7,
+          "type": "*",
+          "link": 1
+        },
+        {
+          "localized_name": "enabled",
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enabled"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "play_when",
+          "name": "play_when",
+          "type": "COMBO",
+          "widget": {
+            "name": "play_when"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sound",
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "volume",
+          "name": "volume",
+          "type": "FLOAT",
+          "widget": {
+            "name": "volume"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_url",
+          "name": "custom_url",
+          "type": "STRING",
+          "widget": {
+            "name": "custom_url"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "when_cached",
+          "name": "when_cached",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "when_cached"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "error_tone",
+          "name": "error_tone",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "error_tone"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDSound"
+      },
+      "widgets_values": [
+        true,
+        "node reached",
+        "ding",
+        0.6,
+        "",
+        false,
+        true
+      ],
+      "widgets_values_named": {
+        "enabled": true,
+        "play_when": "node reached",
+        "sound": "ding",
+        "volume": 0.6,
+        "custom_url": "",
+        "when_cached": false,
+        "error_tone": true
+      }
+    },
+    {
+      "id": 4,
+      "type": "PreviewImage",
+      "pos": [
+        820,
+        0
+      ],
+      "size": [
+        360,
+        420
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 5,
+      "type": "PDSound",
+      "pos": [
+        420,
+        480
+      ],
+      "size": [
+        270,
+        414
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "localized_name": "enabled",
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enabled"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "play_when",
+          "name": "play_when",
+          "type": "COMBO",
+          "widget": {
+            "name": "play_when"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sound",
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "volume",
+          "name": "volume",
+          "type": "FLOAT",
+          "widget": {
+            "name": "volume"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_url",
+          "name": "custom_url",
+          "type": "STRING",
+          "widget": {
+            "name": "custom_url"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "when_cached",
+          "name": "when_cached",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "when_cached"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "error_tone",
+          "name": "error_tone",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "error_tone"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDSound"
+      },
+      "widgets_values": [
+        true,
+        "queue finished",
+        "chime",
+        0.6,
+        "",
+        false,
+        true
+      ],
+      "widgets_values_named": {
+        "enabled": true,
+        "play_when": "queue finished",
+        "sound": "chime",
+        "volume": 0.6,
+        "custom_url": "",
+        "when_cached": false,
+        "error_tone": true
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        80,
+        380
+      ]
+    }
+  },
+  "version": 0.4
+}

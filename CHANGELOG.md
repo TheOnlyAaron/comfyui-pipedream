@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.2.1 (unreleased)
+## 0.2.1 (2026-11-24)
 
-Bump `version` in `pyproject.toml` to 0.2.1 only when releasing: the
-change publishes to the Comfy Registry as soon as it reaches `main`.
+### Example workflows
+- Reorganised so each topic has its own workflow and every node appears in
+  at least one: 01 Tokens, 02 Load and save, 03 Video frames, 04 Sound
+  (new), 05 Colour with OCIO, 06 Wedge basics (new, no model needed),
+  07 Prompt wedge, 08 Product matrix. The old 01–06 folders are replaced
 
 ### PD Tokens To String
 - **preview** button runs just the node (and its context) and shows the

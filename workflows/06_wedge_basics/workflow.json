@@ -1,8 +1,8 @@
 {
-  "id": "013307b3-e079-4fc8-91c5-7172a581579a",
+  "id": "63a52ae2-949d-4cb6-90c9-2940fdedf037",
   "revision": 0,
-  "last_node_id": 9,
-  "last_link_id": 7,
+  "last_node_id": 5,
+  "last_link_id": 5,
   "nodes": [
     {
       "id": 1,
@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       ],
       "widgets_values_named": {
-        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "text": "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -39,7 +39,7 @@
       ],
       "size": [
         274.373046875,
-        740
+        532
       ],
       "flags": {},
       "order": 1,
@@ -221,7 +221,6 @@
           "links": null
         }
       ],
-      "title": "Source image",
       "properties": {
         "Node name for S&R": "PDLoad"
       },
@@ -254,17 +253,320 @@
     },
     {
       "id": 3,
-      "type": "RepeatImageBatch",
+      "type": "PDWedge",
+      "pos": [
+        0,
+        620
+      ],
+      "size": [
+        270,
+        282
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "shape": 7,
+          "type": "WEDGE",
+          "link": null
+        },
+        {
+          "label": "1: studio",
+          "localized_name": "input_1",
+          "name": "input_1",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "localized_name": "token",
+          "name": "token",
+          "type": "STRING",
+          "widget": {
+            "name": "token"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "group",
+          "name": "group",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "group"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "solo",
+          "name": "solo",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "solo"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_1",
+          "name": "value_1",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_1"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_2",
+          "name": "value_2",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_2"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_3",
+          "name": "value_3",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_4",
+          "name": "value_4",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_4"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_5",
+          "name": "value_5",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_5"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_6",
+          "name": "value_6",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_6"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_7",
+          "name": "value_7",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_7"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_8",
+          "name": "value_8",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_8"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_9",
+          "name": "value_9",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_9"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_10",
+          "name": "value_10",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_10"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_11",
+          "name": "value_11",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_11"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_12",
+          "name": "value_12",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_12"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_13",
+          "name": "value_13",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_13"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_14",
+          "name": "value_14",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_14"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_15",
+          "name": "value_15",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_15"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "value_16",
+          "name": "value_16",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "value_16"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "*",
+          "links": null
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "int",
+          "name": "int",
+          "type": "INT",
+          "links": [
+            2,
+            3
+          ]
+        },
+        {
+          "localized_name": "float",
+          "name": "float",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "wedge",
+          "name": "wedge",
+          "type": "WEDGE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDWedge"
+      },
+      "widgets_values": [
+        "size",
+        "",
+        0,
+        "256",
+        "512",
+        "1024",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "token": "size",
+        "group": "",
+        "solo": 0,
+        "value_1": "256",
+        "value_2": "512",
+        "value_3": "1024",
+        "value_4": "",
+        "value_5": "",
+        "value_6": "",
+        "value_7": "",
+        "value_8": "",
+        "value_9": "",
+        "value_10": "",
+        "value_11": "",
+        "value_12": "",
+        "value_13": "",
+        "value_14": "",
+        "value_15": "",
+        "value_16": ""
+      }
+    },
+    {
+      "id": 4,
+      "type": "ImageScale",
       "pos": [
         420,
         0
       ],
       "size": [
-        270,
-        58
+        315,
+        130
       ],
       "flags": {},
-      "order": 4,
+      "order": 0,
       "mode": 0,
       "inputs": [
         {
@@ -274,11 +576,38 @@
           "link": 1
         },
         {
-          "localized_name": "amount",
-          "name": "amount",
+          "localized_name": "upscale_method",
+          "name": "upscale_method",
+          "type": "COMBO",
+          "widget": {
+            "name": "upscale_method"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "width",
+          "name": "width",
           "type": "INT",
           "widget": {
-            "name": "amount"
+            "name": "width"
+          },
+          "link": 2
+        },
+        {
+          "localized_name": "height",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 3
+        },
+        {
+          "localized_name": "crop",
+          "name": "crop",
+          "type": "COMBO",
+          "widget": {
+            "name": "crop"
           },
           "link": null
         }
@@ -289,128 +618,19 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            2
+            4
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "RepeatImageBatch"
+        "Node name for S&R": "ImageScale"
       },
       "widgets_values": [
-        5
-      ],
-      "widgets_values_named": {
-        "amount": 5
-      }
-    },
-    {
-      "id": 4,
-      "type": "PDProjectContext",
-      "pos": [
-        420,
-        220
-      ],
-      "size": [
-        297.4765625,
-        226
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "context",
-          "name": "context",
-          "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": null
-        },
-        {
-          "localized_name": "project",
-          "name": "project",
-          "type": "STRING",
-          "widget": {
-            "name": "project"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "sequence",
-          "name": "sequence",
-          "type": "STRING",
-          "widget": {
-            "name": "sequence"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "shot",
-          "name": "shot",
-          "type": "STRING",
-          "widget": {
-            "name": "shot"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "version",
-          "name": "version",
-          "type": "STRING",
-          "widget": {
-            "name": "version"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "user",
-          "name": "user",
-          "shape": 7,
-          "type": "STRING",
-          "widget": {
-            "name": "user"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "auto_increment_version",
-          "name": "auto_increment_version",
-          "shape": 7,
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "auto_increment_version"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "context",
-          "name": "context",
-          "type": "PROJECT_CONTEXT",
-          "links": [
-            3
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PDProjectContext"
-      },
-      "widgets_values": [
-        "demo",
-        "",
-        "sh020",
-        "v001",
-        "",
-        false
-      ],
-      "widgets_values_named": {
-        "project": "demo",
-        "sequence": "",
-        "shot": "sh020",
-        "version": "v001",
-        "user": "",
-        "auto_increment_version": false
-      }
+        "lanczos",
+        512,
+        512,
+        "center"
+      ]
     },
     {
       "id": 5,
@@ -421,7 +641,7 @@
       ],
       "size": [
         420,
-        714
+        620
       ],
       "flags": {},
       "order": 5,
@@ -432,21 +652,21 @@
           "name": "images",
           "shape": 7,
           "type": "IMAGE",
-          "link": 2
+          "link": 4
         },
         {
           "localized_name": "context",
           "name": "context",
           "shape": 7,
           "type": "PROJECT_CONTEXT",
-          "link": 3
+          "link": null
         },
         {
           "localized_name": "wedge",
           "name": "wedge",
           "shape": 7,
           "type": "WEDGE",
-          "link": null
+          "link": 5
         },
         {
           "localized_name": "video",
@@ -612,9 +832,7 @@
           "localized_name": "path",
           "name": "path",
           "type": "STRING",
-          "links": [
-            4
-          ]
+          "links": null
         },
         {
           "localized_name": "path_sidecar",
@@ -641,8 +859,8 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/{project}/{shot}/{shot}_{version}",
-        "exr",
+        "pipedream_demo/wedge/example_{size}",
+        "png",
         1001,
         4,
         24,
@@ -653,13 +871,13 @@
         true,
         "half",
         "zip",
-        "sRGB to linear"
+        "as is"
       ],
       "widgets_values_named": {
         "path_mode": "relative",
         "base_path": "",
-        "template": "pipedream_demo/{project}/{shot}/{shot}_{version}",
-        "format": "exr",
+        "template": "pipedream_demo/wedge/example_{size}",
+        "format": "png",
         "start_frame": 1001,
         "frame_padding": 4,
         "fps": 24,
@@ -670,368 +888,8 @@
         "save_metadata": true,
         "exr_precision": "half",
         "exr_compression": "zip",
-        "exr_colorspace": "sRGB to linear"
+        "exr_colorspace": "as is"
       }
-    },
-    {
-      "id": 6,
-      "type": "PDLoad",
-      "pos": [
-        1300,
-        0
-      ],
-      "size": [
-        274.373046875,
-        532
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "context",
-          "name": "context",
-          "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": null
-        },
-        {
-          "localized_name": "wedge",
-          "name": "wedge",
-          "shape": 7,
-          "type": "WEDGE",
-          "link": null
-        },
-        {
-          "localized_name": "path_mode",
-          "name": "path_mode",
-          "type": "COMBO",
-          "widget": {
-            "name": "path_mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "base_path",
-          "name": "base_path",
-          "type": "STRING",
-          "widget": {
-            "name": "base_path"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "file",
-          "name": "file",
-          "type": "STRING",
-          "widget": {
-            "name": "file"
-          },
-          "link": 4
-        },
-        {
-          "localized_name": "format",
-          "name": "format",
-          "type": "COMBO",
-          "widget": {
-            "name": "format"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "start_frame",
-          "name": "start_frame",
-          "type": "INT",
-          "widget": {
-            "name": "start_frame"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "widget": {
-            "name": "frame_count"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "every_nth",
-          "name": "every_nth",
-          "type": "INT",
-          "widget": {
-            "name": "every_nth"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "sequence_mode",
-          "name": "sequence_mode",
-          "shape": 7,
-          "type": "COMBO",
-          "widget": {
-            "name": "sequence_mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "fps_from_file",
-          "name": "fps_from_file",
-          "shape": 7,
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "fps_from_file"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "shape": 7,
-          "type": "FLOAT",
-          "widget": {
-            "name": "fps"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "exr_colorspace",
-          "name": "exr_colorspace",
-          "shape": 7,
-          "type": "COMBO",
-          "widget": {
-            "name": "exr_colorspace"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "links": [
-            5
-          ]
-        },
-        {
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "localized_name": "fps",
-          "name": "fps",
-          "type": "FLOAT",
-          "links": null
-        },
-        {
-          "localized_name": "frame_count",
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "first_frame",
-          "name": "first_frame",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "localized_name": "path",
-          "name": "path",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "localized_name": "context",
-          "name": "context",
-          "type": "PROJECT_CONTEXT",
-          "links": [
-            6
-          ]
-        },
-        {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
-          "links": null
-        },
-        {
-          "localized_name": "audio",
-          "name": "audio",
-          "type": "AUDIO",
-          "links": null
-        }
-      ],
-      "title": "Read back (file from PD Output path)",
-      "properties": {
-        "Node name for S&R": "PDLoad"
-      },
-      "widgets_values": [
-        "relative",
-        "",
-        "",
-        "auto",
-        0,
-        0,
-        1,
-        "auto",
-        true,
-        24,
-        "linear to sRGB"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "linear to sRGB"
-      }
-    },
-    {
-      "id": 7,
-      "type": "PreviewImage",
-      "pos": [
-        1720,
-        0
-      ],
-      "size": [
-        360,
-        420
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 5
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "images",
-          "name": "images",
-          "type": "IMAGE",
-          "links": null
-        }
-      ],
-      "title": "Read-back frames",
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 8,
-      "type": "PDTokensToString",
-      "pos": [
-        1720,
-        480
-      ],
-      "size": [
-        360,
-        160
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "context",
-          "name": "context",
-          "shape": 7,
-          "type": "PROJECT_CONTEXT",
-          "link": 6
-        },
-        {
-          "localized_name": "template",
-          "name": "template",
-          "type": "STRING",
-          "widget": {
-            "name": "template"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "frame_padding",
-          "name": "frame_padding",
-          "type": "INT",
-          "widget": {
-            "name": "frame_padding"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "resolved",
-          "name": "resolved",
-          "type": "STRING",
-          "links": [
-            7
-          ]
-        }
-      ],
-      "title": "Tokens from the sidecar",
-      "properties": {
-        "Node name for S&R": "PDTokensToString"
-      },
-      "widgets_values": [
-        "{project} / {shot} / {version}",
-        4
-      ],
-      "widgets_values_named": {
-        "template": "{project} / {shot} / {version}",
-        "frame_padding": 4
-      }
-    },
-    {
-      "id": 9,
-      "type": "PreviewAny",
-      "pos": [
-        1720,
-        700
-      ],
-      "size": [
-        360,
-        140
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "source",
-          "name": "source",
-          "type": "*",
-          "link": 7
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "STRING",
-          "name": "STRING",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "title": "Sidecar tokens",
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "widgets_values_named": {}
     }
   ],
   "links": [
@@ -1039,66 +897,50 @@
       1,
       2,
       0,
-      3,
+      4,
       0,
       "IMAGE"
     ],
     [
       2,
       3,
-      0,
-      5,
-      0,
-      "IMAGE"
+      2,
+      4,
+      2,
+      "INT"
     ],
     [
       3,
+      3,
+      2,
       4,
-      0,
-      5,
-      1,
-      "PROJECT_CONTEXT"
+      3,
+      "INT"
     ],
     [
       4,
-      5,
-      0,
-      6,
       4,
-      "STRING"
-    ],
-    [
-      5,
-      6,
       0,
-      7,
+      5,
       0,
       "IMAGE"
     ],
     [
-      6,
-      6,
-      6,
-      8,
-      0,
-      "PROJECT_CONTEXT"
-    ],
-    [
-      7,
-      8,
-      0,
-      9,
-      0,
-      "STRING"
+      5,
+      3,
+      4,
+      5,
+      2,
+      "WEDGE"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.62,
+      "scale": 0.9,
       "offset": [
-        40,
+        80,
         380
       ]
     }
