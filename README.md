@@ -4,17 +4,36 @@ Production pipeline nodes for ComfyUI: token-based output and loading on local a
 
 Pipedream is not a visual effects node pack. It is plumbing.
 
+**Comfy Registry:** [registry.comfy.org/publishers/theonlyaaron/nodes/PipeDream](https://registry.comfy.org/publishers/theonlyaaron/nodes/PipeDream) · install id `PipeDream`
+
 ## Installation
 
-The commands use full paths, so they work from any folder. Restart ComfyUI afterwards; the nodes appear under **Pipedream**.
+Restart ComfyUI after installing; the nodes appear under **Pipedream**. Install it one way only: a registry install and a git clone in `custom_nodes` at the same time register every node twice.
 
 The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolorio`, BSD-3), for the OCIO nodes. Everything else works without it. Video and EXR use PyAV, which ComfyUI already ships.
 
-### ComfyUI Manager
+### ComfyUI Manager (recommended)
 
-Search for **PipeDream** in ComfyUI Manager's Custom Nodes Manager and install it, or from a terminal run `comfy node install PipeDream`. Manager installs the dependencies; restart ComfyUI afterwards. The latest registry version is the stable release; Manager's **nightly** is the newest commit on `main`.
+Open the **Nodes Manager** (Manager → Custom Nodes Manager), search for **PipeDream** and click **Install**. Manager installs the dependencies and handles updates.
 
-### ComfyUI Desktop (Windows)
+- **Versions:** numbered versions (`0.2.0`, ...) are the stable releases published to the [Comfy Registry](https://registry.comfy.org/publishers/theonlyaaron/nodes/PipeDream). **nightly** is the newest commit on `main`.
+- A version published in the last few hours may not be in Manager's cached list yet ("Cannot resolve install target 'PipeDream@latest'"): pick **nightly** from the version list, or restart ComfyUI later.
+
+### comfy-cli
+
+With [comfy-cli](https://docs.comfy.org/comfy-cli/getting-started) installed (`pip install comfy-cli`), in the Python environment ComfyUI runs with:
+
+```bash
+comfy node install PipeDream
+```
+
+`comfy node update PipeDream` updates it. When comfy-cli doesn't know which install to use, name it: `comfy --workspace "<path to ComfyUI>" node install PipeDream`.
+
+### Git clone
+
+For development, or to follow `main` without Manager. The commands use full paths, so they work from any folder.
+
+#### ComfyUI Desktop (Windows)
 
 Desktop keeps each instance in `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Installs\<instance name>`. Open the instance's **Terminal** tab (its Python is already active) and paste:
 
@@ -29,7 +48,7 @@ If `git clone` says the path does not exist, check the instance folder name with
 
 > Older Desktop versions (before instances) use `$nodes = "$env:USERPROFILE\Documents\ComfyUI\custom_nodes"` with the same last two lines.
 
-### ComfyUI portable (Windows)
+#### ComfyUI portable (Windows)
 
 ```powershell
 $portable = "C:\ComfyUI_windows_portable"   # the folder holding run_nvidia_gpu.bat
@@ -37,7 +56,7 @@ git clone https://github.com/theonlyaaron/comfyui-pipedream.git "$portable\Comfy
 & "$portable\python_embeded\python.exe" -m pip install -r "$portable\ComfyUI\custom_nodes\comfyui-pipedream\requirements.txt"
 ```
 
-### Manual install (Linux, macOS, Windows)
+#### Manual install (Linux, macOS, Windows)
 
 Activate the Python environment ComfyUI runs with, then:
 
