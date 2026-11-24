@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_from_file loads the whole sequence, linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
       ],
       "widgets_values_named": {
-        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_from_file loads the whole sequence, linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -123,12 +123,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -233,7 +233,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -246,7 +246,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"
@@ -766,12 +766,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -878,7 +878,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "linear to sRGB"
@@ -891,7 +891,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "linear to sRGB"

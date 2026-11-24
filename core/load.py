@@ -36,6 +36,7 @@ IMAGE_EXTS = ("exr", "png", "jpg", "jpeg", "webp", "tif", "tiff", "dpx", "bmp")
 VIDEO_EXTS = ("mp4", "mov", "webm", "mkv", "avi", "m4v")
 FORMATS = ("auto", "exr", "png", "jpg", "webp", "tif", "dpx", "mp4", "mov", "webm", "mkv")
 EXR_COLORSPACES = ("as is", "linear to sRGB")
+SEQUENCE_MODES = ("auto", "single file", "sequence")
 
 _ALIASES = {"jpg": ("jpg", "jpeg"), "tif": ("tif", "tiff")}
 _HASHES = re.compile(r"#+")
@@ -114,12 +115,27 @@ def _listdir(folder: str) -> list[str]:
         return []
 
 
+def normalize_sequence_mode(value) -> str:
+    """
+    One of ``SEQUENCE_MODES`` for a ``sequence_mode`` value, accepting the
+    old ``sequence_from_file`` boolean (True: auto, False: single file) from
+    workflows and API prompts saved before 0.2.1.  Unknown values are auto.
+    """
+    if isinstance(value, bool):
+        return "auto" if value else "single file"
+    text = str(value).strip().lower()
+    if text in ("false", "0", "off", "no"):
+        return "single file"
+    return text if text in SEQUENCE_MODES else "auto"
+
+
 def _sequence_of(path: str, ext: str, entries: list[str]):
     """
-    The sequence a numbered image belongs to: ``(paths, frames)`` when
-    *path* ends in a frame number (``shot.1001.exr``, ``plate_0042.png``,
-    ``0001.png``) and at least one other file with the same prefix and
-    extension sits next to it, else None.
+    The files a numbered image may be one frame of: ``{"paths", "frames",
+    "digits", "prefix"}`` when *path* ends in a frame number
+    (``shot.1001.exr``, ``plate_0042.png``, ``0001.png``) and at least one
+    other file with the same prefix and extension sits next to it, else
+    None.  ``digits`` are the frame numbers as written (``"0042"``).
     """
     folder, name = os.path.split(path)
     match = re.match(r"^(.*?)(\d+)\." + re.escape(ext) + "$", name, re.IGNORECASE)
@@ -127,10 +143,97 @@ def _sequence_of(path: str, ext: str, entries: list[str]):
         return None
     regex = re.compile(re.escape(match.group(1)) + r"(\d+)\." + re.escape(ext) + "$",
                        re.IGNORECASE)
-    frames = sorted((int(m.group(1)), entry) for entry in entries if (m := regex.match(entry)))
-    if len(frames) < 2:
+    found = sorted((int(m.group(1)), m.group(1), entry) for entry in entries
+                   if (m := regex.match(entry)))
+    if len(found) < 2:
         return None
-    return [os.path.join(folder, e) for _, e in frames], [n for n, _ in frames]
+    return {"paths": [os.path.join(folder, e) for _, _, e in found],
+            "frames": [n for n, _, _ in found],
+            "digits": [d for _, d, _ in found],
+            "prefix": match.group(1)}
+
+
+def _read_json(path: str) -> dict | None:
+    """The JSON object in *path*, or None when it is missing or not an object."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _sidecar_verdict(picked: str, ext: str, candidate: dict):
+    """
+    What PD Output's sidecars say about *picked*: ``("single", note)``,
+    ``("sequence", note)`` or None when they say nothing.
+
+    PD Output names a single image's sidecar after the file
+    (``Sr388_512.exr`` -> ``Sr388_512.json``, no ``sequence`` section) and
+    a sequence's after the name without the frame (``sh010.1001.exr`` ->
+    ``sh010.json``, with ``sequence.pattern``).
+    """
+    folder, name = os.path.split(picked)
+    own = os.path.join(folder, os.path.splitext(name)[0] + ".json")
+    data = _read_json(own)
+    if data is not None and data.get("node") == "PDOutput" and not data.get("sequence"):
+        return "single", f"single image: its sidecar {os.path.basename(own)} has no sequence"
+
+    stem = re.sub(r"[._-]$", "", candidate["prefix"]) or "sequence"
+    shared = os.path.join(folder, stem + ".json")
+    data = _read_json(shared)
+    sequence = data.get("sequence") if data else None
+    pattern = sequence.get("pattern") if isinstance(sequence, dict) else None
+    if isinstance(pattern, str):
+        width = len(candidate["digits"][0])
+        expected = f"{candidate['prefix']}{'#' * width}.{ext}"
+        if os.path.basename(pattern.replace("\\", "/")).lower() == expected.lower():
+            return "sequence", f"sequence: from sidecar {os.path.basename(shared)}"
+    return None
+
+
+def _unpadded(digits: list[str]) -> bool:
+    """True for frame numbers without zero padding and of different lengths (1, 2, 10)."""
+    padded = any(len(d) > 1 and d.startswith("0") for d in digits)
+    return not padded and len({len(d) for d in digits}) > 1
+
+
+def _decide_sequence(picked: str, ext: str, entries: list[str], mode: str):
+    """
+    Whether a single numbered image loads as the sequence it may be one
+    frame of, per *mode* (see ``SEQUENCE_MODES``).  Returns
+    ``(candidate or None, note)``: the candidate from ``_sequence_of`` to
+    load as a sequence, and a line for the info panel saying why.
+
+    ``auto`` checks, in order: PD Output's sidecars, frame sizes (first,
+    last and picked), then unpadded numbers of different lengths (wedge or
+    take numbers); anything else is guessed to be a sequence.
+    """
+    if mode == "single file":
+        return None, ""
+    candidate = _sequence_of(picked, ext, entries)
+    if candidate is None:
+        return None, ("sequence_mode is sequence, but no other numbered files match this one"
+                      if mode == "sequence" else "")
+    count = len(candidate["paths"])
+    if mode == "sequence":
+        return candidate, f"sequence: sequence_mode is sequence ({count} files)"
+
+    to_all = "; set sequence_mode to sequence to load all"
+    to_one = "; set sequence_mode to single file to load just this one"
+    verdict = _sidecar_verdict(picked, ext, candidate)
+    if verdict:
+        kind, note = verdict
+        return (candidate, note + to_one) if kind == "sequence" else (None, note + to_all)
+    mismatch = _sizes_differ(candidate["paths"], picked)
+    if mismatch:
+        other, (w, h), (pw, ph) = mismatch
+        return None, (f"single image: {os.path.basename(other)} is {w}x{h}, this file is "
+                      f"{pw}x{ph}" + to_all)
+    if _unpadded(candidate["digits"]):
+        first, last = (os.path.basename(p) for p in (candidate["paths"][0], candidate["paths"][-1]))
+        return None, f"single image: unpadded numbers ({first} ... {last})" + to_all
+    return candidate, f"sequence guessed from {count} files named like this one" + to_one
 
 
 def _exr_size(fh):
@@ -199,20 +302,22 @@ def _sizes_differ(paths: list[str], picked: str):
     return None
 
 
-def find_media(resolved: str, file_format: str = "auto", sequence_from_file: bool = False) -> dict:
+def find_media(resolved: str, file_format: str = "auto", sequence_mode: str = "single file") -> dict:
     """
     Find the file(s) a resolved template names.
 
     Returns ``{"kind": "image"|"sequence"|"video", "paths": [...],
     "frames": [...], "pattern": str, "ext": str}``; ``frames`` holds the
     frame numbers of a sequence (``[0]`` otherwise) and ``pattern`` is a
-    readable name (``shot.####.exr`` for a sequence).  With
-    *sequence_from_file*, a single image that is one frame of a sequence
-    (``shot.1001.exr`` with ``shot.1002.exr`` next to it) loads as that
-    whole sequence, unless its first, last and that frame differ in size
-    (numbered photos such as ``IMG_0001.jpg``, ``IMG_0002.jpg`` are not a
-    sequence); ``note`` then says why.  Raises MediaNotFound (with what was searched) or
-    ValueError when ``auto`` finds more than one format.
+    readable name (``shot.####.exr`` for a sequence).
+
+    A frame mark or a name without its number always names a sequence.  A
+    single numbered image (``shot.1001.exr`` with ``shot.1002.exr`` next to
+    it) follows *sequence_mode*: ``single file`` loads it alone,
+    ``sequence`` loads every file named like it, and ``auto`` decides (see
+    ``_decide_sequence``); ``note`` says what was decided and why.  Raises
+    MediaNotFound (with what was searched) or ValueError when ``auto``
+    finds more than one format.
     """
     stem, ext = _split_ext(resolved)
     exts = (ext,) if ext else _candidates(file_format)
@@ -255,15 +360,11 @@ def find_media(resolved: str, file_format: str = "auto", sequence_from_file: boo
     ext, (how, paths, frames) = next(iter(found.items()))
     kind = kind_of(ext)
     note = ""
-    if how == "single" and kind == "image" and sequence_from_file:
-        sequence = _sequence_of(paths[0], ext, entries)
-        mismatch = sequence and _sizes_differ(sequence[0], paths[0])
-        if mismatch:
-            other, (w, h), (pw, ph) = mismatch
-            note = (f"not loaded as a sequence: {os.path.basename(other)} is {w}x{h}, "
-                    f"this file is {pw}x{ph}")
-        elif sequence:
-            how, (paths, frames) = "sequence", sequence
+    if how == "single" and kind == "image":
+        candidate, note = _decide_sequence(paths[0], ext, entries,
+                                         normalize_sequence_mode(sequence_mode))
+        if candidate:
+            how, paths, frames = "sequence", candidate["paths"], candidate["frames"]
     if how == "sequence" and kind == "video":
         kind, paths, frames = "video", paths[:1], [0]
     elif how == "sequence":

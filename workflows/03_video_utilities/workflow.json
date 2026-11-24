@@ -123,12 +123,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -233,7 +233,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -246,7 +246,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"
@@ -722,12 +722,12 @@
           "link": null
         },
         {
-          "localized_name": "sequence_from_file",
-          "name": "sequence_from_file",
+          "localized_name": "sequence_mode",
+          "name": "sequence_mode",
           "shape": 7,
-          "type": "BOOLEAN",
+          "type": "COMBO",
           "widget": {
-            "name": "sequence_from_file"
+            "name": "sequence_mode"
           },
           "link": null
         },
@@ -830,7 +830,7 @@
         0,
         0,
         1,
-        true,
+        "auto",
         true,
         24,
         "as is"
@@ -843,7 +843,7 @@
         "start_frame": 0,
         "frame_count": 0,
         "every_nth": 1,
-        "sequence_from_file": true,
+        "sequence_mode": "auto",
         "fps_from_file": true,
         "fps": 24,
         "exr_colorspace": "as is"

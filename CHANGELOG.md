@@ -5,6 +5,18 @@
 Bump `version` in `pyproject.toml` to 0.2.1 only when releasing: the
 change publishes to the Comfy Registry as soon as it reaches `main`.
 
+### PD Load
+- `sequence_mode` (**auto** / **single file** / **sequence**) replaces the
+  `sequence_from_file` switch. Saved workflows and API prompts convert
+  (on → auto, off → single file); the example workflows are updated
+- **auto** decides whether a single numbered file loads its sequence from
+  PD Output's sidecar first (a single image's own sidecar has no
+  `sequence`; a sequence's sidecar names its pattern), then frame sizes,
+  then unpadded numbers of different lengths (wedge outputs such as
+  `seed_1` … `seed_10`); otherwise it guesses a sequence
+- The info panel says what was decided, why, and which `sequence_mode`
+  overrides it; the frame-size error suggests **single file**
+
 ## 0.2.0 (2026-11-24)
 
 ### Comfy Registry
