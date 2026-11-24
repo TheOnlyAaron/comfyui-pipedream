@@ -34,6 +34,7 @@ from ..core.profiler import (
     ComfyEnv,
     Graph,
     NodeInfo,
+    build_chart,
     build_profile,
     estimate_time,
     fmt_bytes,
@@ -272,7 +273,8 @@ class PDProfiler:
             actual["sidecar"] = written or f"failed: {target}"
 
         return {"ui": {"profile_text": [format_report(report, actual)],
-                       "pd_profile_timings": [timings]}}
+                       "pd_profile_timings": [timings],
+                       "pd_profile_chart": [build_chart(report, timings, actual)]}}
 
 
 capture.install()
@@ -294,7 +296,8 @@ if routes is not None:
                 env = comfy_env()
                 budget = make_budget(inputs.get("vram_gb", 0), inputs.get("ram_gb", 0))
                 report = build_profile(prompt, node_id, env, budget, data.get("timings") or {})
-                return {"text": format_report(report), "report": report}
+                return {"text": format_report(report), "report": report,
+                        "chart": build_chart(report, data.get("timings") or {})}
 
             result = await asyncio.get_running_loop().run_in_executor(None, work)
             return web.json_response(result, dumps=_dumps)

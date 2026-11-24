@@ -20,6 +20,9 @@
 - Wedges: follows only the selected row; time estimates spell out once
   per queue + jobs × per job
 - API nodes count as zero and are flagged
+- Memory chart on the node: stages stacked as models / working / latents
+  against the VRAM budget (overflow hatched), widths by measured time
+  after a run, measured peak line, and a RAM bar of models and pixels
 - `export_sidecar` writes `<name>.profile.json` next to PD Output's file
   (link its `path`), into a folder, or into `output/pipedream_profiles`
 - New settings: `profiler.enabled`, `profiler.vram_gb`, `profiler.ram_gb`,

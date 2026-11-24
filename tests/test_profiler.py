@@ -288,6 +288,24 @@ class TimeTests(ProfilerCase):
         self.assertAlmostEqual(t["total"], 22.0 + 3 * 65.0)
 
 
+class ChartTests(ProfilerCase):
+    def test_chart_stacks_and_seconds(self):
+        timings = {"7": {"seconds": 90.0, "class": "KSampler"}}
+        report = self.profile(wan_flow(), budget={"vram": 24 * GIB, "ram": 64 * GIB}, timings=timings)
+        chart = pf.build_chart(report, timings, {"nodes": [{"node": "8", "seconds": 4.0}],
+                                                 "vram_peak": 20 * GIB})
+        self.assertEqual([s["kind"] for s in chart["stages"]], ["encode", "sample", "decode"])
+        sample = chart["stages"][1]
+        self.assertEqual(sample["latents"], 1 * 16 * 21 * 90 * 160 * 4)
+        self.assertEqual(sample["total"], sample["models"] + sample["working"] + sample["latents"])
+        self.assertEqual((sample["seconds"], chart["stages"][2]["seconds"]), (90.0, 4.0))
+        self.assertIsNone(chart["stages"][0]["seconds"])
+        self.assertEqual(chart["vram"], 24 * GIB)
+        self.assertEqual(chart["ram_use"]["pixels"], 1280 * 720 * 3 * 4 * 81)
+        self.assertEqual(chart["measured_peak"], 20 * GIB)
+        json.dumps(chart)
+
+
 class OutputTests(ProfilerCase):
     def test_profile_path(self):
         self.assertEqual(pf.profile_path("/o/shot_v001.1001.exr", "T"),

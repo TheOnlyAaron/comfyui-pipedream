@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { addReadOnlyText, chain, findWidget, showOutputText, showWidgets } from "./pd_common.js";
+import { addProfileChart } from "./pd_profiler_chart.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Profiler                                                 */
@@ -13,6 +14,7 @@ import { addReadOnlyText, chain, findWidget, showOutputText, showWidgets } from 
 /*  Each run's measured node times are kept in node.properties, so     */
 /*  they survive a save and later evaluations can estimate time.       */
 /*  path is shown only while export_sidecar is on (or linked).         */
+/*  The memory chart (pd_profiler_chart.js) sits above the text.       */
 /* ------------------------------------------------------------------ */
 
 const TIMINGS = "pd_profile_timings";
@@ -43,6 +45,7 @@ async function evaluate(node) {
         });
         const result = await response.json();
         panel.value = result.text ?? result.error ?? "No result.";
+        if (result.chart) node._pdChart?.set(result.chart);
     } catch (error) {
         panel.value = `Profile failed: ${error.message ?? error}`;
     }
@@ -84,11 +87,14 @@ app.registerExtension({
         machine.serialize = false;
         machine.tooltip = "Set vram_gb and ram_gb to this machine's memory (stops emulating another machine).";
 
+        node._pdChart = addProfileChart(node);
         const panel = addReadOnlyText(node, "profile_display",
                                       "Press profile to evaluate upstream, or queue a run to measure it.", 220);
         showOutputText(node, panel, "profile_text");
 
         chain(node, "onExecuted", (output) => {
+            const chart = output?.pd_profile_chart?.[0];
+            if (chart) node._pdChart?.set(chart);
             const timings = output?.pd_profile_timings?.[0];
             if (timings && Object.keys(timings).length) {
                 node.properties ??= {};

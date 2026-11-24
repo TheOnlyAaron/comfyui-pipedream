@@ -865,6 +865,39 @@ def timings_from_run(prompt, node_id, env, run: dict, report: dict) -> dict:
     return out
 
 
+def build_chart(report: dict, timings: dict | None = None, actual: dict | None = None) -> dict:
+    """
+    The memory chart drawn on the node (``web/pd_profiler.js``).
+
+    One column per stage, stacked models / working memory / latents, against
+    the VRAM budget; a RAM bar of model weights and decoded pixels.  Each
+    stage carries its measured seconds when known (from this run, else from
+    *timings*), so the frontend can draw stage widths by time.
+    """
+    budget = report.get("budget") or {}
+    measured = {n["node"]: n["seconds"] for n in (actual or {}).get("nodes", [])
+                if not n.get("cached")}
+    timings = timings or {}
+    stages = []
+    for s in report.get("stages", []):
+        seconds = measured.get(s["node"])
+        if seconds is None and s["node"] in timings:
+            seconds = timings[s["node"]].get("seconds")
+        latents = s["extra"] if s["kind"] == "sample" else 0
+        stages.append({
+            "kind": s["kind"], "name": STAGE_NAMES.get(s["kind"], s["kind"]), "node": s["node"],
+            "label": s["label"], "models": s["weights"], "working": s["working"],
+            "latents": latents, "total": s.get("total", s["weights"] + s["working"] + latents),
+            "seconds": seconds, "verdict": s.get("verdict", ""), "offload": s.get("offload", 0),
+            "unknown": s.get("unknown", ""),
+        })
+    ram = report.get("ram") or {}
+    return {"vram": budget.get("vram") or 0, "ram": budget.get("ram") or 0,
+            "emulated": bool(budget.get("emulated")), "stages": stages,
+            "ram_use": {"models": ram.get("weights", 0), "pixels": ram.get("frames_out", 0)},
+            "measured_peak": (actual or {}).get("vram_peak")}
+
+
 def profile_path(path: str, now: str) -> str:
     """
     Where the profile sidecar goes.
