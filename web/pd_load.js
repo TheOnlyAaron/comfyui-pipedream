@@ -12,6 +12,14 @@ import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./
 /*      base_path: if it is an existing file, it is split into the     */
 /*      two fields (absolute mode) and loaded.                         */
 /*    - "load" button: runs just this node to check what it loads.     */
+/*    - "Explore Input" button: opens the folder of the file in        */
+/*      Explorer (Finder on macOS).                                    */
+/*    - Drop zone (and the whole node on the classic canvas): files     */
+/*      dragged from Explorer.  Browsers do not reveal a dropped file's */
+/*      path, so the files are uploaded to ComfyUI's input/pipedream    */
+/*      folder (all frames of a sequence, sidecar included) and loaded  */
+/*      from there in relative mode.  Where the browser does expose    */
+/*      the path (File.path, older Electron), it is loaded in place.   */
 /*    - Multi-frame loads preview as a playable video.                 */
 /* ------------------------------------------------------------------ */
 
@@ -86,6 +94,132 @@ async function onPathEdited(node, name) {
     runNode(node);
 }
 
+const UPLOAD_SUBFOLDER = "pipedream";
+
+function toast(severity, detail) {
+    app.extensionManager?.toast?.add?.({ severity, summary: "PD Load", detail, life: 4000 });
+}
+
+/** Upload one file to input/pipedream; returns its path relative to the input folder. */
+async function uploadFile(file) {
+    const body = new FormData();
+    body.append("image", file, file.name);
+    body.append("subfolder", UPLOAD_SUBFOLDER);
+    body.append("type", "input");
+    body.append("overwrite", "true");
+    const response = await api.fetchApi("/upload/image", { method: "POST", body });
+    if (response.status !== 200) throw new Error(`${file.name}: ${response.status} ${response.statusText}`);
+    const data = await response.json();
+    return data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
+}
+
+/**
+ * Load dropped files: in place when the browser exposes their path,
+ * otherwise uploaded.  The first media file by name is loaded, so with
+ * sequence_from_file a dropped sequence loads from its first frame.
+ */
+async function onFilesDropped(node, fileList) {
+    const files = [...fileList].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const media = files.filter((f) => !/\.json$/i.test(f.name));
+    if (!media.length) {
+        toast("warn", "Drop an image, sequence or video file.");
+        return;
+    }
+    if (media[0].path) {
+        setValue(node, "file", media[0].path);
+        await onPathEdited(node, "file");
+        return;
+    }
+    toast("info", files.length > 1 ? `Uploading ${files.length} files to input/${UPLOAD_SUBFOLDER}...`
+                                   : `Uploading ${files[0].name} to input/${UPLOAD_SUBFOLDER}...`);
+    let picked = null;
+    try {
+        for (const file of files) {
+            const uploaded = await uploadFile(file);
+            if (file === media[0]) picked = uploaded;
+        }
+    } catch (error) {
+        toast("error", `Upload failed: ${error.message ?? error}`);
+        return;
+    }
+    setValue(node, "path_mode", "relative");
+    setValue(node, "file", picked);
+    sync(node);
+    node.setDirtyCanvas?.(true, true);
+    runNode(node);
+}
+
+const LAST_LOADED = "pd_last_loaded";
+
+async function explore(node) {
+    const value = (name) => findWidget(node, name)?.value ?? "";
+    try {
+        const response = await api.fetchApi("/pipedream/load/explore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                path_mode: value("path_mode"),
+                base_path: value("base_path"),
+                file: value("file"),
+                last: node.properties?.[LAST_LOADED] ?? "",
+            }),
+        });
+        const result = await response.json();
+        if (result.error) toast("error", result.error);
+    } catch (error) {
+        toast("error", String(error));
+    }
+}
+
+const hasFiles = (event) => [...(event.dataTransfer?.types ?? [])].includes("Files");
+
+/** A dashed drop target DOM widget; drops here never reach the canvas. */
+function addDropZone(node) {
+    const el = document.createElement("div");
+    el.textContent = "Drop files here";
+    el.title = `Files are copied to ComfyUI's input/${UPLOAD_SUBFOLDER} folder and loaded from there.`;
+    Object.assign(el.style, {
+        border: "2px dashed var(--border-color, #666)",
+        borderRadius: "6px",
+        color: "var(--descrip-text, #999)",
+        fontSize: "12px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        minHeight: "40px",
+        boxSizing: "border-box",
+        transition: "background 0.1s, border-color 0.1s",
+    });
+    const highlight = (on) => {
+        el.style.background = on ? "rgba(80, 140, 255, 0.15)" : "";
+        el.style.borderColor = on ? "rgb(80, 140, 255)" : "var(--border-color, #666)";
+    };
+    el.addEventListener("dragover", (event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = "copy";
+        highlight(true);
+    });
+    el.addEventListener("dragleave", () => highlight(false));
+    el.addEventListener("drop", (event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        highlight(false);
+        onFilesDropped(node, event.dataTransfer.files);
+    });
+    const widget = node.addDOMWidget("drop_zone", "pd_drop_zone", el, {
+        getValue: () => "",
+        setValue: () => {},
+        getMinHeight: () => 44,
+        serialize: false,
+    });
+    widget.serialize = false;
+    return widget;
+}
+
 app.registerExtension({
     name: "Pipedream.Load",
 
@@ -105,6 +239,27 @@ app.registerExtension({
                                       { serialize: false });
         button.serialize = false;
         button.tooltip = "Run just this node to check what it loads (preview and info below).";
+
+        const exploreButton = node.addWidget("button", "Explore Input", null, () => explore(node),
+                                             { serialize: false });
+        exploreButton.serialize = false;
+        exploreButton.tooltip = "Open the folder of the file in Explorer (Finder on macOS).";
+        chain(node, "onExecuted", (output) => {
+            const path = output?.pd_loaded?.[0];
+            if (path) {
+                node.properties ??= {};
+                node.properties[LAST_LOADED] = path;
+            }
+        });
+
+        addDropZone(node);
+        // Classic canvas: files dropped anywhere on the node load too.
+        node.onDragOver = (event) => hasFiles(event);
+        node.onDragDrop = (event) => {
+            if (!event.dataTransfer?.files?.length) return false;
+            onFilesDropped(node, event.dataTransfer.files);
+            return true;
+        };
 
         trackPreviewMedia(node);
         chain(node, "onConfigure", () => sync(node));

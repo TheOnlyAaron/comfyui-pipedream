@@ -35,11 +35,13 @@ function getAudioContext() {
  * Schedule one enveloped note.
  *
  * `partials` is a list of [frequency ratio, amplitude, duration scale];
- * `glide` bends the pitch by that factor over the note.
+ * `glide` bends the pitch by that factor over the note.  With `hold`, the
+ * note sustains at full level and releases over its last `hold` seconds
+ * (a buzzer) instead of decaying from the attack (a bell).
  */
 function voice(ctx, out, {
     freq, start, dur, type = "sine", gain = 1, attack = 0.006, glide = 0,
-    partials = [[1, 1, 1]],
+    partials = [[1, 1, 1]], hold = 0,
 }) {
     for (const [ratio, amp, scale = 1] of partials) {
         const end = start + dur * scale;
@@ -49,7 +51,9 @@ function voice(ctx, out, {
         osc.frequency.setValueAtTime(freq * ratio, start);
         if (glide) osc.frequency.exponentialRampToValueAtTime(freq * ratio * glide, end);
         env.gain.setValueAtTime(0.0001, start);
-        env.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain * amp), start + attack);
+        const level = Math.max(0.0002, gain * amp);
+        env.gain.exponentialRampToValueAtTime(level, start + attack);
+        if (hold) env.gain.setValueAtTime(level, Math.max(start + attack, end - hold));
         env.gain.exponentialRampToValueAtTime(0.0001, end);
         osc.connect(env).connect(out);
         osc.start(start);
@@ -113,11 +117,13 @@ export const SYNTHS = {
             voice(ctx, f, { freq, start: t + i * 0.16, dur: 0.14, type: "sawtooth", gain: 0.35, attack: 0.005 });
         });
     },
-    /** Low two-pulse buzzer used for errors. */
+    /** Game-show buzzer used for errors: a sustained, rasping low blat. */
     error(ctx, out, t) {
-        const f = lowpass(ctx, out, 900);
-        voice(ctx, f, { freq: 196, start: t, dur: 0.2, type: "square", gain: 0.6, attack: 0.005 });
-        voice(ctx, f, { freq: 185, start: t + 0.24, dur: 0.32, type: "square", gain: 0.6, attack: 0.005 });
+        const f = lowpass(ctx, out, 2400);
+        const buzz = { start: t, dur: 0.65, gain: 0.32, attack: 0.008, hold: 0.06 };
+        voice(ctx, f, { ...buzz, freq: 110, type: "sawtooth" });
+        voice(ctx, f, { ...buzz, freq: 116.5, type: "sawtooth" });
+        voice(ctx, f, { ...buzz, freq: 55, type: "square", gain: 0.22 });
     },
 };
 
@@ -325,11 +331,6 @@ app.registerExtension({
             playSound(settingsFromWidgets());
         });
         button.serialize = false;
-
-        const errButton = node.addWidget("button", "▶ test error tone", null, () => {
-            playSound(settingsFromWidgets(), true);
-        });
-        errButton.serialize = false;
 
         // custom_url only for "custom URL"; when_cached only in "node reached" mode.
         const syncVisibility = () => showWidgets(node, {

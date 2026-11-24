@@ -58,18 +58,18 @@ def server_routes():
 _LOOPBACK = ("127.0.0.1", "::1", "localhost")
 
 
-def reveal_in_file_manager(path: str, remote: str | None = None) -> dict:
+def reveal_in_file_manager(path: str, remote: str | None = None, select: bool = True) -> dict:
     """
     Show *path* in the file manager of the machine running ComfyUI.
 
-    A file is selected in its folder (Explorer, Finder); on Linux its
-    folder opens.  When the file is gone, the nearest existing parent
+    A file is selected in its folder (Explorer, Finder); on Linux, or
+    without *select*, its folder opens.  When the file is gone, the nearest existing parent
     folder opens.  Requests from another machine (``--listen``) are
     refused: the window would open on the server, not for the viewer.
     Returns ``{"opened": path}`` or ``{"error": message}``.
     """
     if remote and remote not in _LOOPBACK:
-        return {"error": "Explore Output only works in a browser on the ComfyUI machine."}
+        return {"error": "Explore only works in a browser on the ComfyUI machine."}
     target = os.path.normpath(path) if path else ""
     while target and not os.path.exists(target):
         parent = os.path.dirname(target)
@@ -79,6 +79,8 @@ def reveal_in_file_manager(path: str, remote: str | None = None) -> dict:
         target = parent
     if not target:
         return {"error": f"Neither '{path}' nor any parent folder exists."}
+    if not select and os.path.isfile(target):
+        target = os.path.dirname(target)
     is_file = os.path.isfile(target)
     if sys.platform == "win32":
         command = f'explorer /select,"{target}"' if is_file else f'explorer "{target}"'

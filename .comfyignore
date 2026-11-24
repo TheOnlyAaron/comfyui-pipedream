@@ -1,0 +1,3 @@
+# Kept in git, left out of the registry package (see .gitignore for the rest).
+tests/
+.github/

@@ -9,6 +9,7 @@ Standard library only; run from the pack root::
 
 import json
 import os
+import struct
 import sys
 import tempfile
 import unittest
@@ -105,6 +106,31 @@ class FindCase(unittest.TestCase):
         self.assertIn("632x468", photo["note"])
         plate = load.find_media(self.path("plate_2.jpg"), sequence_from_file=True)
         self.assertEqual((plate["kind"], plate["note"]), ("sequence", ""))
+
+    def write_exr_header(self, name, width, height):
+        """A minimal EXR header (magic, version, compression and dataWindow)."""
+        def attr(key, kind, value):
+            return key + b"\0" + kind + b"\0" + struct.pack("<i", len(value)) + value
+        data = (b"\x76\x2f\x31\x01" + struct.pack("<i", 2)
+                + attr(b"compression", b"compression", b"\x03")
+                + attr(b"dataWindow", b"box2i", struct.pack("<4i", 0, 0, width - 1, height - 1))
+                + b"\0")
+        with open(self.path(name), "wb") as fh:
+            fh.write(data)
+
+    def test_exr_size_from_header(self):
+        self.write_exr_header("a.exr", 512, 256)
+        self.assertEqual(load._image_size(self.path("a.exr")), (512, 256))
+
+    def test_sequence_from_file_exr_sizes_differ(self):
+        for name, size in (("Sr388_256.exr", 256), ("Sr388_512.exr", 512),
+                           ("sh_1001.exr", 64), ("sh_1002.exr", 64)):
+            self.write_exr_header(name, size, size)
+        wedge = load.find_media(self.path("Sr388_512.exr"), sequence_from_file=True)
+        self.assertEqual(wedge["kind"], "image")
+        self.assertIn("256x256", wedge["note"])
+        seq = load.find_media(self.path("sh_1002.exr"), sequence_from_file=True)
+        self.assertEqual(seq["frames"], [1001, 1002])
 
     def test_select_frames(self):
         self.touch(*[f"s.{n}.png" for n in (1001, 1002, 1003, 1005, 1006, 1007)])

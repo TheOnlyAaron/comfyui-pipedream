@@ -74,11 +74,19 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
     *resolved* is the template with tokens filled in (relative to *root*,
     no extension), *pattern* the full path with extension.  Both hold
     ``FRAME_MARK`` where the frame number goes when *numbered*.  Raises
-    ValueError for a missing base_path, or a relative path that escapes the
-    output directory.
+    ValueError for an empty file name, a missing base_path, or a relative
+    path that escapes the output directory.
     """
     resolved = resolve_tokens(template, {**tokens, "frame": FRAME_MARK},
                               frame_padding=frame_padding)
+    base = os.path.basename(resolved.replace("\\", "/"))
+    frame_only = numbered and FRAME_MARK in base
+    if not strip_frame(base).replace(FRAME_MARK, "").strip(" ._-") and not frame_only:
+        raise ValueError(
+            "[Pipedream] PD Output: no file name chosen. Enter one in 'file' (e.g. "
+            f"{wrap('shot')}_{wrap('version')})" + (f"; '{template}' resolves to "
+            f"'{resolved.replace(FRAME_MARK, '#')}'." if template.strip() else ".")
+        )
     if not numbered:
         resolved = strip_frame(resolved)
     elif FRAME_MARK not in resolved:
@@ -254,6 +262,7 @@ class PDOutput:
                 }),
                 "template": ("STRING", {
                     "default": s("output.template"), "multiline": False,
+                    "display_name": "file",
                     "tooltip": f"Output path without extension. Put {frame} where the frame "
                                f"number goes (e.g. {wrap('shot')}.{frame}); without it, "
                                f"sequences get '{s('sequence.frame_separator')}"

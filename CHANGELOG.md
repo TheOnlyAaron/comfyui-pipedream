@@ -2,12 +2,29 @@
 
 ## 0.2.0 (unreleased)
 
+### Comfy Registry
+- Published to the Comfy Registry as `PipeDream` (publisher `theonlyaaron`),
+  so it installs from ComfyUI Manager. A GitHub Action publishes whenever
+  the version in `pyproject.toml` changes on `main`
+- `pyproject.toml` is the single source of the version (`__version__`
+  reads it); registry license format; `.comfyignore` leaves tests out
+
 ### PD Output and PD Load fixes
 - PD Output: **Explore Output** button shows the last written file in
   Explorer/Finder; the path is saved with the workflow
 - PD Output: the sidecar stores the workflow, and dropping a sidecar on
   ComfyUI reopens it (older sidecars open from their API prompt) instead of
   failing with "e is not iterable"
+- PD Output: the `template` widget reads `file`, like PD Load (the input
+  name is unchanged, so saved workflows and API prompts keep working). An
+  empty file name now stops with an error instead of writing nothing
+- PD Load: **Explore Input** button opens the folder of the file
+- PD Load: drop zone for files dragged from Explorer (copied to
+  `input/pipedream` and loaded from there; sequences and sidecars too)
+- PD Load: the `sequence_from_file` size check reads EXR and DPX headers,
+  so wedge outputs such as `Sr388_256.exr` and `Sr388_512.exr` stay single
+  images
+- PD Sound: the error tone is a buzzer; the test error tone button is gone
 - PD Load: `sequence_from_file` leaves numbered files of different sizes
   (photos) as single images instead of failing on the size check
 

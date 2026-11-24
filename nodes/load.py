@@ -36,7 +36,7 @@ import os
 import sys
 
 from ..core import settings
-from ..core.comfy import input_directory, server_routes, temp_directory
+from ..core.comfy import input_directory, reveal_in_file_manager, server_routes, temp_directory
 from ..core.common import display_name
 from ..core.load import (
     EXR_COLORSPACES,
@@ -309,7 +309,7 @@ class PDLoad:
         if missing:
             lines.append(f"! missing frames (skipped): {_ranges(missing)}")
 
-        ui = {"load_info": ["\n".join(lines)]}
+        ui = {"load_info": ["\n".join(lines)], "pd_loaded": [loaded[0]]}
         preview, animated = _preview(images, rate, audio)
         if preview:
             ui["images"] = preview
@@ -329,5 +329,35 @@ if routes is not None:
         try:
             body = await request.json()
             return web.json_response(split_file(str(body.get("path", ""))) or {})
+        except Exception as exc:
+            return web.json_response({"error": str(exc)}, status=400)
+
+    @routes.post("/pipedream/load/explore")
+    async def load_explore_route(request):
+        """
+        ``{"path_mode", "base_path", "file", "last"}``: open the folder the
+        widgets point at, or the folder of *last* (the last loaded file)
+        when they hold tokens only a linked context can fill.
+        """
+        try:
+            body = await request.json()
+            folder = ""
+            try:
+                full = resolve_path(str(body.get("path_mode", "relative")),
+                                    str(body.get("base_path", "")), str(body.get("file", "")),
+                                    {**auto_tokens(), **with_extra({})})
+                if "{" not in full:
+                    folder = os.path.dirname(full)
+            except Exception:
+                folder = ""
+            last = str(body.get("last") or "")
+            if not folder and last:
+                folder = os.path.dirname(last)
+            if not folder:
+                folder = (input_directory() if body.get("path_mode", "relative") == "relative"
+                          else str(body.get("base_path") or "").strip())
+            if not folder:
+                return web.json_response({"error": "Set base_path or file first."})
+            return web.json_response(reveal_in_file_manager(folder, request.remote, select=False))
         except Exception as exc:
             return web.json_response({"error": str(exc)}, status=400)
