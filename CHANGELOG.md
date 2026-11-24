@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.1 (unreleased)
+
+Bump `version` in `pyproject.toml` to 0.2.1 only when releasing: the
+change publishes to the Comfy Registry as soon as it reaches `main`.
+
+## 0.2.0 (2026-11-24)
 
 ### Comfy Registry
 - Published to the Comfy Registry as `PipeDream` (publisher `theonlyaaron`),
