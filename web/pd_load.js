@@ -12,6 +12,8 @@ import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./
 /*      base_path: if it is an existing file, it is split into the     */
 /*      two fields (absolute mode) and loaded.                         */
 /*    - "load" button: runs just this node to check what it loads.     */
+/*    - "Explore Input" button: opens the folder of the file in        */
+/*      Explorer (Finder on macOS).                                    */
 /*    - Drop zone (and the whole node on the classic canvas): files     */
 /*      dragged from Explorer.  Browsers do not reveal a dropped file's */
 /*      path, so the files are uploaded to ComfyUI's input/pipedream    */
@@ -147,6 +149,28 @@ async function onFilesDropped(node, fileList) {
     runNode(node);
 }
 
+const LAST_LOADED = "pd_last_loaded";
+
+async function explore(node) {
+    const value = (name) => findWidget(node, name)?.value ?? "";
+    try {
+        const response = await api.fetchApi("/pipedream/load/explore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                path_mode: value("path_mode"),
+                base_path: value("base_path"),
+                file: value("file"),
+                last: node.properties?.[LAST_LOADED] ?? "",
+            }),
+        });
+        const result = await response.json();
+        if (result.error) toast("error", result.error);
+    } catch (error) {
+        toast("error", String(error));
+    }
+}
+
 const hasFiles = (event) => [...(event.dataTransfer?.types ?? [])].includes("Files");
 
 /** A dashed drop target DOM widget; drops here never reach the canvas. */
@@ -215,6 +239,18 @@ app.registerExtension({
                                       { serialize: false });
         button.serialize = false;
         button.tooltip = "Run just this node to check what it loads (preview and info below).";
+
+        const exploreButton = node.addWidget("button", "Explore Input", null, () => explore(node),
+                                             { serialize: false });
+        exploreButton.serialize = false;
+        exploreButton.tooltip = "Open the folder of the file in Explorer (Finder on macOS).";
+        chain(node, "onExecuted", (output) => {
+            const path = output?.pd_loaded?.[0];
+            if (path) {
+                node.properties ??= {};
+                node.properties[LAST_LOADED] = path;
+            }
+        });
 
         addDropZone(node);
         // Classic canvas: files dropped anywhere on the node load too.

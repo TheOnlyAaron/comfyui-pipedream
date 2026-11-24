@@ -147,6 +147,7 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 Loads an image, image sequence or video, and reads back what PD Output wrote.
 
 - **Paste a path:** copy a file's path (Explorer: shift+right click → *Copy as path*) into `file` or `base_path`. Quotes are removed, the path is split into folder and name, `path_mode` switches to `absolute`, and the file loads. **load** (or the selection toolbar's run button) runs just this node.
+- **Explore Input** opens the folder of the file in Explorer/Finder (the input folder in `relative` mode).
 - **Drop files:** drag files from Explorer onto the drop zone (or anywhere on the node in the classic canvas). Browsers don't reveal a dropped file's path, so the files are copied to ComfyUI's `input/pipedream` folder (overwriting same-named files) and loaded from there in `relative` mode. Drop every frame of a sequence, plus its sidecar for the tokens. For files on a share, pasting the path loads them in place without copying.
 - **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Output's `path`) is used as is.
 - **What:** `file` may include the extension or leave it to `format`; `auto` tries every type and stops if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
