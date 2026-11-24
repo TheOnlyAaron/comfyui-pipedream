@@ -6,6 +6,7 @@
 - Published to the Comfy Registry as `PipeDream` (publisher `theonlyaaron`),
   so it installs from ComfyUI Manager. A GitHub Action publishes whenever
   the version in `pyproject.toml` changes on `main`
+- README: install from Manager, comfy-cli or git clone; registry link
 - `pyproject.toml` is the single source of the version (`__version__`
   reads it); registry license format; `.comfyignore` leaves tests out
 
