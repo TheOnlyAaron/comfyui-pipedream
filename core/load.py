@@ -133,6 +133,33 @@ def _sequence_of(path: str, ext: str, entries: list[str]):
     return [os.path.join(folder, e) for _, e in frames], [n for n, _ in frames]
 
 
+def _image_size(path: str):
+    """``(width, height)`` from the file header (Pillow, no decode), or None when unreadable."""
+    try:
+        from PIL import Image
+
+        with Image.open(path) as img:
+            return img.size
+    except Exception:
+        return None
+
+
+def _sizes_differ(paths: list[str], picked: str):
+    """
+    ``(other, size, picked_size)`` when the first, last or picked frame of a
+    guessed sequence differ in size, else None.  Unreadable headers (EXR,
+    DPX, which Pillow does not open) count as matching.
+    """
+    picked_size = _image_size(picked)
+    if picked_size is None:
+        return None
+    for other in dict.fromkeys((paths[0], paths[-1])):
+        size = _image_size(other)
+        if size is not None and size != picked_size:
+            return other, size, picked_size
+    return None
+
+
 def find_media(resolved: str, file_format: str = "auto", sequence_from_file: bool = False) -> dict:
     """
     Find the file(s) a resolved template names.
@@ -143,7 +170,9 @@ def find_media(resolved: str, file_format: str = "auto", sequence_from_file: boo
     readable name (``shot.####.exr`` for a sequence).  With
     *sequence_from_file*, a single image that is one frame of a sequence
     (``shot.1001.exr`` with ``shot.1002.exr`` next to it) loads as that
-    whole sequence.  Raises MediaNotFound (with what was searched) or
+    whole sequence, unless its first, last and that frame differ in size
+    (numbered photos such as ``IMG_0001.jpg``, ``IMG_0002.jpg`` are not a
+    sequence); ``note`` then says why.  Raises MediaNotFound (with what was searched) or
     ValueError when ``auto`` finds more than one format.
     """
     stem, ext = _split_ext(resolved)
@@ -186,9 +215,15 @@ def find_media(resolved: str, file_format: str = "auto", sequence_from_file: boo
 
     ext, (how, paths, frames) = next(iter(found.items()))
     kind = kind_of(ext)
+    note = ""
     if how == "single" and kind == "image" and sequence_from_file:
         sequence = _sequence_of(paths[0], ext, entries)
-        if sequence:
+        mismatch = sequence and _sizes_differ(sequence[0], paths[0])
+        if mismatch:
+            other, (w, h), (pw, ph) = mismatch
+            note = (f"not loaded as a sequence: {os.path.basename(other)} is {w}x{h}, "
+                    f"this file is {pw}x{ph}")
+        elif sequence:
             how, (paths, frames) = "sequence", sequence
     if how == "sequence" and kind == "video":
         kind, paths, frames = "video", paths[:1], [0]
@@ -202,7 +237,8 @@ def find_media(resolved: str, file_format: str = "auto", sequence_from_file: boo
                                + first[digits.end(1):]) if digits else paths[0]
     else:
         pattern = paths[0]
-    return {"kind": kind, "paths": paths, "frames": frames, "pattern": pattern, "ext": ext}
+    return {"kind": kind, "paths": paths, "frames": frames, "pattern": pattern, "ext": ext,
+            "note": note}
 
 
 def select_frames(media: dict, start_frame: int = 0, frame_count: int = 0,
