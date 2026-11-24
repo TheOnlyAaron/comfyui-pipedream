@@ -6,6 +6,10 @@ or other nodes' path widgets.  Tokens come from an optional
 PROJECT_CONTEXT (PD Project Context / PD Custom Context) plus the
 automatic ``{date}``, ``{time}`` and ``{frame}`` tokens.  The default
 template and frame padding come from the settings (``core/settings.py``).
+
+It is an output node, so its "preview" button (``web/pipedream.js``) can
+run just it and its inputs; the resolved text shows in the node's panel
+after every run.
 """
 
 from ..core import settings
@@ -19,6 +23,7 @@ class PDTokensToString:
     DISPLAY_NAME = display_name("PD Tokens To String")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
+    OUTPUT_NODE = True
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("resolved",)
 
@@ -39,4 +44,5 @@ class PDTokensToString:
         }
 
     def execute(self, template, frame_padding, context=None):
-        return (resolve_tokens(template, dict(context or {}), frame_padding=frame_padding),)
+        resolved = resolve_tokens(template, dict(context or {}), frame_padding=frame_padding)
+        return {"ui": {"resolved_text": [resolved]}, "result": (resolved,)}

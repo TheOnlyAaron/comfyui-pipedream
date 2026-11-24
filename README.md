@@ -99,7 +99,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 |------|--------------|
 | **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. |
 | **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). |
-| **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. |
+| **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. **preview** shows the result on the node. |
 | **PD&nbsp;Output** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-output) |
 | **PD&nbsp;Load** | Loads an image, sequence or video from any local or network path; paste a path to fill it in. [More](#pd-load) |
 | **PD&nbsp;Wedge** | Runs the graph once per row of inputs (any type), for comparison matrices. [More](#wedges) |

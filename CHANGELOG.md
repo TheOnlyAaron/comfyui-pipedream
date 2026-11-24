@@ -5,6 +5,11 @@
 Bump `version` in `pyproject.toml` to 0.2.1 only when releasing: the
 change publishes to the Comfy Registry as soon as it reaches `main`.
 
+### PD Tokens To String
+- **preview** button runs just the node (and its context) and shows the
+  resolved text on the node; the panel also updates on every run. It is now
+  an output node, so it runs even with nothing connected to its output
+
 ### PD Load
 - `sequence_mode` (**auto** / **single file** / **sequence**) replaces the
   `sequence_from_file` switch. Saved workflows and API prompts convert
