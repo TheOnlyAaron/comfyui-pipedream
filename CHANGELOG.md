@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
 ## 0.2.3 (2026-11-25)
 
 ### Copy Path replaces Explore
