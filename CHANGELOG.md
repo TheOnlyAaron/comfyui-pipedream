@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.2.2 (2026-11-25)
 
 ### EXR metadata (new)
 - EXR header metadata flows through the graph as an `EXR_METADATA` stream,

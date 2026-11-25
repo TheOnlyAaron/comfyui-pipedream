@@ -1,7 +1,7 @@
 [project]
 name = "PipeDream"
-version = "0.3.0"
-description = "Production pipeline utility nodes for ComfyUI — token-based output and loading on local and network paths, wedges, video utilities, OCIO color and LUTs, sound cues and switching."
+version = "0.2.2"
+description = "Production pipeline utility nodes for ComfyUI — token-based output and loading on local and network paths, EXR metadata through the pipeline, wedges, a memory and time profiler, video utilities, OCIO color and LUTs, sound cues and switching."
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "Aaron Dabelow" }]

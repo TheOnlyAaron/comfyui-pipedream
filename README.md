@@ -1,6 +1,6 @@
 # ComfyUI-PipeDream
 
-Production pipeline nodes for ComfyUI: token-based output and loading on local and network paths, wedges, video utilities, OCIO colour and sound cues.
+Production pipeline nodes for ComfyUI: token-based output and loading on local and network paths, EXR metadata through the pipeline, wedges, a memory and time profiler, video utilities, OCIO colour and sound cues.
 
 Pipedream is not a visual effects node pack. It is plumbing.
 
@@ -335,7 +335,7 @@ For maintainers: `core/settings.py` is the single source for validation and the 
 
 ## Compatibility
 
-Classic ComfyUI node classes (`NODE_CLASS_MAPPINGS`), which current ComfyUI loads alongside V3 nodes. Built for the Nodes 2.0 frontend first, and tested on the classic canvas.
+Classic ComfyUI node classes (`NODE_CLASS_MAPPINGS`), which current ComfyUI loads alongside V3 nodes. Built for the Nodes 2.0 frontend first, and tested on the classic canvas. PD Profiler's run measurements use ComfyUI's per-prompt progress registry (`comfy_execution.progress`); on versions without it the profiler still evaluates, without measurements.
 
 ## License
 
