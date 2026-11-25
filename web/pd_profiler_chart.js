@@ -142,6 +142,7 @@ function draw(canvas, chart) {
     const W = Math.max(160, canvas.clientWidth);
     const H = chartHeight(chart);
     canvas.style.height = `${H}px`;
+    canvas.style.minHeight = canvas.style.maxHeight = `${H}px`;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     const ctx = canvas.getContext("2d");
@@ -304,15 +305,23 @@ function draw(canvas, chart) {
 
 /**
  * Add the chart widget to *node*.  Returns ``{set(chart)}``; the widget
- * is not serialized and grows the node when the chart needs more rows.
+ * is not serialized, grows the node when the chart needs more rows and
+ * never stretches the drawing when the node is resized.
  */
 export function addProfileChart(node) {
+    // The renderer sizes the widget element to the space the node gives it;
+    // the canvas sits in a container so only the container stretches and
+    // the drawing keeps its own pixel height.
+    const container = document.createElement("div");
+    Object.assign(container.style, { width: "100%", overflow: "hidden" });
     const canvas = document.createElement("canvas");
-    Object.assign(canvas.style, { width: "100%", height: `${EMPTY_HEIGHT}px`, display: "block" });
+    Object.assign(canvas.style, { width: "100%", height: `${EMPTY_HEIGHT}px`, display: "block",
+                                  flex: "none" });
+    container.appendChild(canvas);
     let chart = null;
     let regions = [];
     const redraw = () => { regions = draw(canvas, chart); };
-    const widget = node.addDOMWidget("profile_chart", "pd_profile_chart", canvas, {
+    const widget = node.addDOMWidget("profile_chart", "pd_profile_chart", container, {
         getValue: () => "",
         setValue: () => {},
         getMinHeight: () => chartHeight(chart),

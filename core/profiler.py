@@ -1041,7 +1041,8 @@ def format_report(report: dict, actual: dict | None = None) -> str:
             if s.get("offload"):
                 verdict = f"offloads {fmt_bytes(s['offload'])} to RAM (slower)"
             elif verdict == "does not fit":
-                verdict = "over budget: ComfyUI offloads every weight and may still run out of memory"
+                verdict = ("over budget: ComfyUI runs it with the weights offloaded (slower); "
+                           "far over, it can run out of memory")
             lines.append(f"  {i} {name:<12}{s['label']}  {parts} = {fmt_bytes(s['total'])}"
                          + (f"  {verdict}" if verdict else ""))
             if extra:
