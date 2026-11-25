@@ -38,6 +38,7 @@ import sys
 from ..core import settings
 from ..core.comfy import input_directory, reveal_in_file_manager, server_routes, temp_directory
 from ..core.common import display_name
+from ..core.exr_meta import ExrMetadata
 from ..core.load import (
     EXR_COLORSPACES,
     SEQUENCE_MODES,
@@ -137,10 +138,11 @@ class PDLoad:
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     OUTPUT_NODE = True
+    # exr_metadata must stay last: the frontend hides trailing outputs only.
     RETURN_TYPES = ("IMAGE", "MASK", "FLOAT", "INT", "INT", "STRING", "PROJECT_CONTEXT",
-                    "VIDEO", "AUDIO")
+                    "VIDEO", "AUDIO", "EXR_METADATA")
     RETURN_NAMES = ("images", "mask", "fps", "frame_count", "first_frame", "path", "context",
-                    "video", "audio")
+                    "video", "audio", "exr_metadata")
     OUTPUT_TOOLTIPS = (
         "The loaded frames (RGB).",
         "Alpha of each frame, 1.0 = opaque (full opacity when the files have none).",
@@ -152,6 +154,9 @@ class PDLoad:
         "context's non-empty values on top.",
         "The video file, or the loaded frames as an in-memory VIDEO.",
         "The video's audio (video files only).",
+        "The EXR header metadata of each loaded frame (empty for other formats), for PD "
+        "Output's exr_metadata or PD EXR Metadata Get. Structural attributes (channels, "
+        "windows, compression) are left out.",
     )
 
     @classmethod
@@ -308,6 +313,10 @@ class PDLoad:
             count = int(images.shape[0])
             video = images_to_video(images, rate)
 
+        exr_metadata = ExrMetadata()
+        if media["kind"] != "video" and media["ext"] == "exr":
+            exr_metadata = ExrMetadata.from_files(loaded)
+
         sidecar = read_sidecar(media["pattern"], media["kind"])
         out_context = {**incoming, **sidecar,
                        **{k: v for k, v in incoming.items() if v not in ("", None)}}
@@ -322,6 +331,11 @@ class PDLoad:
         else:
             lines.append(f"{kind}: {count} frame{'s' if count != 1 else ''}"
                          + (f" from index {first}" if media["kind"] == "video" else ""))
+        if exr_metadata:
+            names = exr_metadata.names()
+            varying = exr_metadata.varying()
+            lines.append(f"exr metadata: {len(names)} attribute{'s' if len(names) != 1 else ''}"
+                         + (f", {len(varying)} varying by frame" if varying else ""))
         alpha_note = "yes" if has_alpha else "no"
         if has_alpha and media["ext"] == "exr":
             alpha_note += " (EXR, un-premultiplied)"
@@ -345,7 +359,8 @@ class PDLoad:
                 ui["animated"] = (True,)
         return {
             "ui": ui,
-            "result": (images, mask, rate, count, first, loaded[0], out_context, video, audio),
+            "result": (images, mask, rate, count, first, loaded[0], out_context, video, audio,
+                       exr_metadata),
         }
 
 

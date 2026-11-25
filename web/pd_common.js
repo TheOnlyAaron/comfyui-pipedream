@@ -210,3 +210,26 @@ export function trackPreviewMedia(node) {
         if (!isVideo && !globalThis.LiteGraph?.vueNodesMode) clearClassicVideoPreview(this);
     });
 }
+
+/** PD Output's and PD EXR Metadata Merge's EXR_METADATA inputs, in merge order. */
+export const METADATA_INPUTS = ["exr_metadata", ...[2, 3, 4, 5, 6, 7, 8].map(n => `exr_metadata_${n}`)];
+
+/**
+ * ``showSlots`` rules for the metadata inputs: when *active*, every one up
+ * to a spare after the highest linked; otherwise none (linked inputs are
+ * never hidden).
+ */
+export function metadataRules(node, active = true) {
+    let highest = -1;
+    METADATA_INPUTS.forEach((name, i) => { if (isInputLinked(node, name)) highest = i; });
+    const count = active ? Math.min(METADATA_INPUTS.length, highest + 2) : 0;
+    return Object.fromEntries(METADATA_INPUTS.map((name, i) => [name, i < count]));
+}
+
+/** Label the metadata inputs "exr metadata", "exr metadata 2"... */
+export function labelMetadata(node) {
+    for (const input of node.inputs ?? []) {
+        const i = METADATA_INPUTS.indexOf(input.name);
+        if (i >= 0) input.label = i === 0 ? "exr metadata" : `exr metadata ${i + 1}`;
+    }
+}

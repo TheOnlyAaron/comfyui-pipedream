@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.2.2 (2026-11-25)
+
+### EXR metadata (new)
+- EXR header metadata flows through the graph as an `EXR_METADATA` stream,
+  per frame, with EXR types kept (unknown types carried as raw bytes)
+- **PD Load:** `exr_metadata` output with each loaded EXR frame's
+  attributes (structural ones left out)
+- **PD Output:** `exr metadata` inputs (exr only, auto-growing up to 8,
+  merged in order, frame N into frame N). Nothing is written unless one
+  is connected; writing without a connection strips a loaded file's
+  metadata. The sidecar lists the names written
+- **PD Project Context, PD Custom Context:** `exr_metadata` output, each
+  token as `pipedream/<token>` (setting `exr.metadata_prefix`)
+- **PD Profiler:** `exr_metadata` output under `pipedream/profiler/`
+  (budget, peak, stages, latent, model paths, measured time and VRAM)
+- **PD EXR Metadata Get** (new node): lists the stream, marks values that
+  vary by frame, outputs one value by key; **preview** button
+- **PD EXR Metadata Merge** (new node): combines up to 8 streams frame by
+  frame (later inputs win), without needing a PD Output
+- Written by rewriting FFmpeg's EXR header in place (attributes inserted,
+  offset table shifted); standard library only
+
+### PD Profiler (new)
+- Connect it to anything: it profiles only what that input reads from
+  (models, latent shapes, VRAM per stage, RAM, time), so several flows in
+  one graph each get their own numbers. No outputs; put it after PD Output
+  or branch it off a flow
+- **profile** evaluates without queuing anything; queued runs add measured
+  node times, the run's VRAM peak (optionally per node), the models
+  ComfyUI holds and the input received
+- Models are read from their file headers (safetensors, GGUF) and
+  identified with ComfyUI's own detection; memory uses ComfyUI's own
+  formulas (`memory_required`, VAE `memory_used_decode`, tiled per tile)
+- Flags sizes ComfyUI rounds down (1080 → 1072 on 16-px models) and frame
+  counts off the 4k+1 / 8k+1 grid
+- `vram_gb` / `ram_gb` emulate another machine; **use this machine**
+  restores this one's values
+- Wedges: follows only the selected row; time estimates spell out once
+  per queue + jobs × per job
+- API nodes count as zero and are flagged
+- Memory chart on the node: a horizontal bar per stage, split into models /
+  working / latents, against the VRAM budget line, labelled with how much
+  is free or how far over (overflow hatched); peak stage marked, measured
+  times and peak after a run; a RAM bar of models and pixels
+- `export_sidecar` writes `<name>.profile.json` next to PD Output's file
+  (link its `path`), into a folder, or into `output/pipedream_profiles`
+- [docs/profiler.md](docs/profiler.md): where each number comes from, the
+  sidecar format, use without the browser
+- New settings: `profiler.enabled`, `profiler.vram_gb`, `profiler.ram_gb`,
+  `profiler.vram_per_node`, `profiler.export_sidecar`
+
+### PD Profiler
+- The chart no longer stretches when the node is resized (Nodes 2.0)
+- An over-budget stage says ComfyUI runs it with weights offloaded rather
+  than that it may run out of memory
+
+### Example workflows
+- 02 Load and save merges the project context and a custom context into
+  the EXR headers and reads them back with PD EXR Metadata Get
+- 06 Wedge basics adds PD Profiler with a sidecar per job
+
 ## 0.2.1 (2026-11-24)
 
 ### Example workflows

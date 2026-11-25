@@ -6,7 +6,9 @@ Other Pipedream nodes that accept tokens can receive a PROJECT_CONTEXT input
 from this node.
 
 Supports override chaining: an incoming PROJECT_CONTEXT provides base values,
-and any non-empty widget on this node overrides those values.
+and any non-empty widget on this node overrides those values.  The context
+also comes out as EXR metadata (one string attribute per token, see
+``core/exr_meta.py``) for PD Output.
 
 Version auto-increment and the version reset buttons live entirely in the
 frontend (``web/pd_version.js``).  The ``auto_increment_version`` widget is
@@ -16,6 +18,7 @@ queued prompt carries its own version.  This node only passes the value on.
 
 from ..core import settings
 from ..core.common import display_name
+from ..core.exr_meta import ExrMetadata
 
 
 class PDProjectContext:
@@ -24,8 +27,14 @@ class PDProjectContext:
     DISPLAY_NAME = display_name("PD Project Context")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
-    RETURN_TYPES = ("PROJECT_CONTEXT",)
-    RETURN_NAMES = ("context",)
+    RETURN_TYPES = ("PROJECT_CONTEXT", "EXR_METADATA")
+    RETURN_NAMES = ("context", "exr_metadata")
+    OUTPUT_TOOLTIPS = (
+        "The tokens, for PD Output, PD Load and the other context inputs.",
+        "Every token of the context as an EXR string attribute named after the "
+        "exr.metadata_prefix setting (pipedream/shot...), for PD Output's exr_metadata. "
+        "Empty values are left out.",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -63,4 +72,4 @@ class PDProjectContext:
             elif key not in ctx:
                 ctx[key] = val
 
-        return (ctx,)
+        return (ctx, ExrMetadata.from_tokens(ctx, settings.get("exr.metadata_prefix")))

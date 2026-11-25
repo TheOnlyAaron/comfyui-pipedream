@@ -2,8 +2,9 @@
 ComfyUI-Pipedream — production pipeline utility nodes.
 
 Structured output naming and writing, loading from local and network
-paths, shot metadata, video utilities, OCIO colour and LUTs, sound cues,
-wedge iteration and input switching for VFX/animation workflows.  Nodes are classic ComfyUI node classes with a ``DISPLAY_NAME``
+paths, shot metadata, EXR header metadata, video utilities, OCIO colour
+and LUTs, sound cues, wedge iteration, input switching and a memory and
+time profiler for VFX/animation workflows.  Nodes are classic ComfyUI node classes with a ``DISPLAY_NAME``
 attribute, registered through ``NODE_CLASS_MAPPINGS``.
 """
 

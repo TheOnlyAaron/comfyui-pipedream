@@ -127,6 +127,9 @@ SCHEMA: dict[str, Setting] = {
         str, "", "PD Load root folder for absolute mode (UNC works, as for output.base_path)."),
     "exr.precision": Setting(str, "half", "EXR float precision.", choices=EXR_PRECISIONS),
     "exr.compression": Setting(str, "zip", "EXR compression.", choices=EXR_COMPRESSIONS),
+    "exr.metadata_prefix": Setting(
+        str, "pipedream/", "Prefix of the EXR metadata names made from context tokens "
+        "(PD Project Context, PD Custom Context): {shot} becomes pipedream/shot."),
     "exr.colorspace": Setting(
         str, "as is", "EXR: write values as is, or decode sRGB to linear.",
         choices=EXR_COLORSPACES),
@@ -171,6 +174,18 @@ SCHEMA: dict[str, Setting] = {
     "sound.volume": Setting(float, 0.6, "PD Sound default volume.", min=0.0, max=1.0),
     "sound.play_when": Setting(str, "node reached", "PD Sound default trigger.",
                                choices=tuple(PLAY_WHEN)),
+    "profiler.enabled": Setting(bool, True, "PD Profiler runs with queued runs and reports "
+                                "what was measured."),
+    "profiler.vram_gb": Setting(
+        float, 0.0, "PD Profiler: GPU memory to budget against in GB, e.g. the farm's "
+        "cards. 0: the machine ComfyUI runs on.", min=0.0, max=1024.0),
+    "profiler.ram_gb": Setting(
+        float, 0.0, "PD Profiler: system memory to budget against in GB. 0: the machine "
+        "ComfyUI runs on.", min=0.0, max=8192.0),
+    "profiler.vram_per_node": Setting(
+        bool, False, "PD Profiler: measure each node's VRAM peak during runs."),
+    "profiler.export_sidecar": Setting(
+        bool, False, "PD Profiler: write the profile as JSON after each run."),
 }
 
 _TABLES = tuple(dict.fromkeys(k.split(".")[0] for k in SCHEMA))

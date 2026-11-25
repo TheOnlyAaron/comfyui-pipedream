@@ -13,6 +13,8 @@ from .wedge import PDWedge
 from .video import PDImagesToVideo, PDVideoToImages, PDVideoGetFrame, PDImageFromBatch
 from .sound import PDSound
 from .ocio import PDOCIOTransform, PDOCIODisplay, PDOCIOApplyLUT
+from .profiler import PDProfiler
+from .exr_metadata import PDExrMetadataGet, PDExrMetadataMerge
 
 ALL_NODES: list = [
     PDProjectContext,
@@ -30,4 +32,7 @@ ALL_NODES: list = [
     PDOCIOTransform,
     PDOCIODisplay,
     PDOCIOApplyLUT,
+    PDProfiler,
+    PDExrMetadataGet,
+    PDExrMetadataMerge,
 ]

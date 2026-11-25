@@ -1,19 +1,19 @@
 {
   "id": "1009073d-d1b5-40e6-b8e7-492a57f5fde2",
   "revision": 0,
-  "last_node_id": 8,
-  "last_link_id": 6,
+  "last_node_id": 11,
+  "last_link_id": 11,
   "nodes": [
     {
       "id": 1,
       "type": "Note",
       "pos": [
         0,
-        -330
+        -400
       ],
       "size": [
         600,
-        290
+        360
       ],
       "flags": {},
       "order": 0,
@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Explore Input opens its folder.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Explore Output shows the files.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Explore Input opens its folder.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Explore Output shows the files.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Output, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
       ],
       "widgets_values_named": {
-        "text": "Load, write, read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. To load your own file, paste its full path (shift+right click > Copy as path in Explorer) into file or base_path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar.\n3. A second PD Load takes PD Output's path (the first frame). sequence_mode auto loads the whole sequence (the sidecar says it is one), linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n\nPress load on a PD Load to run just that node."
+        "text": "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Explore Input opens its folder.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Explore Output shows the files.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD Project Context's exr_metadata goes into PD Output, so every frame carries pipedream/project, pipedream/shot and pipedream/version in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -219,6 +219,12 @@
           "name": "audio",
           "type": "AUDIO",
           "links": null
+        },
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "links": null
         }
       ],
       "title": "Source image",
@@ -312,7 +318,7 @@
       ],
       "size": [
         297.4765625,
-        226
+        246
       ],
       "flags": {},
       "order": 2,
@@ -390,6 +396,14 @@
           "links": [
             3
           ]
+        },
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "links": [
+            9
+          ]
         }
       ],
       "properties": {
@@ -421,10 +435,10 @@
       ],
       "size": [
         420,
-        714
+        570
       ],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -463,6 +477,22 @@
           "link": null
         },
         {
+          "label": "exr metadata",
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "shape": 7,
+          "type": "EXR_METADATA",
+          "link": 11
+        },
+        {
+          "label": "exr metadata 2",
+          "localized_name": "exr_metadata_2",
+          "name": "exr_metadata_2",
+          "shape": 7,
+          "type": "EXR_METADATA",
+          "link": null
+        },
+        {
           "localized_name": "path_mode",
           "name": "path_mode",
           "type": "COMBO",
@@ -481,7 +511,7 @@
           "link": null
         },
         {
-          "localized_name": "template",
+          "localized_name": "file",
           "name": "template",
           "type": "STRING",
           "widget": {
@@ -681,11 +711,11 @@
         0
       ],
       "size": [
-        274.373046875,
-        532
+        283.99765625,
+        624
       ],
       "flags": {},
-      "order": 6,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
@@ -864,6 +894,14 @@
           "name": "audio",
           "type": "AUDIO",
           "links": null
+        },
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "links": [
+            8
+          ]
         }
       ],
       "title": "Read back (file from PD Output path)",
@@ -909,7 +947,7 @@
         420
       ],
       "flags": {},
-      "order": 7,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -944,7 +982,7 @@
         260
       ],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -993,6 +1031,441 @@
         "template": "{project} / {shot} / {version}",
         "frame_padding": 4
       }
+    },
+    {
+      "id": 9,
+      "type": "PDExrMetadataGet",
+      "pos": [
+        1720,
+        800
+      ],
+      "size": [
+        460,
+        360
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "link": 8
+        },
+        {
+          "localized_name": "key",
+          "name": "key",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "key"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "frame",
+          "name": "frame",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "frame"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "filter",
+          "name": "filter",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "filter"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value",
+          "name": "value",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "int",
+          "name": "int",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "float",
+          "name": "float",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "localized_name": "names",
+          "name": "names",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Metadata read back from the EXRs",
+      "properties": {
+        "Node name for S&R": "PDExrMetadataGet"
+      },
+      "widgets_values": [
+        "shot",
+        1,
+        ""
+      ],
+      "widgets_values_named": {
+        "key": "shot",
+        "frame": 1,
+        "filter": ""
+      }
+    },
+    {
+      "id": 10,
+      "type": "PDCustomContext",
+      "pos": [
+        420,
+        500
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "shape": 7,
+          "type": "PROJECT_CONTEXT",
+          "link": null
+        },
+        {
+          "localized_name": "custom_1_name",
+          "name": "custom_1_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_1_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_1_value",
+          "name": "custom_1_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_1_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_2_name",
+          "name": "custom_2_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_2_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_2_value",
+          "name": "custom_2_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_2_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_3_name",
+          "name": "custom_3_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_3_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_3_value",
+          "name": "custom_3_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_3_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_4_name",
+          "name": "custom_4_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_4_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_4_value",
+          "name": "custom_4_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_4_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_5_name",
+          "name": "custom_5_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_5_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_5_value",
+          "name": "custom_5_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_5_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_6_name",
+          "name": "custom_6_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_6_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_6_value",
+          "name": "custom_6_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_6_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_7_name",
+          "name": "custom_7_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_7_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_7_value",
+          "name": "custom_7_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_7_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_8_name",
+          "name": "custom_8_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_8_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_8_value",
+          "name": "custom_8_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_8_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_9_name",
+          "name": "custom_9_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_9_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_9_value",
+          "name": "custom_9_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_9_value"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_10_name",
+          "name": "custom_10_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_10_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "custom_10_value",
+          "name": "custom_10_value",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_10_value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "context",
+          "name": "context",
+          "type": "PROJECT_CONTEXT",
+          "links": null
+        },
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PDCustomContext"
+      },
+      "widgets_values": [
+        "client",
+        "MAKE",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "custom_1_name": "client",
+        "custom_1_value": "MAKE",
+        "custom_2_name": "",
+        "custom_2_value": "",
+        "custom_3_name": "",
+        "custom_3_value": "",
+        "custom_4_name": "",
+        "custom_4_value": "",
+        "custom_5_name": "",
+        "custom_5_value": "",
+        "custom_6_name": "",
+        "custom_6_value": "",
+        "custom_7_name": "",
+        "custom_7_value": "",
+        "custom_8_name": "",
+        "custom_8_value": "",
+        "custom_9_name": "",
+        "custom_9_value": "",
+        "custom_10_name": "",
+        "custom_10_value": ""
+      }
+    },
+    {
+      "id": 11,
+      "type": "PDExrMetadataMerge",
+      "pos": [
+        420,
+        760
+      ],
+      "size": [
+        223.99385681152344,
+        66
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "exr metadata",
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "shape": 7,
+          "type": "EXR_METADATA",
+          "link": 9
+        },
+        {
+          "label": "exr metadata 2",
+          "localized_name": "exr_metadata_2",
+          "name": "exr_metadata_2",
+          "shape": 7,
+          "type": "EXR_METADATA",
+          "link": 10
+        },
+        {
+          "label": "exr metadata 3",
+          "localized_name": "exr_metadata_3",
+          "name": "exr_metadata_3",
+          "shape": 7,
+          "type": "EXR_METADATA",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "exr_metadata",
+          "name": "exr_metadata",
+          "type": "EXR_METADATA",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "title": "Assemble EXR metadata",
+      "properties": {
+        "Node name for S&R": "PDExrMetadataMerge"
+      }
     }
   ],
   "links": [
@@ -1003,22 +1476,6 @@
       3,
       0,
       "IMAGE"
-    ],
-    [
-      2,
-      3,
-      0,
-      5,
-      0,
-      "IMAGE"
-    ],
-    [
-      3,
-      4,
-      0,
-      5,
-      1,
-      "PROJECT_CONTEXT"
     ],
     [
       4,
@@ -1043,6 +1500,54 @@
       8,
       0,
       "PROJECT_CONTEXT"
+    ],
+    [
+      8,
+      6,
+      9,
+      9,
+      0,
+      "EXR_METADATA"
+    ],
+    [
+      2,
+      3,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      4,
+      0,
+      5,
+      1,
+      "PROJECT_CONTEXT"
+    ],
+    [
+      11,
+      11,
+      0,
+      5,
+      5,
+      "EXR_METADATA"
+    ],
+    [
+      9,
+      4,
+      1,
+      11,
+      0,
+      "EXR_METADATA"
+    ],
+    [
+      10,
+      10,
+      1,
+      11,
+      1,
+      "EXR_METADATA"
     ]
   ],
   "groups": [],

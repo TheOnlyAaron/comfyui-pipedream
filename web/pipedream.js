@@ -1,10 +1,10 @@
 import { app } from "../../scripts/app.js";
-import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
+import { addReadOnlyText, chain, labelMetadata, metadataRules, refit, showOutputText, showSlots } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Read-only text panels: PD Output token reference, PD Load info,    */
-/*  PD Tokens To String result (with a "preview" button that runs just */
-/*  that node and its inputs).                                         */
+/*  PD Tokens To String result and PD EXR Metadata Get listing (each   */
+/*  with a "preview" button that runs just that node and its inputs).  */
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
@@ -12,6 +12,12 @@ const TEXT_PANELS = {
     PDLoad: ["load_display", "What was loaded appears after execution...", "load_info", 70],
     PDTokensToString: ["resolved_display", "Press preview to see the resolved text...",
                        "resolved_text", 50],
+    PDExrMetadataGet: ["metadata_display", "Press preview to list the metadata...",
+                       "metadata_text", 160],
+};
+const PREVIEW = {
+    PDTokensToString: "Run just this node and its inputs to see the resolved text below.",
+    PDExrMetadataGet: "Run just this node and its inputs to list the metadata below.",
 };
 
 app.registerExtension({
@@ -21,11 +27,11 @@ app.registerExtension({
         const panel = TEXT_PANELS[node.comfyClass];
         if (!panel) return;
         const [name, placeholder, key, minHeight] = panel;
-        if (node.comfyClass === "PDTokensToString") {
+        if (PREVIEW[node.comfyClass]) {
             const button = node.addWidget("button", "preview", null,
                 () => app.queuePrompt(0, 1, [String(node.id)]), { serialize: false });
             button.serialize = false;
-            button.tooltip = "Run just this node and its inputs to see the resolved text below.";
+            button.tooltip = PREVIEW[node.comfyClass];
         }
         showOutputText(node, addReadOnlyText(node, name, placeholder, minHeight), key);
     },
@@ -81,5 +87,33 @@ app.registerExtension({
         chain(node, "onConnectionsChange", () => syncSwitchSlots(node));
         chain(node, "onConfigure", () => syncSwitchSlots(node));
         syncSwitchSlots(node);
+    },
+});
+
+/* ------------------------------------------------------------------ */
+/*  Pipedream.ExrMetadataMerge — a spare exr_metadata input after the  */
+/*  highest linked one (up to 8), like PD Output's.                    */
+/* ------------------------------------------------------------------ */
+
+function syncMergeSlots(node) {
+    if (node._pdSyncing) return;
+    node._pdSyncing = true;
+    try {
+        showSlots(node, "input", metadataRules(node));
+        labelMetadata(node);
+    } finally {
+        node._pdSyncing = false;
+    }
+}
+
+app.registerExtension({
+    name: "Pipedream.ExrMetadataMerge",
+
+    async nodeCreated(node) {
+        if (node.comfyClass !== "PDExrMetadataMerge") return;
+        // Deferred like PD Output: graphs from API prompts link inputs after creation.
+        chain(node, "onConnectionsChange", () => queueMicrotask(() => syncMergeSlots(node)));
+        chain(node, "onConfigure", () => syncMergeSlots(node));
+        setTimeout(() => syncMergeSlots(node), 0);
     },
 });
