@@ -11,7 +11,7 @@ when there are fewer tables than frames).  Sources:
 * ``ExrMetadata.from_tokens(tokens, prefix)``: context tokens as string
   attributes named ``<prefix><token>`` (the context nodes).
 * ``ExrMetadata.merged(sources)``: several sources, frame by frame; later
-  sources win on clashing names (PD Output's inputs, in order).
+  sources win on clashing names (PD Save's inputs, in order).
 
 Attributes keep their EXR type.  The common types are decoded to plain
 values (see ``decode``); any other type keeps its raw bytes, so loading
@@ -21,7 +21,7 @@ carried: the writer owns them.
 
 ``write_attributes(path, attrs)`` replaces the non-structural attributes
 of a single-part scanline EXR in place: the header is rebuilt and the
-chunk offset table shifted by the bytes added or removed.  PD Output's
+chunk offset table shifted by the bytes added or removed.  PD Save's
 EXRs come from FFmpeg's encoder, which cannot write custom attributes, so
 they are added afterwards this way.  Standard library only.
 """
@@ -52,7 +52,7 @@ _FIXED = {
 SCALAR = ("int", "float", "double", "compression", "lineOrder", "envmap", "deepImageState")
 
 
-# PD Output's and PD EXR Metadata Merge's inputs, in merge order.
+# PD Save's and PD EXR Metadata Merge's inputs, in merge order.
 INPUT_NAMES = ["exr_metadata"] + [f"exr_metadata_{i}" for i in range(2, 9)]
 
 

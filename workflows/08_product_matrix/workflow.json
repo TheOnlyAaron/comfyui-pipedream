@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Output."
+        "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Save."
       ],
       "widgets_values_named": {
-        "text": "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Output."
+        "text": "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Save."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -1769,7 +1769,7 @@
     },
     {
       "id": 17,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         2500,
         -60
@@ -1989,7 +1989,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",

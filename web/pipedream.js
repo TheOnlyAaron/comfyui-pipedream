@@ -2,12 +2,13 @@ import { app } from "../../scripts/app.js";
 import { addReadOnlyText, chain, labelMetadata, metadataRules, refit, showOutputText, showSlots } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Read-only text panels: PD Output token reference, PD Load info,    */
+/*  Read-only text panels: PD Save token reference, PD Load info,    */
 /*  PD Tokens To String result and PD EXR Metadata Get listing (each   */
 /*  with a "preview" button that runs just that node and its inputs).  */
 /* ------------------------------------------------------------------ */
 
 const TEXT_PANELS = {
+    PDSave: ["token_display", "Token reference appears after execution...", "token_reference", 100],
     PDOutput: ["token_display", "Token reference appears after execution...", "token_reference", 100],
     PDLoad: ["load_display", "What was loaded appears after execution...", "load_info", 70],
     PDTokensToString: ["resolved_display", "Press preview to see the resolved text...",
@@ -92,7 +93,7 @@ app.registerExtension({
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.ExrMetadataMerge — a spare exr_metadata input after the  */
-/*  highest linked one (up to 8), like PD Output's.                    */
+/*  highest linked one (up to 8), like PD Save's.                    */
 /* ------------------------------------------------------------------ */
 
 function syncMergeSlots(node) {
@@ -111,7 +112,7 @@ app.registerExtension({
 
     async nodeCreated(node) {
         if (node.comfyClass !== "PDExrMetadataMerge") return;
-        // Deferred like PD Output: graphs from API prompts link inputs after creation.
+        // Deferred like PD Save: graphs from API prompts link inputs after creation.
         chain(node, "onConnectionsChange", () => queueMicrotask(() => syncMergeSlots(node)));
         chain(node, "onConfigure", () => syncMergeSlots(node));
         setTimeout(() => syncMergeSlots(node), 0);

@@ -1,11 +1,11 @@
 """
 PD Profiler node.
 
-Connect ``source`` to anything (after PD Output, or off a branch): the
+Connect ``source`` to anything (after PD Save, or off a branch): the
 node profiles everything that input reads from, and nothing else, so
 several flows in one graph each get their own numbers.  Its one output is
-the profile as EXR metadata (``profile_metadata``) for PD Output, which
-needs the profiler branched off before PD Output.
+the profile as EXR metadata (``profile_metadata``) for PD Save, which
+needs the profiler branched off before PD Save.
 
 * **profile** (button, ``web/pd_profiler.js``): evaluates without
   queuing anything, through ``POST /pipedream/profiler/evaluate``.
@@ -167,8 +167,8 @@ class PDProfiler:
     RETURN_NAMES = ("exr_metadata",)
     OUTPUT_TOOLTIPS = (
         "This run's profile as EXR metadata under pipedream/profiler/ (budget, peak, each "
-        "stage, latent, model paths, measured time and VRAM), for PD Output's exr_metadata. "
-        "To use it, branch the profiler off before PD Output (after it would be a loop).",
+        "stage, latent, model paths, measured time and VRAM), for PD Save's exr_metadata. "
+        "To use it, branch the profiler off before PD Save (after it would be a loop).",
     )
 
     @classmethod
@@ -214,7 +214,7 @@ class PDProfiler:
                 }),
                 "path": ("STRING", {
                     "default": "",
-                    "tooltip": "Where the sidecar goes: link PD Output's path to write it "
+                    "tooltip": "Where the sidecar goes: link PD Save's path to write it "
                                "next to the output, or type a folder. Empty: "
                                "output/pipedream_profiles.",
                 }),

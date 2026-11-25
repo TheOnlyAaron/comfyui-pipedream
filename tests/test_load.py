@@ -133,8 +133,8 @@ class FindCase(unittest.TestCase):
         seq = load.find_media(self.path("sh_1002.exr"), sequence_mode="auto")
         self.assertEqual(seq["frames"], [1001, 1002])
 
-    def write_sidecar(self, name, sequence_pattern=None):
-        data = {"node": "PDOutput", "context": {}}
+    def write_sidecar(self, name, sequence_pattern=None, node="PDSave"):
+        data = {"node": node, "context": {}}
         if sequence_pattern:
             data["sequence"] = {"first": 1001, "last": 1002, "pattern": sequence_pattern}
         with open(self.path(name), "w") as fh:
@@ -161,6 +161,14 @@ class FindCase(unittest.TestCase):
         self.assertIn("set sequence_mode to sequence", media["note"])
         forced = load.find_media(self.path("seed_101.png"), sequence_mode="sequence")
         self.assertEqual(forced["kind"], "sequence")
+
+    def test_auto_sidecar_former_name(self):
+        """Sidecars written before PD Output became PD Save still count."""
+        self.touch("old_101.png", "old_102.png")
+        self.write_sidecar("old_101.json", node="PDOutput")
+        media = load.find_media(self.path("old_101.png"), sequence_mode="auto")
+        self.assertEqual(media["kind"], "image")
+        self.assertIn("old_101.json has no sequence", media["note"])
 
     def test_auto_sidecar_sequence(self):
         self.touch("sh010.1001.exr", "sh010.1002.exr")

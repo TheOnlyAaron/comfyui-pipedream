@@ -100,7 +100,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 | **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. Also outputs the tokens as EXR metadata. |
 | **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). Also outputs the tokens as EXR metadata. |
 | **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. **preview** shows the result on the node. |
-| **PD&nbsp;Output** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-output) |
+| **PD&nbsp;Save** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-save) |
 | **PD&nbsp;Load** | Loads an image, sequence or video from any local or network path; paste a path to fill it in. [More](#pd-load) |
 | **PD&nbsp;Wedge** | Runs the graph once per row of inputs (any type), for comparison matrices. [More](#wedges) |
 | **PD&nbsp;Switch** | Routes one of up to 8 inputs (any type) to its output. |
@@ -140,7 +140,7 @@ Templates use `{name}` placeholders. Delimiters, date/time formats and fixed ext
 | `{project}` `{sequence}` `{shot}` `{version}` `{user}` | PD Project Context |
 | `{<custom>}` | PD Custom Context |
 | `{date}` `{time}` | Automatic (`YYYYMMDD`, `HHMMSS`) |
-| `{frame}` | Frame number in PD Output sequences; `####` in PD Tokens To String; sequence frames in PD Load |
+| `{frame}` | Frame number in PD Save sequences; `####` in PD Tokens To String; sequence frames in PD Load |
 | `{<token>}` `{<token>_idx}` | PD Wedge row text and position (`000`, `001`...) |
 | `{wedge_idx}` `{wedge_total}` | PD Wedge job number and job count |
 | `{<extra>}` | `[tokens.extra]` settings (context values win) |
@@ -151,12 +151,12 @@ Templates use `{name}` placeholders. Delimiters, date/time formats and fixed ext
 PD Project Context (project=DITC, sequence=sq010)
   → PD Project Context (shot=sh010)
     → PD Custom Context (task=comp)
-      → PD Output
+      → PD Save
 ```
 
 **Versioning.** `version` is a prefix plus a number (`v001`, `take_0042`); padding is kept (`v009` → `v010`). With `auto_increment_version`, each queued prompt uses the current version and the widget then advances, like a seed's `control_after_generate` (batch count 5 from `v001` runs `v001`–`v005`). **reset version** returns the node to its first version (`v017` → `v001`); **reset all versions in graph** (also in the canvas menu as *Pipedream: reset all versions*) resets every PD Project Context, subgraphs included.
 
-## PD Output
+## PD Save
 
 Resolves `file` (the `template` input in API prompts and settings) under ComfyUI's output folder (`relative`) or `base_path` (`absolute`, UNC works) and writes `images` or a connected `video`.
 
@@ -173,22 +173,22 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 
 ## PD Load
 
-Loads an image, image sequence or video, and reads back what PD Output wrote.
+Loads an image, image sequence or video, and reads back what PD Save wrote.
 
 - **Paste a path:** copy a file's path (Explorer: shift+right click → *Copy as path*) into `file` or `base_path`. Quotes are removed, the path is split into folder and name, `path_mode` switches to `absolute`, and the file loads. **load** (or the selection toolbar's run button) runs just this node.
 - **Copy Path** copies the full path of the file the widgets point at (resolved from `path_mode`, `base_path` and `file`), to paste into Explorer, Finder, Nuke or any other application.
 - **Drop files:** drag files from Explorer onto the drop zone (or anywhere on the node in the classic canvas). Browsers don't reveal a dropped file's path, so the files are copied to ComfyUI's `input/pipedream` folder (overwriting same-named files) and loaded from there in `relative` mode. Drop every frame of a sequence, plus its sidecar for the tokens. For files on a share, pasting the path loads them in place without copying.
-- **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Output's `path`) is used as is.
+- **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Save's `path`) is used as is.
 - **What:** `file` may include the extension or leave it to `format`; `auto` tries every type and stops if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.
-- **Sequences:** mark the frame with `####`, `%04d` or `{frame}`; PD Output's `name.1001.png` is found without a mark. `start_frame` (frame number, 0 = first), `frame_count` (0 = all) and `every_nth` pick frames; gaps are skipped and listed. `sequence_mode` decides what a single numbered file loads (`shot.1002.exr` with `shot.1001.exr` next to it):
-  - **auto** (default) loads the whole sequence unless one of these says it's a single image: PD Output's sidecar (a single image's own `name.json` has no `sequence`; a sequence's `name.json` names its pattern), frames of different sizes, or unpadded numbers of different lengths (`seed_1` … `seed_10`, typical of wedges). Otherwise it guesses a sequence. The info panel says what it decided and why.
+- **Sequences:** mark the frame with `####`, `%04d` or `{frame}`; PD Save's `name.1001.png` is found without a mark. `start_frame` (frame number, 0 = first), `frame_count` (0 = all) and `every_nth` pick frames; gaps are skipped and listed. `sequence_mode` decides what a single numbered file loads (`shot.1002.exr` with `shot.1001.exr` next to it):
+  - **auto** (default) loads the whole sequence unless one of these says it's a single image: PD Save's sidecar (a single image's own `name.json` has no `sequence`; a sequence's `name.json` names its pattern), frames of different sizes, or unpadded numbers of different lengths (`seed_1` … `seed_10`, typical of wedges). Otherwise it guesses a sequence. The info panel says what it decided and why.
   - **single file** loads just that file; **sequence** loads every file named like it.
   - A frame mark (`####`) always loads a sequence. Workflows saved with the old `sequence_from_file` switch convert on load (on → auto, off → single file).
 - **Video:** `start_frame` is a frame index. `fps_from_file` (on) uses the video's rate; off, `fps` overrides it (images always use `fps`). With defaults, `video` is the file itself; otherwise the loaded frames as an in-memory VIDEO with matching audio.
-- **Quality:** 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask`; EXR is un-premultiplied, and `exr_colorspace` `linear to sRGB` reverses PD Output's `sRGB to linear`.
+- **Quality:** 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask`; EXR is un-premultiplied, and `exr_colorspace` `linear to sRGB` reverses PD Save's `sRGB to linear`.
 - **Preview:** one frame shows as an image, several as a playable clip; the panel lists the pattern, frames, size, alpha, fps and sidecar.
-- **EXR metadata:** for EXR, `exr_metadata` carries each frame's header attributes (everything but the structural ones), for PD Output or PD EXR Metadata Get. See [EXR metadata](#exr-metadata).
-- **Tokens (optional):** `file` takes PD Output's tokens from `context` and `wedge` (e.g. `{shot}_{version}`), so a wedge can load a different file per job. A sidecar next to the media fills `context` (incoming non-empty values win).
+- **EXR metadata:** for EXR, `exr_metadata` carries each frame's header attributes (everything but the structural ones), for PD Save or PD EXR Metadata Get. See [EXR metadata](#exr-metadata).
+- **Tokens (optional):** `file` takes PD Save's tokens from `context` and `wedge` (e.g. `{shot}_{version}`), so a wedge can load a different file per job. A sidecar next to the media fills `context` (incoming non-empty values win).
 - **Changes on disk** are picked up on the next queue; unchanged files stay cached. With context or wedge linked, the first queue after opening a workflow re-reads once.
 
 ## Wedges
@@ -197,14 +197,14 @@ A wedge turns several near-identical graphs into one: each **PD Wedge** row is a
 
 1. Set `token` (e.g. `product`), link inputs to `input_1`, `input_2`... and name each row in `value_n`. Rows appear as you fill them (up to 16). A row with only text outputs the text, so prompts and numbers can be typed in.
 2. Use `value` where the input would go; the row's text is also on `text`, `int` and `float`.
-3. Connect `wedge` to PD Output's `wedge` input and use `{product}` or `{product_idx}` in the template.
-4. Press **preview wedge** on PD Output to list every path, then Run.
+3. Connect `wedge` to PD Save's `wedge` input and use `{product}` or `{product_idx}` in the template.
+4. Press **preview wedge** on PD Save to list every path, then Run.
 
 Only the selected row's input is computed, the rest of the graph is cached between jobs, and every job has the same seed.
 
 - **Several wedges** chain through `wedge` and multiply (3 products × 2 looks = 6 jobs); the first in the chain varies fastest. Wedges with the same `group` step together instead (a product image and its prompt) and need the same row count.
 - **solo** runs one row number (0 = all), for a test render.
-- **Checks:** above 20 jobs Run asks first. A wedge without rows, an empty solo row or a mismatched group marks the wedge and queues nothing. The preview warns about wedges not chained into PD Output, paths written by several jobs, and existing files.
+- **Checks:** above 20 jobs Run asks first. A wedge without rows, an empty solo row or a mismatched group marks the wedge and queues nothing. The preview warns about wedges not chained into PD Save, paths written by several jobs, and existing files.
 
 Wedges are expanded by the frontend: a prompt posted to `/prompt` directly runs each wedge's first row. See [docs/wedges-headless.md](docs/wedges-headless.md).
 
@@ -241,19 +241,19 @@ EXR header metadata travels through the graph as an `EXR_METADATA` stream, frame
 
 - **In:** PD Load's `exr_metadata` output gives each loaded EXR frame's attributes (camera matrices, timecode, a renderer's or Nuke's own keys). A plate's per-frame values stay per frame.
 - **Set:** PD Project Context and PD Custom Context have an `exr_metadata` output: every token becomes a string attribute named `pipedream/<token>` (`pipedream/shot`, `pipedream/version`, `pipedream/client`...). The prefix is the `exr.metadata_prefix` setting. Custom Context pairs are how you add your own keys; empty values are left out.
-- **Profile:** PD Profiler's `exr_metadata` output stamps the run under `pipedream/profiler/`: budget, the peak estimate and its stage, each stage, the latent, model file paths, the measured time and VRAM peak. To feed PD Output, branch the profiler off before it (after it would be a loop). The profile changes every run, so a PD Output fed by it writes on every queue.
-- **Merge:** **PD EXR Metadata Merge** combines up to 8 streams into one (a spare input appears as you connect one), frame by frame, with the same rule as PD Output: later inputs win on the same name, and per-frame tables stay per frame. Assemble a stream once and send it to several PD Outputs, or inspect it with Get.
-- **Out:** PD Output's `exr metadata` inputs (exr only; a spare appears as you connect one, up to 8) are merged frame by frame, later inputs winning on the same name. A source with one table per frame writes frame N's table into frame N; a single table goes into every frame. The sidecar lists the names written.
-- **Nothing unless connected:** with no `exr metadata` input connected, PD Output writes no metadata: only FFmpeg's encoder defaults (`writer`, `gamma`). So loading an EXR and writing it back out without a connection strips its metadata.
+- **Profile:** PD Profiler's `exr_metadata` output stamps the run under `pipedream/profiler/`: budget, the peak estimate and its stage, each stage, the latent, model file paths, the measured time and VRAM peak. To feed PD Save, branch the profiler off before it (after it would be a loop). The profile changes every run, so a PD Save fed by it writes on every queue.
+- **Merge:** **PD EXR Metadata Merge** combines up to 8 streams into one (a spare input appears as you connect one), frame by frame, with the same rule as PD Save: later inputs win on the same name, and per-frame tables stay per frame. Assemble a stream once and send it to several PD Saves, or inspect it with Get.
+- **Out:** PD Save's `exr metadata` inputs (exr only; a spare appears as you connect one, up to 8) are merged frame by frame, later inputs winning on the same name. A source with one table per frame writes frame N's table into frame N; a single table goes into every frame. The sidecar lists the names written.
+- **Nothing unless connected:** with no `exr metadata` input connected, PD Save writes no metadata: only FFmpeg's encoder defaults (`writer`, `gamma`). So loading an EXR and writing it back out without a connection strips its metadata.
 - **Inspect:** **PD EXR Metadata Get** lists every attribute with its type, marks those that vary by frame (`*`), and outputs one by `key` as `value`, `int` and `float`. `key` takes a full name or a unique last part (`shot`). `frame` picks the frame, `filter` narrows the list, and **preview** runs just the node and its inputs.
 
 Attributes keep their EXR types (string, int, float, double, vectors, matrices, box, chromaticities, timecode, rational, keycode, string and float vectors); any other type is carried as raw bytes, so a load-and-write round trip loses nothing. Structural attributes (channels, compression, data and display windows, line order, pixel aspect) always come from the writer. Nuke shows the names as `exr/pipedream/...`.
 
-PD Output's EXRs come from FFmpeg's encoder, which can't write custom attributes, so the header is rewritten after each frame is encoded: attributes are inserted and the chunk offset table shifted to match. The pixel data isn't touched (checked against the OpenEXR library for every compression and precision PD Output writes). Standard library only; no extra dependency.
+PD Save's EXRs come from FFmpeg's encoder, which can't write custom attributes, so the header is rewritten after each frame is encoded: attributes are inserted and the chunk offset table shifted to match. The pixel data isn't touched (checked against the OpenEXR library for every compression and precision PD Save writes). Standard library only; no extra dependency.
 
 ## PD Profiler
 
-Like a profile node in Nuke: connect `source` to anything and it reports on everything that input reads from, and nothing else, so several flows in one graph each get their own numbers. It has no outputs: put it after PD Output (on its `images`) or branch it off a flow. Core Save nodes have no outputs; branch off what feeds them.
+Like a profile node in Nuke: connect `source` to anything and it reports on everything that input reads from, and nothing else, so several flows in one graph each get their own numbers. It has no outputs: put it after PD Save (on its `images`) or branch it off a flow. Core Save nodes have no outputs; branch off what feeds them.
 
 - **profile** evaluates without queuing anything. **Queued runs** (`enabled`) add what was measured. Nothing needs typing in: the numbers come from the graph, the model files, ComfyUI's own formulas and this machine.
 - **Models:** each loader's file is identified from its header (safetensors and GGUF tensor tables; no weights are loaded) with ComfyUI's own model detection, so renamed files still match. It reports parameters, data type and the bytes ComfyUI keeps in memory. LoRAs are listed. If detection fails, the name is matched instead and the report says so.
@@ -265,8 +265,8 @@ Like a profile node in Nuke: connect `source` to anything and it reports on ever
 - **Wedges:** only the selected row's branch is followed (the queued row, else `solo`, else row 1). The report shows the job count and says when rows read from different branches.
 - **API nodes** count as zero (they run off-site) and are flagged at the top, since their inputs leave the machine.
 - **Measured runs** add the time of each upstream node (or cached), the run's VRAM peak, the models ComfyUI holds and the input received. `vram_per_node` also measures each node's VRAM peak; it resets torch's peak counter as each node starts, so it is off by default (see its tooltip).
-- **EXR metadata output:** the run's profile as `pipedream/profiler/...` attributes for PD Output (see [EXR metadata](#exr-metadata)); branch the profiler off before PD Output to use it.
-- **Sidecar** (`export_sidecar`): the profile as JSON after each run. Link PD Output's `path` to `path` and it is written next to the output as `<name>.profile.json` (frame number dropped). Otherwise it goes into a typed folder, or `output/pipedream_profiles/`.
+- **EXR metadata output:** the run's profile as `pipedream/profiler/...` attributes for PD Save (see [EXR metadata](#exr-metadata)); branch the profiler off before PD Save to use it.
+- **Sidecar** (`export_sidecar`): the profile as JSON after each run. Link PD Save's `path` to `path` and it is written next to the output as `<name>.profile.json` (frame number dropped). Otherwise it goes into a typed folder, or `output/pipedream_profiles/`.
 
 Memory figures are ComfyUI's own estimates (the ones it loads and offloads by), not a guarantee. Text encoder activations and custom samplers with their own memory handling aren't modelled. Without a GPU, the profile uses ComfyUI's GPU formulas and 16-bit data types.
 
@@ -282,7 +282,7 @@ Inside ComfyUI, IMAGE + MASK are **straight** and every Pipedream mask uses **1.
 | ProRes 4444 | Straight | No reliable flag in the bitstream; interpret Pipedream ProRes as straight in AE, Nuke, Resolve. |
 | EXR | Premultiplied | The OpenEXR spec defines RGBA as premultiplied; RGB is multiplied after any sRGB-to-linear decode. PD Load divides it back. |
 
-Core ComfyUI uses the opposite mask polarity: Load Image's mask is `1 - alpha`, and Join Image with Alpha inverts its mask. Put an **Invert Mask** between core masks and Pipedream (either direction). For images without alpha, core Load Image gives a 64×64 empty mask; leave PD Output's `alpha` unconnected then.
+Core ComfyUI uses the opposite mask polarity: Load Image's mask is `1 - alpha`, and Join Image with Alpha inverts its mask. Put an **Invert Mask** between core masks and Pipedream (either direction). For images without alpha, core Load Image gives a 64×64 empty mask; leave PD Save's `alpha` unconnected then.
 
 ## Facility / user defaults
 

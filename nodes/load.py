@@ -1,10 +1,10 @@
 """
-PD Load node: the inverse of PD Output.
+PD Load node: the inverse of PD Save.
 
 Loads ``file`` from ComfyUI's input directory (relative mode) or from an
 absolute/UNC ``base_path``: a single image, an image sequence or a video.
 ``file`` is a plain file name, or a token template (tokens from an
-optional context and wedge, like PD Output).  Pasted paths may be quoted
+optional context and wedge, like PD Save).  Pasted paths may be quoted
 (Windows "Copy as path"); the frontend (``web/pd_load.js``) splits a full
 path pasted into either field into base_path and file, using
 ``POST /pipedream/load/check``.  Finding and decoding live in
@@ -17,7 +17,7 @@ Multi-frame loads preview as a playable mp4.
 Outputs follow what was loaded: ``images`` and ``mask`` (alpha, 1.0 =
 opaque), ``fps``, ``frame_count``, ``first_frame`` (the first frame
 number of a sequence, or the start index of a video), ``path``,
-``context`` (the tokens in PD Output's sidecar next to the media, with the
+``context`` (the tokens in PD Save's sidecar next to the media, with the
 incoming context's non-empty values on top), a ``video`` (the file
 itself, or the loaded frames as an in-memory VIDEO) and ``audio`` (video
 files only).  ``fps_from_file`` uses a video's own frame rate; ``fps`` is
@@ -68,7 +68,7 @@ _LINKED: dict = {}
 def resolve_path(path_mode: str, base_path: str, file: str, tokens: dict) -> str:
     """
     Resolve *file* to a full path (frame mark kept).  A *file* that is
-    already a full path (e.g. PD Output's ``path``) is used as is;
+    already a full path (e.g. PD Save's ``path``) is used as is;
     otherwise it is joined to the root, and relative paths must stay inside
     ComfyUI's input folder.
     """
@@ -131,9 +131,9 @@ class PDLoad:
     DISPLAY_NAME = display_name("PD Load")
     DESCRIPTION = (
         "Load an image, image sequence or video from a folder (ComfyUI's input folder, or "
-        "an absolute/UNC base_path), with its alpha, frame rate, audio and PD Output "
+        "an absolute/UNC base_path), with its alpha, frame rate, audio and PD Save "
         "sidecar tokens. Paste a full file path into file or base_path to fill both. "
-        "file can use tokens, so it can read back what PD Output wrote."
+        "file can use tokens, so it can read back what PD Save wrote."
     )
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
@@ -150,7 +150,7 @@ class PDLoad:
         "Number of frames loaded.",
         "First frame number of a sequence, or the start index of a video (0 for one image).",
         "The first file loaded (the video file for video).",
-        "The tokens of PD Output's sidecar next to the media, with the incoming "
+        "The tokens of PD Save's sidecar next to the media, with the incoming "
         "context's non-empty values on top.",
         "The video file, or the loaded frames as an in-memory VIDEO.",
         "The video's audio (video files only).",
@@ -179,7 +179,7 @@ class PDLoad:
                     "tooltip": "File to load, e.g. plate.exr, or shot.####.exr for a sequence "
                                "(also {frame} or %04d). The extension is optional (see format). "
                                "Tokens such as {shot}_{version} come from context and wedge. "
-                               "A full path (e.g. PD Output's path) ignores base_path.",
+                               "A full path (e.g. PD Save's path) ignores base_path.",
                 }),
                 "format": (list(FORMATS), {
                     "default": "auto",
@@ -231,7 +231,7 @@ class PDLoad:
                 "exr_colorspace": (list(EXR_COLORSPACES), {
                     "default": "as is",
                     "tooltip": "EXR only. as is: values unchanged (usually linear). linear to "
-                               "sRGB: encode to sRGB, the inverse of PD Output's sRGB to linear.",
+                               "sRGB: encode to sRGB, the inverse of PD Save's sRGB to linear.",
                 }),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},

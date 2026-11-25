@@ -124,7 +124,7 @@ class PlanCase(unittest.TestCase):
             "90": {"class_type": "EmptyImage", "inputs": {}},
             "20": wedge_node("angle", ["front", "side", "top"], upstream="30"),
             "30": wedge_node("product", ["", "", ""], links=(1, 2, 3)),
-            "40": {"class_type": "PDOutput", "inputs": {"images": ["20", 0], "wedge": ["20", 4]}},
+            "40": {"class_type": "PDSave", "inputs": {"images": ["20", 0], "wedge": ["20", 4]}},
         }
 
     def test_chain_order_first_fastest(self):
@@ -168,7 +168,7 @@ class PlanCase(unittest.TestCase):
             wedge.plan(prompt, ["40"])
 
     def test_too_many(self):
-        prompt = {"9": {"class_type": "PDOutput", "inputs": {}}}
+        prompt = {"9": {"class_type": "PDSave", "inputs": {}}}
         upstream = None
         for i in range(4):
             prompt[str(i)] = wedge_node(f"w{i}", [str(n) for n in range(1, 13)], upstream=upstream)

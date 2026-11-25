@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, copyText, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
+import { SAVE_CLASSES, chain, copyText, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Output — hide widgets and sockets that do not apply to   */
@@ -16,7 +16,7 @@ import { chain, copyText, findWidget, isInputLinked, labelMetadata, metadataRule
 /*  "Copy Path" copies the last written file's full path.              */
 /*  The path is kept in node.properties, so it survives a save.        */
 /*                                                                     */
-/*  Dropping or opening a PD Output sidecar .json reopens the workflow */
+/*  Dropping or opening a PD Save sidecar .json reopens the workflow */
 /*  stored in it (or its API prompt, for sidecars written before the   */
 /*  workflow was stored) instead of failing as a broken workflow.      */
 /* ------------------------------------------------------------------ */
@@ -57,7 +57,7 @@ const LAST_OUTPUT = "pd_last_output";
 
 function toast(severity, detail) {
     if (app.extensionManager?.toast?.add) {
-        app.extensionManager.toast.add({ severity, summary: "PD Output", detail, life: 4000 });
+        app.extensionManager.toast.add({ severity, summary: "PD Save", detail, life: 4000 });
     } else {
         alert(detail);
     }
@@ -74,10 +74,10 @@ async function copyPath(node) {
 }
 
 function isSidecar(data) {
-    return data && typeof data === "object" && data.node === "PDOutput" && "context" in data;
+    return data && typeof data === "object" && SAVE_CLASSES.includes(data.node) && "context" in data;
 }
 
-/** Wrap app.loadGraphData so a PD Output sidecar loads the workflow it stores. */
+/** Wrap app.loadGraphData so a PD Save sidecar loads the workflow it stores. */
 function acceptSidecars() {
     const original = app.loadGraphData;
     if (typeof original !== "function" || original._pdSidecar) return;
@@ -97,14 +97,14 @@ function acceptSidecars() {
 }
 
 app.registerExtension({
-    name: "Pipedream.Output",
+    name: "Pipedream.Save",
 
     setup() {
         acceptSidecars();
     },
 
     async nodeCreated(node) {
-        if (node.comfyClass !== "PDOutput") return;
+        if (!SAVE_CLASSES.includes(node.comfyClass)) return;
 
         for (const name of ["path_mode", "format", "prores_profile"]) {
             const widget = findWidget(node, name);

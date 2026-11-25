@@ -2,6 +2,15 @@
 
 ## 0.3.0 (unreleased)
 
+### PD Output is now PD Save
+- Renamed to pair with PD Load, as ComfyUI's Load Image / Save Image do.
+  The node class is now `PDSave`; sidecars record `"node": "PDSave"`
+- `PDOutput` stays as a hidden alias (deprecated, out of search), so saved
+  workflows, API prompts and scripts that use it still load and run; older
+  sidecars are still recognised. The alias will go in a later minor release
+- The `[output]` settings table keeps its name
+- Example workflows use PD Save
+
 ## 0.2.3 (2026-11-25)
 
 ### Copy Path replaces Explore

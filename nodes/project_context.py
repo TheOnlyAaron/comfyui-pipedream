@@ -8,7 +8,7 @@ from this node.
 Supports override chaining: an incoming PROJECT_CONTEXT provides base values,
 and any non-empty widget on this node overrides those values.  The context
 also comes out as EXR metadata (one string attribute per token, see
-``core/exr_meta.py``) for PD Output.
+``core/exr_meta.py``) for PD Save.
 
 Version auto-increment and the version reset buttons live entirely in the
 frontend (``web/pd_version.js``).  The ``auto_increment_version`` widget is
@@ -30,9 +30,9 @@ class PDProjectContext:
     RETURN_TYPES = ("PROJECT_CONTEXT", "EXR_METADATA")
     RETURN_NAMES = ("context", "exr_metadata")
     OUTPUT_TOOLTIPS = (
-        "The tokens, for PD Output, PD Load and the other context inputs.",
+        "The tokens, for PD Save, PD Load and the other context inputs.",
         "Every token of the context as an EXR string attribute named after the "
-        "exr.metadata_prefix setting (pipedream/shot...), for PD Output's exr_metadata. "
+        "exr.metadata_prefix setting (pipedream/shot...), for PD Save's exr_metadata. "
         "Empty values are left out.",
     )
 

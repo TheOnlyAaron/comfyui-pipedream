@@ -1,5 +1,5 @@
 """
-PD Output node.
+PD Save node.
 
 One output node for every destination and format: resolves a token
 template, then writes images (png/exr/jpg/webp) or video (mp4/mov/webm,
@@ -25,7 +25,7 @@ A connected PD Wedge chain adds its tokens (``{<token>}``,
 Each write can produce a sidecar JSON with the resolved tokens, template,
 written paths, frame range, alpha convention, wedge job and the ComfyUI
 prompt and workflow (drop the sidecar on ComfyUI to reopen the workflow,
-see ``web/pd_output.js``).  The node shows a preview of what was written, returns the written paths,
+see ``web/pd_save.js``).  The node shows a preview of what was written, returns the written paths,
 passes the images through, returns a VIDEO for written video, and feeds
 the token reference panel in ``web/pipedream.js``.
 
@@ -89,7 +89,7 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
     frame_only = numbered and FRAME_MARK in base
     if not strip_frame(base).replace(FRAME_MARK, "").strip(" ._-") and not frame_only:
         raise ValueError(
-            "[Pipedream] PD Output: no file name chosen. Enter one in 'file' (e.g. "
+            "[Pipedream] PD Save: no file name chosen. Enter one in 'file' (e.g. "
             f"{wrap('shot')}_{wrap('version')})" + (f"; '{template}' resolves to "
             f"'{resolved.replace(FRAME_MARK, '#')}'." if template.strip() else ".")
         )
@@ -98,10 +98,10 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
     elif FRAME_MARK not in resolved:
         resolved = f"{resolved}{settings.get('sequence.frame_separator')}{FRAME_MARK}"
 
-    root = resolve_root(path_mode, base_path, output_directory(), "PD Output")
+    root = resolve_root(path_mode, base_path, output_directory(), "PD Save")
     pattern = normalize_path(os.path.join(root, f"{resolved}.{file_format}"))
     if path_mode == "relative":
-        check_inside(pattern, root, "PD Output", "output")
+        check_inside(pattern, root, "PD Save", "output")
     return resolved, root, pattern
 
 
@@ -180,7 +180,7 @@ def wedge_preview(request: dict, path_mode, base_path, template, file_format,
     warnings = []
     if other:
         names = ", ".join("+".join(a.get("tokens", [])) for a in other)
-        warnings.append(f"Not chained into this PD Output: {names}. Each path above is "
+        warnings.append(f"Not chained into this PD Save: {names}. Each path above is "
                         f"written {repeat} times ({len(rows) * repeat} jobs), each over the last.")
     seen = {}
     for idx, resolved, _ in rows:
@@ -235,7 +235,7 @@ def video_source(video) -> tuple:
 
 def metadata_for(inputs: dict, file_format: str, count: int):
     """
-    ``(merged ExrMetadata or None, writer or None)`` from PD Output's
+    ``(merged ExrMetadata or None, writer or None)`` from PD Save's
     exr_metadata inputs, in input order.  The writer replaces a written
     EXR frame's header metadata; None when nothing is connected (nothing
     is written) or the format is not exr.
@@ -245,11 +245,11 @@ def metadata_for(inputs: dict, file_format: str, count: int):
         return None, None
     merged = ExrMetadata.merged(sources)
     if file_format != "exr":
-        print("[Pipedream] Warning: PD Output: exr_metadata is only written to exr files; "
+        print("[Pipedream] Warning: PD Save: exr_metadata is only written to exr files; "
               f"ignored for {file_format}.", file=sys.stderr)
         return merged, None
     if len(merged) > 1 and len(merged) != count:
-        print(f"[Pipedream] Warning: PD Output: exr_metadata has {len(merged)} frame tables "
+        print(f"[Pipedream] Warning: PD Save: exr_metadata has {len(merged)} frame tables "
               f"for {count} frames; " + ("the last table repeats." if len(merged) < count
                                           else "the extra tables are ignored."),
               file=sys.stderr)
@@ -258,16 +258,16 @@ def metadata_for(inputs: dict, file_format: str, count: int):
         try:
             write_attributes(path, merged.frame(index))
         except ExrError as exc:
-            raise RuntimeError(f"[Pipedream] PD Output: cannot write EXR metadata to "
+            raise RuntimeError(f"[Pipedream] PD Save: cannot write EXR metadata to "
                                f"'{path}': {exc}") from exc
 
     return merged, write
 
 
-class PDOutput:
+class PDSave:
     """Write images or video to ComfyUI's output dir or an absolute path using a token template."""
 
-    DISPLAY_NAME = display_name("PD Output")
+    DISPLAY_NAME = display_name("PD Save")
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     OUTPUT_NODE = True
@@ -421,10 +421,10 @@ class PDOutput:
             frames = images
         else:
             raise ValueError(
-                "[Pipedream] PD Output needs an input: connect 'images' or 'video'."
+                "[Pipedream] PD Save needs an input: connect 'images' or 'video'."
             )
         if frames is None or len(frames.shape) < 3 or int(frames.shape[0]) == 0:
-            raise ValueError("[Pipedream] PD Output got no frames to write.")
+            raise ValueError("[Pipedream] PD Save got no frames to write.")
         count, height, width = (int(x) for x in frames.shape[:3])
 
         matte, matte_kind = None, None
@@ -443,7 +443,7 @@ class PDOutput:
             if alpha is not None:
                 target = f"ProRes {profile}" if file_format == "mov" else file_format
                 print(
-                    f"[Pipedream] Warning: PD Output: {target} cannot store alpha, so the "
+                    f"[Pipedream] Warning: PD Save: {target} cannot store alpha, so the "
                     "connected alpha is ignored. Use png, webp, exr, or mov with "
                     "prores_profile auto/4444 to keep it.",
                     file=sys.stderr,
@@ -504,7 +504,7 @@ class PDOutput:
         if save_metadata and written:
             stem = strip_frame(os.path.splitext(os.path.basename(pattern))[0]) or "sequence"
             metadata = {
-                "node": "PDOutput",
+                "node": "PDSave",
                 "timestamp": now.isoformat(timespec="seconds"),
                 "template": template,
                 "resolved": resolved.replace(FRAME_MARK, hashes),
@@ -590,3 +590,14 @@ class PDOutput:
             "ui": ui,
             "result": (final, sidecar, "\n".join(written), passthrough, video_out),
         }
+
+
+class PDOutput(PDSave):
+    """
+    PD Save's former name, kept so workflows, API prompts and scripts that
+    use ``PDOutput`` still load and run.  Hidden from search; new nodes are
+    PD Save.  To be removed in a later minor release.
+    """
+
+    DISPLAY_NAME = display_name("PD Output (renamed PD Save)")
+    DEPRECATED = True

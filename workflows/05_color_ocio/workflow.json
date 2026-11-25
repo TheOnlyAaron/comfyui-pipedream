@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
+        "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Save writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
       ],
       "widgets_values_named": {
-        "text": "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Output writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
+        "text": "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Save writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -363,7 +363,7 @@
     },
     {
       "id": 4,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         880,
         0
@@ -583,7 +583,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",

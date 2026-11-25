@@ -9,6 +9,6 @@ How tokens turn shot details into text. Runs as is: no model, no images, nothing
   - `{project}/{sequence}/{shot}/{task}/{shot}_{task}_{version}.{frame}` → `demo/sq010/sh010/comp/sh010_comp_v001.####`
   - `Rendered {date} at {time}` uses the automatic tokens and needs no context.
 
-The same templates name files in PD Output and find them in PD Load (see 02). Try `auto_increment_version` on PD Project Context, or rename a token in PD Custom Context and preview again: unknown tokens stay as `{name}` in the text.
+The same templates name files in PD Save and find them in PD Load (see 02). Try `auto_increment_version` on PD Project Context, or rename a token in PD Custom Context and preview again: unknown tokens stay as `{name}` in the text.
 
 **Nodes:** PD Project Context, PD Custom Context, PD Tokens To String (×3)

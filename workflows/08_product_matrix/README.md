@@ -18,9 +18,9 @@ The product wedge is first in the chain, so it varies fastest:
 | 004 | lime | bar counter |
 | 005 | berry | bar counter |
 
-PD Output template: `wedges/06_products/{product}/{product}_{look_idx}`, one folder per product (`cola/cola_000.png`, `cola/cola_001.png`, ...). The sidecar JSON records each job's wedge rows.
+PD Save template: `wedges/06_products/{product}/{product}_{look_idx}`, one folder per product (`cola/cola_000.png`, `cola/cola_001.png`, ...). The sidecar JSON records each job's wedge rows.
 
-Setup: load a base image and the three product images (the composite places the product at x/y 256; adjust to taste), pick a checkpoint, then press **preview wedge** on PD Output:
+Setup: load a base image and the three product images (the composite places the product at x/y 256; adjust to taste), pick a checkpoint, then press **preview wedge** on PD Save:
 
 ```
 Wedge preview: 6 outputs (product+product_prompt 3 x look 2), nothing written.
@@ -31,6 +31,6 @@ Wedge preview: 6 outputs (product+product_prompt 3 x look 2), nothing written.
 Things to try:
 - Add a fourth product: link another Load Image to `input_4`, name it, and add a fourth prompt to product_prompt. With only one of the two, Run stops with "need the same number of rows" on the wedge.
 - Remove `{product}` from the template: the preview warns that paths are written by more than one job.
-- Disconnect look's `wedge` output from PD Output (connect product_prompt's instead): the preview warns that `look` is not chained into PD Output.
+- Disconnect look's `wedge` output from PD Save (connect product_prompt's instead): the preview warns that `look` is not chained into PD Save.
 
-**Nodes used:** PD Wedge (×3), Load Image (×4), Image Composite Masked, String Concatenate, CheckpointLoaderSimple, VAE Encode, CLIP Text Encode, KSampler, VAE Decode, PD Output
+**Nodes used:** PD Wedge (×3), Load Image (×4), Image Composite Masked, String Concatenate, CheckpointLoaderSimple, VAE Encode, CLIP Text Encode, KSampler, VAE Decode, PD Save

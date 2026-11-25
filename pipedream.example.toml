@@ -9,23 +9,23 @@
 # Generated from core/settings.py: python -m core.settings > pipedream.example.toml
 
 [output]
-# PD Output path template, without extension.
+# PD Save path template, without extension.
 # template = "{project}/{sequence}/{shot}/{shot}_{version}_{date}"
 
-# PD Output: relative (ComfyUI output dir) or absolute (base_path). One of:
+# PD Save: relative (ComfyUI output dir) or absolute (base_path). One of:
 # "relative", "absolute".
 # path_mode = "relative"
 
-# PD Output root folder for absolute mode, e.g. a facility network root. UNC
+# PD Save root folder for absolute mode, e.g. a facility network root. UNC
 # works: '\\server\shows' (single quotes keep backslashes) or
 # '//server/shows'.
 # base_path = ""
 
-# PD Output file format. One of: "png", "exr", "jpg", "webp", "mp4", "mov",
+# PD Save file format. One of: "png", "exr", "jpg", "webp", "mp4", "mov",
 # "webm".
 # format = "png"
 
-# Video frame rate (PD Output, PD Images To Video). Range 1.0..240.0.
+# Video frame rate (PD Save, PD Images To Video). Range 1.0..240.0.
 # fps = 24.0
 
 # mp4/webm quality, lower is better. Range 0..51.
@@ -73,7 +73,7 @@
 # colorspace = "as is"
 
 [sequence]
-# Digits in frame numbers (PD Output, PD Tokens To String). Range 1..8.
+# Digits in frame numbers (PD Save, PD Tokens To String). Range 1..8.
 # frame_padding = 4
 
 # First frame number of an image sequence. Range 0..9999999.

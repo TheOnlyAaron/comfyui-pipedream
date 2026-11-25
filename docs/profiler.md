@@ -75,7 +75,7 @@ The profiler is an output node with `IS_CHANGED` returning NaN, so it runs every
 
 With `export_sidecar` on, each run writes JSON:
 
-- `path` is a file → `<folder>/<stem>.profile.json`. For an image format, a trailing frame number is dropped (`.1001`, or the `sequence.frame_separator` setting), matching PD Output's own sidecar. For PD Output's `path_all`, the first line is used.
+- `path` is a file → `<folder>/<stem>.profile.json`. For an image format, a trailing frame number is dropped (`.1001`, or the `sequence.frame_separator` setting), matching PD Save's own sidecar. For PD Save's `path_all`, the first line is used.
 - `path` is a folder → `<folder>/profile_<YYYYmmdd_HHMMSS>.json`.
 - empty → `output/pipedream_profiles/profile_<YYYYmmdd_HHMMSS>.json`.
 
@@ -112,7 +112,7 @@ The node's one output is the profile as EXR metadata (`profile_metadata` in `cor
 | `time_estimate_s`, `jobs` | float, int | when node times are known |
 | `time_upstream_s`, `measured_peak_vram_gb`, `wedge_job` | float, float, string | what this run measured |
 
-With `enabled` off the output is empty metadata. To feed PD Output, branch the profiler off before PD Output: a profiler after PD Output reading back into it would be a loop.
+With `enabled` off the output is empty metadata. To feed PD Save, branch the profiler off before PD Save: a profiler after PD Save reading back into it would be a loop.
 
 ## Without the browser
 

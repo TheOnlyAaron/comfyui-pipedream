@@ -211,7 +211,7 @@ export function trackPreviewMedia(node) {
     });
 }
 
-/** PD Output's and PD EXR Metadata Merge's EXR_METADATA inputs, in merge order. */
+/** PD Save's and PD EXR Metadata Merge's EXR_METADATA inputs, in merge order. */
 export const METADATA_INPUTS = ["exr_metadata", ...[2, 3, 4, 5, 6, 7, 8].map(n => `exr_metadata_${n}`)];
 
 /**
@@ -263,3 +263,6 @@ export async function copyText(text) {
     area.remove();
     return ok;
 }
+
+/** PD Save's class names: PDSave, and PDOutput (its former name, kept as a hidden alias). */
+export const SAVE_CLASSES = ["PDSave", "PDOutput"];

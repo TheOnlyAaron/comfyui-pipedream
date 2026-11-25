@@ -1,12 +1,12 @@
 """
-Finding and decoding media for PD Load, the inverse of PD Output.
+Finding and decoding media for PD Load, the inverse of PD Save.
 
 A resolved template (tokens already filled in) names one of:
 
 - a **single image** (``shot_v001.png``),
 - an **image sequence**: the frame number is marked by ``FRAME_MARK`` (from
   ``{frame}``), a run of ``#`` (``####``) or a printf ``%04d``; without a
-  mark, a numbered file next to the name is found as well (PD Output's
+  mark, a numbered file next to the name is found as well (PD Save's
   default ``name.1001.png``),
 - a **video** (mp4/mov/webm/mkv/avi/m4v).
 
@@ -18,9 +18,9 @@ paths and mounted network shares work like local folders.
 Decoding uses PyAV (shipped with ComfyUI) for every format, so 16-bit
 PNG/TIFF and float EXR keep their precision; Pillow is the fallback for
 files PyAV cannot open.  Alpha comes out as a MASK (1.0 = opaque,
-straight).  EXR is premultiplied by its spec (PD Output writes it that
+straight).  EXR is premultiplied by its spec (PD Save writes it that
 way), so EXR RGB is divided by alpha on load; ``linear to sRGB`` is the
-inverse of PD Output's ``sRGB to linear``.
+inverse of PD Save's ``sRGB to linear``.
 
 ``torch``, ``numpy`` and ``av`` are imported lazily.
 """
@@ -37,6 +37,8 @@ VIDEO_EXTS = ("mp4", "mov", "webm", "mkv", "avi", "m4v")
 FORMATS = ("auto", "exr", "png", "jpg", "webp", "tif", "dpx", "mp4", "mov", "webm", "mkv")
 EXR_COLORSPACES = ("as is", "linear to sRGB")
 SEQUENCE_MODES = ("auto", "single file", "sequence")
+# The sidecar "node" value: PD Save, and PDOutput (its former name, older sidecars).
+SAVE_CLASSES = ("PDSave", "PDOutput")
 
 _ALIASES = {"jpg": ("jpg", "jpeg"), "tif": ("tif", "tiff")}
 _HASHES = re.compile(r"#+")
@@ -165,10 +167,10 @@ def _read_json(path: str) -> dict | None:
 
 def _sidecar_verdict(picked: str, ext: str, candidate: dict):
     """
-    What PD Output's sidecars say about *picked*: ``("single", note)``,
+    What PD Save's sidecars say about *picked*: ``("single", note)``,
     ``("sequence", note)`` or None when they say nothing.
 
-    PD Output names a single image's sidecar after the file
+    PD Save names a single image's sidecar after the file
     (``Sr388_512.exr`` -> ``Sr388_512.json``, no ``sequence`` section) and
     a sequence's after the name without the frame (``sh010.1001.exr`` ->
     ``sh010.json``, with ``sequence.pattern``).
@@ -176,7 +178,7 @@ def _sidecar_verdict(picked: str, ext: str, candidate: dict):
     folder, name = os.path.split(picked)
     own = os.path.join(folder, os.path.splitext(name)[0] + ".json")
     data = _read_json(own)
-    if data is not None and data.get("node") == "PDOutput" and not data.get("sequence"):
+    if data is not None and data.get("node") in SAVE_CLASSES and not data.get("sequence"):
         return "single", f"single image: its sidecar {os.path.basename(own)} has no sequence"
 
     stem = re.sub(r"[._-]$", "", candidate["prefix"]) or "sequence"
@@ -205,7 +207,7 @@ def _decide_sequence(picked: str, ext: str, entries: list[str], mode: str):
     ``(candidate or None, note)``: the candidate from ``_sequence_of`` to
     load as a sequence, and a line for the info panel saying why.
 
-    ``auto`` checks, in order: PD Output's sidecars, frame sizes (first,
+    ``auto`` checks, in order: PD Save's sidecars, frame sizes (first,
     last and picked), then unpadded numbers of different lengths (wedge or
     take numbers); anything else is guessed to be a sequence.
     """
@@ -486,7 +488,7 @@ def read_images(paths: list[str], exr_colorspace: str = "as is"):
 
 
 def sidecar_path(pattern: str, kind: str) -> str:
-    """Where PD Output writes the sidecar for this media: the name without frame and extension, .json."""
+    """Where PD Save writes the sidecar for this media: the name without frame and extension, .json."""
     folder, name = os.path.split(pattern)
     stem = os.path.splitext(name)[0]
     if kind == "sequence":
@@ -495,7 +497,7 @@ def sidecar_path(pattern: str, kind: str) -> str:
 
 
 def read_sidecar(pattern: str, kind: str) -> dict:
-    """The ``context`` of PD Output's sidecar next to the media, or {} when there is none."""
+    """The ``context`` of PD Save's sidecar next to the media, or {} when there is none."""
     path = sidecar_path(pattern, kind)
     if not os.path.isfile(path):
         return {}

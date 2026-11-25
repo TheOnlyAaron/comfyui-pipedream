@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Output.\n\nPress \"preview wedge\" on PD Output to see the file names, then Run: 3 jobs, same seed."
+        "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Save.\n\nPress \"preview wedge\" on PD Save to see the file names, then Run: 3 jobs, same seed."
       ],
       "widgets_values_named": {
-        "text": "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Output.\n\nPress \"preview wedge\" on PD Output to see the file names, then Run: 3 jobs, same seed."
+        "text": "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Save.\n\nPress \"preview wedge\" on PD Save to see the file names, then Run: 3 jobs, same seed."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -891,7 +891,7 @@
     },
     {
       "id": 12,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         2100,
         0
@@ -1111,7 +1111,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",

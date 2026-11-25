@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Tokens: turn shot details into text.\n\n1. PD Project Context holds project, sequence, shot, version and user. PD Custom Context adds any tokens of your own (task, client). Each becomes {name}.\n2. PD Tokens To String fills a template with them. Press preview on it to see the result without running anything else.\n3. Automatic tokens: {date}, {time} and {frame} (#### here) need no context.\n\nThe same templates name files in PD Output and PD Load (see 02)."
+        "Tokens: turn shot details into text.\n\n1. PD Project Context holds project, sequence, shot, version and user. PD Custom Context adds any tokens of your own (task, client). Each becomes {name}.\n2. PD Tokens To String fills a template with them. Press preview on it to see the result without running anything else.\n3. Automatic tokens: {date}, {time} and {frame} (#### here) need no context.\n\nThe same templates name files in PD Save and PD Load (see 02)."
       ],
       "widgets_values_named": {
-        "text": "Output basics: name and write files from tokens.\n\n1. PD Project Context and PD Custom Context hold the shot details. Their values become tokens: {project}, {sequence}, {shot}, {version}, {user}, {task}.\n2. PD Output builds the path from its template and writes the image into ComfyUI's output folder, with a sidecar .json.\n3. PD Tokens To String turns the same tokens into text (for prompts, titles, other paths).\n\nRun it, then look at PD Output's token panel. Try version 002, auto_increment_version, or path_mode absolute with a network base_path."
+        "text": "Output basics: name and write files from tokens.\n\n1. PD Project Context and PD Custom Context hold the shot details. Their values become tokens: {project}, {sequence}, {shot}, {version}, {user}, {task}.\n2. PD Save builds the path from its template and writes the image into ComfyUI's output folder, with a sidecar .json.\n3. PD Tokens To String turns the same tokens into text (for prompts, titles, other paths).\n\nRun it, then look at PD Save's token panel. Try version 002, auto_increment_version, or path_mode absolute with a network base_path."
       },
       "color": "#432",
       "bgcolor": "#653"

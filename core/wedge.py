@@ -19,7 +19,7 @@ drops prompt inputs a node does not declare, so the node reads them from
 the hidden ``PROMPT``; they still change the node's cache signature, so a
 new row re-executes the wedge and everything downstream of it.
 
-The ``WEDGE`` value passed down a chain of wedges (and on to PD Output)
+The ``WEDGE`` value passed down a chain of wedges (and on to PD Save)
 is a dict::
 
     {"axes": [{"token": "product", "group": "", "rows": ["red", "blue"],
@@ -30,7 +30,7 @@ is a dict::
 pinned to one row.
 
 A preview run sets ``PREVIEW_KEY`` on the wedges: they then compute none of
-their row inputs (``value`` is None) and PD Output lists the paths of every
+their row inputs (``value`` is None) and PD Save lists the paths of every
 job from the chain (``chain_jobs``) instead of writing.
 """
 

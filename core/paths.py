@@ -1,5 +1,5 @@
 """
-Path building shared by PD Output and PD Load.
+Path building shared by PD Save and PD Load.
 
 ``FRAME_MARK`` stands in for ``{frame}`` while a template is resolved; the
 writer replaces it per frame and the loader turns it into a frame-number

@@ -1,5 +1,5 @@
 """
-Media and file helpers for PD Output.
+Media and file helpers for PD Save.
 
 Path normalization, alpha and colour helpers, image sequence writing,
 video and EXR encoding through PyAV (the ``av`` package that ships with
@@ -607,7 +607,7 @@ def save_image_sequence(images, paths: list[str], alpha=None,
     EXR RGB is multiplied by the alpha, after the sRGB to linear decode
     (which must see straight values).  See ``alpha_premultiplied``.
     *exr_metadata*, when given, is called as ``exr_metadata(index, path)``
-    after each EXR frame is written (PD Output adds header metadata).
+    after each EXR frame is written (PD Save adds header metadata).
     EXR failures raise ``RuntimeError``;
     other per-file failures are printed and skipped.  Callers handle the
     overwrite policy (see ``existing_files``).

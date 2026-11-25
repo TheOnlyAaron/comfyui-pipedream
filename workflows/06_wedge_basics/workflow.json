@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
+        "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Save, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Save to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       ],
       "widgets_values_named": {
-        "text": "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Output, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Output to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
+        "text": "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Save, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Save to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -634,7 +634,7 @@
     },
     {
       "id": 5,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         820,
         0
@@ -858,7 +858,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",

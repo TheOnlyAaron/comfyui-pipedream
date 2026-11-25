@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, findWidget, isInputLinked, refit, setHidden } from "./pd_common.js";
+import { chain, findWidget, isInputLinked, refit, setHidden, SAVE_CLASSES } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Wedge — auto-growing rows of input + text value          */
@@ -194,7 +194,7 @@ function wrapQueuePrompt() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Preview — list every job's path on PD Output without running       */
+/*  Preview — list every job's path on PD Save without running       */
 /* ------------------------------------------------------------------ */
 
 function isLink(value) {
@@ -217,10 +217,10 @@ export function ancestors(output, roots) {
 }
 
 /**
- * The preview prompt for PD Output ``id``: its images/video/alpha are
+ * The preview prompt for PD Save ``id``: its images/video/alpha are
  * unlinked and only what it still reads from is kept (context, wedges,
  * whatever feeds their text).  Wedges are flagged so they compute none of
- * their row inputs, and PD Output gets the request it lists paths for.
+ * their row inputs, and PD Save gets the request it lists paths for.
  */
 export function previewPrompt(output, id, request) {
     const target = { ...output[id], inputs: { ...output[id].inputs } };
@@ -244,7 +244,7 @@ function promptId(output, node) {
 }
 
 /**
- * Put the preview text in PD Output's panel when the preview prompt runs.
+ * Put the preview text in PD Save's panel when the preview prompt runs.
  *
  * The app only routes results of prompts it queued itself, so this
  * listens for the preview's own ``executed`` event.  The listener starts
@@ -293,7 +293,7 @@ async function previewWedge(node) {
         const { output, workflow } = await app.graphToPrompt();
         const id = promptId(output, node);
         if (!id) {
-            toast("warn", "This PD Output is bypassed or not part of the prompt.");
+            toast("warn", "This PD Save is bypassed or not part of the prompt.");
             return;
         }
         const [all, own] = await Promise.all([fetchPlan(output), fetchPlan(output, [id])]);
@@ -326,7 +326,7 @@ app.registerExtension({
     },
 
     async nodeCreated(node) {
-        if (node.comfyClass === "PDOutput") {
+        if (SAVE_CLASSES.includes(node.comfyClass)) {
             const button = node.addWidget("button", "preview wedge", null, () => previewWedge(node),
                                           { serialize: false });
             button.serialize = false;

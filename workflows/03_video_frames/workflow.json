@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Video frames, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip."
+        "Video frames, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Save writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip."
       ],
       "widgets_values_named": {
-        "text": "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Output writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
+        "text": "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Save writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -371,7 +371,7 @@
     },
     {
       "id": 5,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         820,
         0
@@ -591,7 +591,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",

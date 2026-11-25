@@ -4,7 +4,7 @@ PD EXR Metadata Get and PD EXR Metadata Merge nodes.
 **Merge** combines up to 8 ``EXR_METADATA`` streams into one, frame by
 frame, later inputs winning on the same name (the same rule as PD
 Output's inputs), so a stream can be assembled once and sent to several
-PD Outputs or inspected.  A spare input appears as one is connected
+PD Saves or inspected.  A spare input appears as one is connected
 (``web/pipedream.js``).
 
 **Get**:

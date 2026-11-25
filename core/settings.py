@@ -98,17 +98,17 @@ def _not_empty(value):
 SCHEMA: dict[str, Setting] = {
     "output.template": Setting(
         str, "{project}/{sequence}/{shot}/{shot}_{version}_{date}",
-        "PD Output path template, without extension.", check=_not_empty),
+        "PD Save path template, without extension.", check=_not_empty),
     "output.path_mode": Setting(
-        str, "relative", "PD Output: relative (ComfyUI output dir) or absolute (base_path).",
+        str, "relative", "PD Save: relative (ComfyUI output dir) or absolute (base_path).",
         choices=PATH_MODES),
     "output.base_path": Setting(
-        str, "", "PD Output root folder for absolute mode, e.g. a facility network root. "
+        str, "", "PD Save root folder for absolute mode, e.g. a facility network root. "
         "UNC works: '\\\\server\\shows' (single quotes keep backslashes) or '//server/shows'."),
     "output.format": Setting(
-        str, "png", "PD Output file format.", choices=IMAGE_FORMATS + VIDEO_FORMATS),
+        str, "png", "PD Save file format.", choices=IMAGE_FORMATS + VIDEO_FORMATS),
     "output.fps": Setting(
-        float, 24.0, "Video frame rate (PD Output, PD Images To Video).", min=1.0, max=240.0),
+        float, 24.0, "Video frame rate (PD Save, PD Images To Video).", min=1.0, max=240.0),
     "output.crf": Setting(int, 18, "mp4/webm quality, lower is better.", min=0, max=51),
     "output.create_dirs": Setting(bool, True, "Create missing output folders."),
     "output.overwrite": Setting(bool, False, "Replace existing files."),
@@ -134,7 +134,7 @@ SCHEMA: dict[str, Setting] = {
         str, "as is", "EXR: write values as is, or decode sRGB to linear.",
         choices=EXR_COLORSPACES),
     "sequence.frame_padding": Setting(
-        int, 4, "Digits in frame numbers (PD Output, PD Tokens To String).",
+        int, 4, "Digits in frame numbers (PD Save, PD Tokens To String).",
         min=1, max=8),
     "sequence.start_frame": Setting(int, 1001, "First frame number of an image sequence.",
                                     min=0, max=9999999),

@@ -22,10 +22,10 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Output, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
+        "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Save writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Save's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Save, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
       ],
       "widgets_values_named": {
-        "text": "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Output writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Output's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Output, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
+        "text": "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Save writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Save's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Save, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -428,7 +428,7 @@
     },
     {
       "id": 5,
-      "type": "PDOutput",
+      "type": "PDSave",
       "pos": [
         820,
         0
@@ -666,7 +666,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PDOutput"
+        "Node name for S&R": "PDSave"
       },
       "widgets_values": [
         "relative",
@@ -904,7 +904,7 @@
           ]
         }
       ],
-      "title": "Read back (file from PD Output path)",
+      "title": "Read back (file from PD Save path)",
       "properties": {
         "Node name for S&R": "PDLoad"
       },

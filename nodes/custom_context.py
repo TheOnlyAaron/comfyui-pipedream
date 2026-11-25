@@ -27,9 +27,9 @@ class PDCustomContext:
     RETURN_TYPES = ("PROJECT_CONTEXT", "EXR_METADATA")
     RETURN_NAMES = ("context", "exr_metadata")
     OUTPUT_TOOLTIPS = (
-        "The tokens, for PD Output, PD Load and the other context inputs.",
+        "The tokens, for PD Save, PD Load and the other context inputs.",
         "Every token of the context as an EXR string attribute named after the "
-        "exr.metadata_prefix setting (pipedream/shot...), for PD Output's exr_metadata. "
+        "exr.metadata_prefix setting (pipedream/shot...), for PD Save's exr_metadata. "
         "Empty values are left out.",
     )
 

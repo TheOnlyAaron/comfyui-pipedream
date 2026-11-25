@@ -4,7 +4,7 @@ PD Wedge node.
 Turns several near-identical runs of a graph into one graph: each row is
 an input (any type) paired with a text value, and each queued job selects
 one row.  The selected input comes out of ``value``; the row's text is
-the wedge token's value for PD Output, and also comes out as ``text``,
+the wedge token's value for PD Save, and also comes out as ``text``,
 ``int`` and ``float``.  An unlinked row's value is its text, so prompts,
 seeds or numbers can be wedged by typing them in.
 
@@ -59,7 +59,7 @@ class PDWedge:
         "The selected row's text (the token value).",
         "The selected row's text as an integer (2.7 gives 2; 0 if not a number).",
         "The selected row's text as a float (0.0 if not a number).",
-        "This wedge and the wedges chained before it, for the next wedge or PD Output.",
+        "This wedge and the wedges chained before it, for the next wedge or PD Save.",
     )
 
     @classmethod
@@ -81,7 +81,7 @@ class PDWedge:
             "required": {
                 "token": ("STRING", {
                     "default": "wedge",
-                    "tooltip": "Token name for PD Output, e.g. product gives "
+                    "tooltip": "Token name for PD Save, e.g. product gives "
                                "{product} and {product_idx}.",
                 }),
             },
