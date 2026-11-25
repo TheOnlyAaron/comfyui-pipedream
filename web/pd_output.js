@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
+import { chain, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Output — hide widgets and sockets that do not apply to   */
@@ -22,22 +22,6 @@ import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewM
 /* ------------------------------------------------------------------ */
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
-const METADATA_INPUTS = ["exr_metadata", ...[2, 3, 4, 5, 6, 7, 8].map(n => `exr_metadata_${n}`)];
-
-/** exr_metadata inputs to show: for exr, every one up to a spare after the highest linked. */
-function metadataRules(node, isExr) {
-    let highest = -1;
-    METADATA_INPUTS.forEach((name, i) => { if (isInputLinked(node, name)) highest = i; });
-    const count = isExr ? Math.min(METADATA_INPUTS.length, highest + 2) : 0;
-    return Object.fromEntries(METADATA_INPUTS.map((name, i) => [name, i < count]));
-}
-
-function labelMetadata(node) {
-    for (const input of node.inputs ?? []) {
-        const i = METADATA_INPUTS.indexOf(input.name);
-        if (i >= 0) input.label = i === 0 ? "exr metadata" : `exr metadata ${i + 1}`;
-    }
-}
 const ALPHA_IMAGE_FORMATS = ["png", "exr", "webp"];
 
 function sync(node) {

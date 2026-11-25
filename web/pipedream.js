@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { addReadOnlyText, chain, refit, showOutputText } from "./pd_common.js";
+import { addReadOnlyText, chain, labelMetadata, metadataRules, refit, showOutputText, showSlots } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Read-only text panels: PD Output token reference, PD Load info,    */
@@ -87,5 +87,33 @@ app.registerExtension({
         chain(node, "onConnectionsChange", () => syncSwitchSlots(node));
         chain(node, "onConfigure", () => syncSwitchSlots(node));
         syncSwitchSlots(node);
+    },
+});
+
+/* ------------------------------------------------------------------ */
+/*  Pipedream.ExrMetadataMerge — a spare exr_metadata input after the  */
+/*  highest linked one (up to 8), like PD Output's.                    */
+/* ------------------------------------------------------------------ */
+
+function syncMergeSlots(node) {
+    if (node._pdSyncing) return;
+    node._pdSyncing = true;
+    try {
+        showSlots(node, "input", metadataRules(node));
+        labelMetadata(node);
+    } finally {
+        node._pdSyncing = false;
+    }
+}
+
+app.registerExtension({
+    name: "Pipedream.ExrMetadataMerge",
+
+    async nodeCreated(node) {
+        if (node.comfyClass !== "PDExrMetadataMerge") return;
+        // Deferred like PD Output: graphs from API prompts link inputs after creation.
+        chain(node, "onConnectionsChange", () => queueMicrotask(() => syncMergeSlots(node)));
+        chain(node, "onConfigure", () => syncMergeSlots(node));
+        setTimeout(() => syncMergeSlots(node), 0);
     },
 });

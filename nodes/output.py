@@ -40,7 +40,7 @@ from datetime import datetime
 from ..core import settings
 from ..core.comfy import output_directory, reveal_in_file_manager, server_routes, temp_directory
 from ..core.common import display_name
-from ..core.exr_meta import ExrError, ExrMetadata, write_attributes
+from ..core.exr_meta import INPUT_NAMES as METADATA_INPUT_NAMES, ExrError, ExrMetadata, write_attributes
 from ..core.media import (
     EXR_COLORSPACES,
     EXR_COMPRESSIONS,
@@ -106,7 +106,7 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
 
 
 PREVIEW_LINES = 200
-METADATA_INPUTS = ["exr_metadata"] + [f"exr_metadata_{i}" for i in range(2, 9)]
+METADATA_INPUTS = METADATA_INPUT_NAMES
 
 
 def preview_request(prompt, unique_id) -> dict | None:

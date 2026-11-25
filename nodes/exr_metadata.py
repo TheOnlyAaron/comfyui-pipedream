@@ -1,5 +1,13 @@
 """
-PD EXR Metadata Get node.
+PD EXR Metadata Get and PD EXR Metadata Merge nodes.
+
+**Merge** combines up to 8 ``EXR_METADATA`` streams into one, frame by
+frame, later inputs winning on the same name (the same rule as PD
+Output's inputs), so a stream can be assembled once and sent to several
+PD Outputs or inspected.  A spare input appears as one is connected
+(``web/pipedream.js``).
+
+**Get**:
 
 Shows an ``EXR_METADATA`` stream (from PD Load, a context node or PD
 Profiler) on the node, one attribute per line with its type, marking the
@@ -10,7 +18,7 @@ text, int and float.  ``key`` matches a full name, or a unique last part
 """
 
 from ..core.common import display_name
-from ..core.exr_meta import ExrMetadata
+from ..core.exr_meta import INPUT_NAMES, ExrMetadata
 from ..core.wedge import to_float, to_int
 
 
@@ -96,3 +104,31 @@ class PDExrMetadataGet:
                          else f"'{key.strip()}' not found (or matches more than one name).")
         return {"ui": {"metadata_text": ["\n".join(lines)]},
                 "result": (value_text, as_int, as_float, "\n".join(table))}
+
+
+class PDExrMetadataMerge:
+    """Combine EXR metadata streams frame by frame; later inputs win."""
+
+    DISPLAY_NAME = display_name("PD EXR Metadata Merge")
+    CATEGORY = "Pipedream"
+    FUNCTION = "execute"
+    RETURN_TYPES = ("EXR_METADATA",)
+    RETURN_NAMES = ("exr_metadata",)
+    OUTPUT_TOOLTIPS = (
+        "The inputs merged frame by frame: a source with one table per frame keeps them "
+        "per frame, a single table applies to every frame, and later inputs win on the "
+        "same name.",
+    )
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {},
+            "optional": {name: ("EXR_METADATA", {
+                "tooltip": "A metadata stream (PD Load, a context node, PD Profiler or "
+                           "another merge). Later inputs win on the same name.",
+            }) for name in INPUT_NAMES},
+        }
+
+    def execute(self, **inputs):
+        return (ExrMetadata.merged(inputs.get(name) for name in INPUT_NAMES),)

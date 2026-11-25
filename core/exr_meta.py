@@ -52,6 +52,10 @@ _FIXED = {
 SCALAR = ("int", "float", "double", "compression", "lineOrder", "envmap", "deepImageState")
 
 
+# PD Output's and PD EXR Metadata Merge's inputs, in merge order.
+INPUT_NAMES = ["exr_metadata"] + [f"exr_metadata_{i}" for i in range(2, 9)]
+
+
 class ExrError(Exception):
     """An EXR header that cannot be read or changed."""
 

@@ -112,6 +112,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 | **PD&nbsp;OCIO&nbsp;Display** | Applies an OCIO display/view transform (e.g. ACES for sRGB), or its inverse. |
 | **PD&nbsp;OCIO&nbsp;Apply&nbsp;LUT** | Applies a LUT file (.cube, .3dl, .spi3d, CLF...), forward or inverse. |
 | **PD&nbsp;Sound** | Plays a browser sound when its point in the graph runs, or when the queue finishes. [More](#pd-sound) |
+| **PD&nbsp;EXR&nbsp;Metadata&nbsp;Merge** | Combines EXR metadata streams (up to 8) into one, frame by frame; later inputs win. [More](#exr-metadata) |
 | **PD&nbsp;EXR&nbsp;Metadata&nbsp;Get** | Lists an EXR metadata stream on the node and outputs one attribute's value. [More](#exr-metadata) |
 | **PD&nbsp;Profiler** | Profiles everything upstream of its input: models, latent sizes, VRAM and RAM per stage, time, API nodes. Evaluates without running; measures real runs. [More](#pd-profiler) |
 
@@ -122,7 +123,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 | # | Workflow | Shows |
 |---|----------|-------|
 | 01 | [Tokens](workflows/01_tokens/) | Project and custom context, PD Tokens To String with **preview**, automatic tokens |
-| 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar and header metadata, read back with `sequence_mode` and PD EXR Metadata Get |
+| 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar and header metadata, read back with `sequence_mode`; EXR metadata merged and read back |
 | 03 | [Video frames](workflows/03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
 | 04 | [Sound](workflows/04_sound/) | Inline and queue-finished sound cues, error buzzer |
 | 05 | [Colour with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
@@ -241,6 +242,7 @@ EXR header metadata travels through the graph as an `EXR_METADATA` stream, frame
 - **In:** PD Load's `exr_metadata` output gives each loaded EXR frame's attributes (camera matrices, timecode, a renderer's or Nuke's own keys). A plate's per-frame values stay per frame.
 - **Set:** PD Project Context and PD Custom Context have an `exr_metadata` output: every token becomes a string attribute named `pipedream/<token>` (`pipedream/shot`, `pipedream/version`, `pipedream/client`...). The prefix is the `exr.metadata_prefix` setting. Custom Context pairs are how you add your own keys; empty values are left out.
 - **Profile:** PD Profiler's `exr_metadata` output stamps the run under `pipedream/profiler/`: budget, the peak estimate and its stage, each stage, the latent, model file paths, the measured time and VRAM peak. To feed PD Output, branch the profiler off before it (after it would be a loop). The profile changes every run, so a PD Output fed by it writes on every queue.
+- **Merge:** **PD EXR Metadata Merge** combines up to 8 streams into one (a spare input appears as you connect one), frame by frame, with the same rule as PD Output: later inputs win on the same name, and per-frame tables stay per frame. Assemble a stream once and send it to several PD Outputs, or inspect it with Get.
 - **Out:** PD Output's `exr metadata` inputs (exr only; a spare appears as you connect one, up to 8) are merged frame by frame, later inputs winning on the same name. A source with one table per frame writes frame N's table into frame N; a single table goes into every frame. The sidecar lists the names written.
 - **Nothing unless connected:** with no `exr metadata` input connected, PD Output writes no metadata: only FFmpeg's encoder defaults (`writer`, `gamma`). So loading an EXR and writing it back out without a connection strips its metadata.
 - **Inspect:** **PD EXR Metadata Get** lists every attribute with its type, marks those that vary by frame (`*`), and outputs one by `key` as `value`, `int` and `float`. `key` takes a full name or a unique last part (`shot`). `frame` picks the frame, `filter` narrows the list, and **preview** runs just the node and its inputs.

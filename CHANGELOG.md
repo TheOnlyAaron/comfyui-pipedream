@@ -17,6 +17,8 @@
   (budget, peak, stages, latent, model paths, measured time and VRAM)
 - **PD EXR Metadata Get** (new node): lists the stream, marks values that
   vary by frame, outputs one value by key; **preview** button
+- **PD EXR Metadata Merge** (new node): combines up to 8 streams frame by
+  frame (later inputs win), without needing a PD Output
 - Written by rewriting FFmpeg's EXR header in place (attributes inserted,
   offset table shifted); standard library only
 
@@ -55,8 +57,8 @@
   than that it may run out of memory
 
 ### Example workflows
-- 02 Load and save writes the project context into the EXR headers and
-  reads it back with PD EXR Metadata Get
+- 02 Load and save merges the project context and a custom context into
+  the EXR headers and reads them back with PD EXR Metadata Get
 - 06 Wedge basics adds PD Profiler with a sidecar per job
 
 ## 0.2.1 (2026-11-24)
