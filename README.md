@@ -16,7 +16,7 @@ The only extra dependency is [OpenColorIO](https://opencolorio.org) (`opencolori
 
 Open the **Nodes Manager** (Manager → Custom Nodes Manager), search for **PipeDream** and click **Install**. Manager installs the dependencies and handles updates.
 
-- **Versions:** numbered versions (`0.2.0`, ...) are the stable releases published to the [Comfy Registry](https://registry.comfy.org/publishers/theonlyaaron/nodes/PipeDream). **nightly** is the newest commit on `main`.
+- **Versions:** numbered versions (`0.2.0`, ...) are the stable releases published to the [Comfy Registry](https://registry.comfy.org/publishers/theonlyaaron/nodes/PipeDream). **nightly** is the newest commit on `main`. Minor versions (`0.3.0`, ...) also get a [GitHub release](https://github.com/theonlyaaron/comfyui-pipedream/releases) with their changelog notes.
 - A version published in the last few hours may not be in Manager's cached list yet ("Cannot resolve install target 'PipeDream@latest'"): pick **nightly** from the version list, or restart ComfyUI later.
 
 ### comfy-cli
