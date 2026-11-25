@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
+import { chain, copyText, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Load                                                     */
@@ -13,8 +13,8 @@ import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./
 /*      base_path: if it is an existing file, it is split into the     */
 /*      two fields (absolute mode) and loaded.                         */
 /*    - "load" button: runs just this node to check what it loads.     */
-/*    - "Explore Input" button: opens the folder of the file in        */
-/*      Explorer (Finder on macOS).                                    */
+/*    - "Copy Path" button: copies the full path of the file the       */
+/*      widgets point at (nothing is opened on the server).            */
 /*    - Drop zone (and the whole node on the classic canvas): files     */
 /*      dragged from Explorer.  Browsers do not reveal a dropped file's */
 /*      path, so the files are uploaded to ComfyUI's input/pipedream    */
@@ -171,10 +171,10 @@ async function onFilesDropped(node, fileList) {
 
 const LAST_LOADED = "pd_last_loaded";
 
-async function explore(node) {
+async function copyPath(node) {
     const value = (name) => findWidget(node, name)?.value ?? "";
     try {
-        const response = await api.fetchApi("/pipedream/load/explore", {
+        const response = await api.fetchApi("/pipedream/load/path", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -185,7 +185,13 @@ async function explore(node) {
             }),
         });
         const result = await response.json();
-        if (result.error) toast("error", result.error);
+        if (result.error) {
+            toast("error", result.error);
+        } else if (await copyText(result.path)) {
+            toast("success", `Copied: ${result.path}`);
+        } else {
+            toast("error", `Could not copy; the path is ${result.path}`);
+        }
     } catch (error) {
         toast("error", String(error));
     }
@@ -260,10 +266,11 @@ app.registerExtension({
         button.serialize = false;
         button.tooltip = "Run just this node to check what it loads (preview and info below).";
 
-        const exploreButton = node.addWidget("button", "Explore Input", null, () => explore(node),
+        const copyButton = node.addWidget("button", "Copy Path", null, () => copyPath(node),
                                              { serialize: false });
-        exploreButton.serialize = false;
-        exploreButton.tooltip = "Open the folder of the file in Explorer (Finder on macOS).";
+        copyButton.serialize = false;
+        copyButton.tooltip = "Copy the full path of the file (as resolved from path_mode, " +
+            "base_path and file), to paste into Explorer, Finder, Nuke or any other application.";
         chain(node, "onExecuted", (output) => {
             const path = output?.pd_loaded?.[0];
             if (path) {

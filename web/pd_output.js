@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { chain, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
+import { chain, copyText, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
 /*  Pipedream.Output — hide widgets and sockets that do not apply to   */
@@ -13,7 +13,7 @@ import { chain, findWidget, isInputLinked, labelMetadata, metadataRules, showSlo
 /*    inputs show for exr only, one spare after the highest linked.    */
 /*  Linked widgets and sockets are never hidden.                       */
 /*                                                                     */
-/*  "Explore Output" shows the last written file in Explorer/Finder.   */
+/*  "Copy Path" copies the last written file's full path.              */
 /*  The path is kept in node.properties, so it survives a save.        */
 /*                                                                     */
 /*  Dropping or opening a PD Output sidecar .json reopens the workflow */
@@ -63,23 +63,14 @@ function toast(severity, detail) {
     }
 }
 
-async function explore(node) {
+async function copyPath(node) {
     const path = node.properties?.[LAST_OUTPUT];
     if (!path) {
         toast("warn", "Nothing written yet: run the node first.");
         return;
     }
-    try {
-        const response = await api.fetchApi("/pipedream/output/reveal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path }),
-        });
-        const result = await response.json();
-        if (result.error) toast("error", result.error);
-    } catch (error) {
-        toast("error", String(error));
-    }
+    if (await copyText(path)) toast("success", `Copied: ${path}`);
+    else toast("error", `Could not copy; the path is ${path}`);
 }
 
 function isSidecar(data) {
@@ -130,10 +121,11 @@ app.registerExtension({
         const templateWidget = findWidget(node, "template");
         if (templateWidget) templateWidget.label = "file";
 
-        const button = node.addWidget("button", "Explore Output", null, () => explore(node),
+        const button = node.addWidget("button", "Copy Path", null, () => copyPath(node),
                                       { serialize: false });
         button.serialize = false;
-        button.tooltip = "Show the last written file in Explorer (Finder on macOS).";
+        button.tooltip = "Copy the full path of the last written file (the first frame of a " +
+            "sequence), to paste into Explorer, Finder, Nuke or any other application.";
         chain(node, "onExecuted", (output) => {
             const path = output?.pd_written?.[0];
             if (path) {

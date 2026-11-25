@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.3 (2026-11-25)
+
+### Copy Path replaces Explore
+- PD Output's **Explore Output** and PD Load's **Explore Input** become
+  **Copy Path**: the file's full path goes to the clipboard, to paste into
+  Explorer, Finder, Nuke or any other application. It works from any
+  browser, including one on another machine over plain http (Explore only
+  worked on the ComfyUI machine)
+- Pipedream no longer starts other programs: the file manager code and
+  its `subprocess` calls are gone (the Comfy Registry's security scan
+  flagged them)
+- PD Load's `/pipedream/load/explore` route is now `/pipedream/load/path`
+  (returns the path); PD Output's `/pipedream/output/reveal` is removed
+
+### Releases
+- Minor versions (0.3.0, ...) get a GitHub release with their changelog
+  notes, after the registry publish succeeds
+
 ## 0.2.2 (2026-11-25)
 
 ### EXR metadata (new)

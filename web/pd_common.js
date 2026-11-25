@@ -233,3 +233,33 @@ export function labelMetadata(node) {
         if (i >= 0) input.label = i === 0 ? "exr metadata" : `exr metadata ${i + 1}`;
     }
 }
+
+/**
+ * Copy *text* to the clipboard.  The Clipboard API only exists on https
+ * or localhost; over plain http from another machine a hidden textarea
+ * and execCommand("copy") are used instead.  Resolves true on success.
+ */
+export async function copyText(text) {
+    if (window.isSecureContext && navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch {
+            // fall through to the textarea copy
+        }
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    Object.assign(area.style, { position: "fixed", top: "-1000px", opacity: "0" });
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+        ok = document.execCommand("copy");
+    } catch {
+        ok = false;
+    }
+    area.remove();
+    return ok;
+}

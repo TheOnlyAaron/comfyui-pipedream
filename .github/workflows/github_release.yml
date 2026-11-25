@@ -1,0 +1,85 @@
+name: GitHub release
+
+# Creates a GitHub release for every minor (or major) version: one whose
+# patch number is 0, such as 0.3.0 or 1.0.0. Patch versions (0.3.1) are
+# published to the registry but get no GitHub release.
+#
+# Runs after "Publish to Comfy registry" succeeds on main, so a release
+# only exists for a version that was published. The notes are that
+# version's section of CHANGELOG.md. A version that already has a release
+# is skipped.
+#
+# Run it by hand (Actions > GitHub release > Run workflow) with a version
+# to release an earlier one, e.g. 0.2.0; that release is not marked latest.
+
+on:
+  workflow_run:
+    workflows: ["Publish to Comfy registry"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.2.0). Empty: the version in pyproject.toml."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release minor versions
+    runs-on: ubuntu-latest
+    if: >-
+      github.repository_owner == 'TheOnlyAaron' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ github.event.inputs.version }}
+          TARGET: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          current=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -n 1)
+          version="${REQUESTED:-$current}"
+          echo "Version: $version (pyproject.toml: $current)"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
+            echo "Not a minor or major version (patch is not 0): no GitHub release."
+            exit 0
+          fi
+          if gh release view "$version" > /dev/null 2>&1; then
+            echo "Release $version already exists."
+            exit 0
+          fi
+
+          awk -v v="$version" '
+            /^## / { if (on) exit; if ($2 == v) { on = 1; next } }
+            on
+          ' CHANGELOG.md > notes.md
+          if [[ ! -s notes.md ]]; then
+            echo "No '## $version' section in CHANGELOG.md." > notes.md
+          fi
+
+          latest="--latest"
+          target="$TARGET"
+          if [[ "$version" != "$current" ]]; then
+            latest="--latest=false"
+            if git rev-parse -q --verify "refs/tags/$version" > /dev/null; then
+              target=$(git rev-list -n 1 "refs/tags/$version")
+            else
+              echo "No tag $version to release from."
+              exit 1
+            fi
+          fi
+
+          gh release create "$version" --target "$target" --title "PipeDream $version" \
+            --notes-file notes.md $latest
