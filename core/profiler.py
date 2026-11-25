@@ -303,14 +303,14 @@ class Models:
             return None
         weight_dtype = self.graph.value(nid, "weight_dtype", "default")
         info = mfiles.diffusion_info(mf, tensors, str(weight_dtype), self.env, filename)
-        return {"node": nid, "file": filename, "format": mf.format, **info}
+        return {"node": nid, "file": filename, "path": mf.path, "format": mf.format, **info}
 
     def vae(self, nid) -> dict | None:
         mf, tensors, filename = self._part(nid, "vae", ("vae_name", "ckpt_name"))
         if mf is None:
             return None
         info = mfiles.vae_info(mf, tensors, self.env)
-        return {"node": nid, "file": filename, "format": mf.format, "_info": info,
+        return {"node": nid, "file": filename, "path": mf.path, "format": mf.format, "_info": info,
                 **{k: v for k, v in info.items() if k != "amd"}}
 
     def encoders(self, nid, vision=False) -> list:
@@ -320,19 +320,19 @@ class Models:
             if mf is None:
                 continue
             if name in names:
-                out.append({"node": nid, "file": filename, "format": mf.format,
+                out.append({"node": nid, "file": filename, "path": mf.path, "format": mf.format,
                             **mfiles.encoder_info(mf, None, self.env)})
             elif name == "ckpt_name" and not vision:
                 tensors = mf.subset(mfiles.CHECKPOINT_PREFIXES["text_encoder"])
                 if tensors:
-                    out.append({"node": nid, "file": filename, "format": mf.format,
+                    out.append({"node": nid, "file": filename, "path": mf.path, "format": mf.format,
                                 **mfiles.encoder_info(mf, tensors, self.env)})
         return out
 
     def lora(self, nid) -> dict | None:
         for name, mf, filename in self.files(nid):
             if name == "lora_name" and mf is not None:
-                return {"node": nid, "file": filename, "stored_bytes": mf.size}
+                return {"node": nid, "file": filename, "path": mf.path, "stored_bytes": mf.size}
         return None
 
 
@@ -897,6 +897,80 @@ def build_chart(report: dict, timings: dict | None = None, actual: dict | None =
             "emulated": bool(budget.get("emulated")), "stages": stages,
             "ram_use": {"models": ram.get("weights", 0), "pixels": ram.get("frames_out", 0)},
             "measured_peak": (actual or {}).get("vram_peak")}
+
+
+def profile_metadata(report: dict, actual: dict | None = None, prefix: str = "pipedream/",
+                     prompt_id: str | None = None):
+    """
+    The profile as EXR metadata (``ExrMetadata``), names under
+    ``<prefix>profiler/``: budget, peak estimate and stage, each stage,
+    the latent, model files (full paths), API nodes, and what a run
+    measured (time, VRAM peak).  Sizes in GB, times in seconds.
+    """
+    from .exr_meta import Attr, ExrMetadata
+
+    base = f"{prefix}profiler/"
+    table = {}
+
+    def put(name, value):
+        if value is None or value == "":
+            return
+        if isinstance(value, bool):
+            table[base + name] = Attr("int", int(value))
+        elif isinstance(value, int):
+            table[base + name] = Attr("int", value)
+        elif isinstance(value, float):
+            table[base + name] = Attr("float", round(value, 4))
+        else:
+            table[base + name] = Attr("string", str(value))
+
+    gb = lambda n: float(n or 0) / GIB
+    budget = report.get("budget") or {}
+    put("profiled_at", report.get("evaluated"))
+    put("prompt_id", prompt_id)
+    put("gpu", (budget.get("machine") or {}).get("gpu"))
+    if budget.get("vram"):
+        put("vram_budget_gb", gb(budget["vram"]))
+    if budget.get("ram"):
+        put("ram_budget_gb", gb(budget["ram"]))
+    put("emulated", bool(budget.get("emulated")))
+    peak = report.get("peak")
+    if peak:
+        put("peak_vram_estimate_gb", gb(peak["bytes"]))
+        put("peak_stage", peak["label"])
+    for i, st in enumerate(report.get("stages", []), 1):
+        name = STAGE_NAMES.get(st["kind"], st["kind"])
+        if st.get("unknown"):
+            put(f"stage_{i}", f"{name} {st['label']}: {st['unknown']} unknown")
+            continue
+        parts = f"models {gb(st['weights']):.2f} GB, working {gb(st['working']):.2f} GB"
+        if st.get("extra"):
+            parts += f", latents {gb(st['extra']):.3f} GB"
+        verdict = f", {st['verdict']}" if st.get("verdict") else ""
+        put(f"stage_{i}", f"{name} {st['label']}: {gb(st['total']):.2f} GB ({parts}){verdict}")
+    for i, latent in enumerate(report.get("latents", []), 1):
+        key = "latent" if i == 1 else f"latent_{i}"
+        put(key, "[" + ", ".join(str(d) for d in latent["shape"]) + "]")
+        put(f"{key}_size", f"{latent['width']}x{latent['height']}")
+        put(f"{key}_frames", int(latent["frames"]))
+    for i, m in enumerate(report.get("models", []), 1):
+        put(f"model_{i}", f"{m['role']}: {m.get('path') or m['file']}")
+    for i, lora in enumerate(report.get("loras", []), 1):
+        put(f"lora_{i}", lora.get("path") or lora["file"])
+    if report.get("api_nodes"):
+        put("api_nodes", ", ".join(f"{a['name'] or a['class']} #{a['node']}" for a in report["api_nodes"]))
+    t = report.get("time")
+    if t:
+        put("time_estimate_s", float(t["total"]))
+        put("jobs", int(t["jobs"]))
+    if actual:
+        ran = [n for n in actual.get("nodes", []) if not n.get("cached")]
+        if ran:
+            put("time_upstream_s", float(sum(n["seconds"] for n in ran)))
+        if actual.get("vram_peak"):
+            put("measured_peak_vram_gb", gb(actual["vram_peak"]))
+        put("wedge_job", actual.get("job"))
+    return ExrMetadata([table])
 
 
 def profile_path(path: str, now: str) -> str:

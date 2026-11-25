@@ -14,6 +14,11 @@ default, with the ``sequence.frame_separator`` setting before the number).  An o
 channel of the images, is written to png/webp/exr and ProRes 4444
 (straight, except EXR, which is premultiplied as its spec requires).
 
+EXR header metadata comes from the ``exr_metadata`` inputs (merged in
+order, frame N's table into frame N; see ``core/exr_meta.py``); nothing is
+written unless one is connected.  The frontend shows them for exr only,
+with one spare after the highest linked.
+
 A connected PD Wedge chain adds its tokens (``{<token>}``,
 ``{<token>_idx}``, ``{wedge_idx}``, ``{wedge_total}``) over the context.
 
@@ -35,6 +40,7 @@ from datetime import datetime
 from ..core import settings
 from ..core.comfy import output_directory, reveal_in_file_manager, server_routes, temp_directory
 from ..core.common import display_name
+from ..core.exr_meta import ExrError, ExrMetadata, write_attributes
 from ..core.media import (
     EXR_COLORSPACES,
     EXR_COMPRESSIONS,
@@ -100,6 +106,7 @@ def resolve_pattern(template: str, tokens: dict, frame_padding: int, numbered: b
 
 
 PREVIEW_LINES = 200
+METADATA_INPUTS = ["exr_metadata"] + [f"exr_metadata_{i}" for i in range(2, 9)]
 
 
 def preview_request(prompt, unique_id) -> dict | None:
@@ -226,6 +233,37 @@ def video_source(video) -> tuple:
     return components.images, getattr(components, "audio", None), fps
 
 
+def metadata_for(inputs: dict, file_format: str, count: int):
+    """
+    ``(merged ExrMetadata or None, writer or None)`` from PD Output's
+    exr_metadata inputs, in input order.  The writer replaces a written
+    EXR frame's header metadata; None when nothing is connected (nothing
+    is written) or the format is not exr.
+    """
+    sources = [inputs[name] for name in METADATA_INPUTS if inputs.get(name) is not None]
+    if not sources:
+        return None, None
+    merged = ExrMetadata.merged(sources)
+    if file_format != "exr":
+        print("[Pipedream] Warning: PD Output: exr_metadata is only written to exr files; "
+              f"ignored for {file_format}.", file=sys.stderr)
+        return merged, None
+    if len(merged) > 1 and len(merged) != count:
+        print(f"[Pipedream] Warning: PD Output: exr_metadata has {len(merged)} frame tables "
+              f"for {count} frames; " + ("the last table repeats." if len(merged) < count
+                                          else "the extra tables are ignored."),
+              file=sys.stderr)
+
+    def write(index: int, path: str):
+        try:
+            write_attributes(path, merged.frame(index))
+        except ExrError as exc:
+            raise RuntimeError(f"[Pipedream] PD Output: cannot write EXR metadata to "
+                               f"'{path}': {exc}") from exc
+
+    return merged, write
+
+
 class PDOutput:
     """Write images or video to ComfyUI's output dir or an absolute path using a token template."""
 
@@ -339,6 +377,13 @@ class PDOutput:
                                "1.0 = opaque, straight; EXR is written premultiplied. Core "
                                "Load Image's mask is inverted: put Invert Mask in between.",
                 }),
+                **{name: ("EXR_METADATA", {
+                    "tooltip": "EXR header metadata to write (exr only), from PD Load, a "
+                               "context node's exr_metadata or PD Profiler. Inputs are merged "
+                               "frame by frame; later inputs win on the same name. With "
+                               "nothing connected no metadata is written. A source with one "
+                               "table per frame writes frame N's into frame N.",
+                }) for name in METADATA_INPUTS},
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO",
                        "unique_id": "UNIQUE_ID"},
@@ -356,7 +401,7 @@ class PDOutput:
                 exr_precision=settings.get("exr.precision"),
                 exr_compression=settings.get("exr.compression"),
                 exr_colorspace=settings.get("exr.colorspace"), alpha=None, prompt=None,
-                extra_pnginfo=None, unique_id=None):
+                extra_pnginfo=None, unique_id=None, **metadata_inputs):
         """Write the source and return the ui payload plus outputs.
 
         Omitted optional inputs (e.g. from an API prompt) use the settings
@@ -405,6 +450,8 @@ class PDOutput:
                 )
             matte = None
 
+        exr_metadata, exr_writer = metadata_for(metadata_inputs, file_format, count)
+
         ctx = dict(context) if context else {}
         ctx.update(wedge_tokens(wedge))
         now = datetime.now()
@@ -448,6 +495,7 @@ class PDOutput:
                     frames, paths, alpha=matte, exr_precision=exr_precision,
                     exr_compression=exr_compression,
                     exr_linearize=exr_colorspace == "sRGB to linear",
+                    exr_metadata=exr_writer,
                 )
         final = written[0] if written else paths[0]
         hashes = "#" * frame_padding
@@ -506,6 +554,9 @@ class PDOutput:
                     "precision": exr_precision,
                     "compression": exr_compression,
                     "colorspace": exr_colorspace,
+                    "metadata": ({"tables": len(exr_metadata), "names": exr_metadata.names(),
+                                  "varying": exr_metadata.varying()}
+                                 if exr_metadata is not None else None),
                 }
             sidecar_path = os.path.join(os.path.dirname(paths[0]), stem + ".json")
             sidecar = write_sidecar(sidecar_path, metadata) or ""

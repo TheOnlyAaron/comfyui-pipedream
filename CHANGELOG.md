@@ -2,6 +2,24 @@
 
 ## 0.3.0 (unreleased)
 
+### EXR metadata (new)
+- EXR header metadata flows through the graph as an `EXR_METADATA` stream,
+  per frame, with EXR types kept (unknown types carried as raw bytes)
+- **PD Load:** `exr_metadata` output with each loaded EXR frame's
+  attributes (structural ones left out)
+- **PD Output:** `exr metadata` inputs (exr only, auto-growing up to 8,
+  merged in order, frame N into frame N). Nothing is written unless one
+  is connected; writing without a connection strips a loaded file's
+  metadata. The sidecar lists the names written
+- **PD Project Context, PD Custom Context:** `exr_metadata` output, each
+  token as `pipedream/<token>` (setting `exr.metadata_prefix`)
+- **PD Profiler:** `exr_metadata` output under `pipedream/profiler/`
+  (budget, peak, stages, latent, model paths, measured time and VRAM)
+- **PD EXR Metadata Get** (new node): lists the stream, marks values that
+  vary by frame, outputs one value by key; **preview** button
+- Written by rewriting FFmpeg's EXR header in place (attributes inserted,
+  offset table shifted); standard library only
+
 ### PD Profiler (new)
 - Connect it to anything: it profiles only what that input reads from
   (models, latent shapes, VRAM per stage, RAM, time), so several flows in
@@ -31,7 +49,14 @@
 - New settings: `profiler.enabled`, `profiler.vram_gb`, `profiler.ram_gb`,
   `profiler.vram_per_node`, `profiler.export_sidecar`
 
+### PD Profiler
+- The chart no longer stretches when the node is resized (Nodes 2.0)
+- An over-budget stage says ComfyUI runs it with weights offloaded rather
+  than that it may run out of memory
+
 ### Example workflows
+- 02 Load and save writes the project context into the EXR headers and
+  reads it back with PD EXR Metadata Get
 - 06 Wedge basics adds PD Profiler with a sidecar per job
 
 ## 0.2.1 (2026-11-24)

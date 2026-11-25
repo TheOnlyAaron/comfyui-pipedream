@@ -7,7 +7,8 @@ import { chain, findWidget, showSlots, showWidgets, trackPreviewMedia } from "./
 /*    - Hide what does not apply: base_path in relative mode;          */
 /*      sequence_mode for video formats; fps_from_file for image       */
 /*      formats; exr_colorspace unless exr or auto; the audio output   */
-/*      for image formats.                                             */
+/*      for image formats other than exr; the exr_metadata output      */
+/*      unless exr or auto.                                            */
 /*    - Paste a full file path (quotes allowed) into file or           */
 /*      base_path: if it is an existing file, it is split into the     */
 /*      two fields (absolute mode) and loaded.                         */
@@ -39,7 +40,9 @@ function sync(node) {
             fps_from_file: !isImage,
             exr_colorspace: format === "auto" || format === "exr",
         });
-        showSlots(node, "output", { audio: !isImage });
+        // Outputs can only be hidden from the end: exr_metadata (last) shown keeps audio shown.
+        const exr = format === "auto" || format === "exr";
+        showSlots(node, "output", { audio: !isImage || exr, exr_metadata: exr });
     } finally {
         node._pdSyncing = false;
     }

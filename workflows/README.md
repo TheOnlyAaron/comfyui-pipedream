@@ -5,7 +5,7 @@ Drag a `workflow.json` onto the ComfyUI canvas. 01–06 run as is, using ComfyUI
 | # | Workflow | Shows |
 |---|----------|-------|
 | 01 | [Tokens](01_tokens/) | Project and custom context, PD Tokens To String with **preview**, automatic tokens |
-| 02 | [Load and save](02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence out with sidecar, read back with `sequence_mode` and sidecar tokens |
+| 02 | [Load and save](02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence out with sidecar and header metadata, read back with `sequence_mode`, sidecar tokens and PD EXR Metadata Get |
 | 03 | [Video frames](03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
 | 04 | [Sound](04_sound/) | Inline and queue-finished sound cues, error buzzer |
 | 05 | [Colour with OCIO](05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |

@@ -127,6 +127,9 @@ SCHEMA: dict[str, Setting] = {
         str, "", "PD Load root folder for absolute mode (UNC works, as for output.base_path)."),
     "exr.precision": Setting(str, "half", "EXR float precision.", choices=EXR_PRECISIONS),
     "exr.compression": Setting(str, "zip", "EXR compression.", choices=EXR_COMPRESSIONS),
+    "exr.metadata_prefix": Setting(
+        str, "pipedream/", "Prefix of the EXR metadata names made from context tokens "
+        "(PD Project Context, PD Custom Context): {shot} becomes pipedream/shot."),
     "exr.colorspace": Setting(
         str, "as is", "EXR: write values as is, or decode sRGB to linear.",
         choices=EXR_COLORSPACES),

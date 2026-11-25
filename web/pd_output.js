@@ -9,7 +9,8 @@ import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewM
 /*    ProRes, fps while a VIDEO is connected); prores_profile unless   */
 /*    mov; exr_* unless exr; start_frame/frame_padding for video;      */
 /*    the alpha input for formats without alpha (jpg/mp4/webm, ProRes  */
-/*    422 HQ); the video output for image formats.                     */
+/*    422 HQ); the video output for image formats.  exr_metadata       */
+/*    inputs show for exr only, one spare after the highest linked.    */
 /*  Linked widgets and sockets are never hidden.                       */
 /*                                                                     */
 /*  "Explore Output" shows the last written file in Explorer/Finder.   */
@@ -21,6 +22,22 @@ import { chain, findWidget, isInputLinked, showSlots, showWidgets, trackPreviewM
 /* ------------------------------------------------------------------ */
 
 const VIDEO_FORMATS = ["mp4", "mov", "webm"];
+const METADATA_INPUTS = ["exr_metadata", ...[2, 3, 4, 5, 6, 7, 8].map(n => `exr_metadata_${n}`)];
+
+/** exr_metadata inputs to show: for exr, every one up to a spare after the highest linked. */
+function metadataRules(node, isExr) {
+    let highest = -1;
+    METADATA_INPUTS.forEach((name, i) => { if (isInputLinked(node, name)) highest = i; });
+    const count = isExr ? Math.min(METADATA_INPUTS.length, highest + 2) : 0;
+    return Object.fromEntries(METADATA_INPUTS.map((name, i) => [name, i < count]));
+}
+
+function labelMetadata(node) {
+    for (const input of node.inputs ?? []) {
+        const i = METADATA_INPUTS.indexOf(input.name);
+        if (i >= 0) input.label = i === 0 ? "exr metadata" : `exr metadata ${i + 1}`;
+    }
+}
 const ALPHA_IMAGE_FORMATS = ["png", "exr", "webp"];
 
 function sync(node) {
@@ -44,7 +61,8 @@ function sync(node) {
             exr_colorspace: isExr,
         });
         const alphaOk = ALPHA_IMAGE_FORMATS.includes(format) || (format === "mov" && prores !== "422 HQ");
-        showSlots(node, "input", { alpha: alphaOk });
+        showSlots(node, "input", { alpha: alphaOk, ...metadataRules(node, isExr) });
+        labelMetadata(node);
         showSlots(node, "output", { video: isVideo });
     } finally {
         node._pdSyncing = false;
@@ -140,6 +158,8 @@ app.registerExtension({
             }
         });
 
-        sync(node);
+        // Deferred: a graph loaded from an API prompt links inputs after creating the
+        // node, and an exr_metadata input trimmed now could not be linked.
+        setTimeout(() => sync(node), 0);
     },
 });

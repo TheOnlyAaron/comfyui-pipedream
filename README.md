@@ -97,8 +97,8 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 
 | Node | What it does |
 |------|--------------|
-| **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. |
-| **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). |
+| **PD&nbsp;Project&nbsp;Context** | Shot details as tokens: project, sequence, shot, version, user. Chains for overrides; version auto-increment and reset buttons. Also outputs the tokens as EXR metadata. |
+| **PD&nbsp;Custom&nbsp;Context** | Your own key/value tokens (`{task}`, `{department}`...); a new pair appears as you fill one (up to 10). Also outputs the tokens as EXR metadata. |
 | **PD&nbsp;Tokens&nbsp;To&nbsp;String** | Resolves a token template to text, for prompts, titles or other nodes' paths. **preview** shows the result on the node. |
 | **PD&nbsp;Output** | Writes images (png/exr/jpg/webp) or video (mp4/mov/webm) to a token-built path, with alpha and a sidecar JSON. [More](#pd-output) |
 | **PD&nbsp;Load** | Loads an image, sequence or video from any local or network path; paste a path to fill it in. [More](#pd-load) |
@@ -112,6 +112,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 | **PD&nbsp;OCIO&nbsp;Display** | Applies an OCIO display/view transform (e.g. ACES for sRGB), or its inverse. |
 | **PD&nbsp;OCIO&nbsp;Apply&nbsp;LUT** | Applies a LUT file (.cube, .3dl, .spi3d, CLF...), forward or inverse. |
 | **PD&nbsp;Sound** | Plays a browser sound when its point in the graph runs, or when the queue finishes. [More](#pd-sound) |
+| **PD&nbsp;EXR&nbsp;Metadata&nbsp;Get** | Lists an EXR metadata stream on the node and outputs one attribute's value. [More](#exr-metadata) |
 | **PD&nbsp;Profiler** | Profiles everything upstream of its input: models, latent sizes, VRAM and RAM per stage, time, API nodes. Evaluates without running; measures real runs. [More](#pd-profiler) |
 
 ## Example workflows
@@ -121,7 +122,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 | # | Workflow | Shows |
 |---|----------|-------|
 | 01 | [Tokens](workflows/01_tokens/) | Project and custom context, PD Tokens To String with **preview**, automatic tokens |
-| 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar, read back with `sequence_mode` |
+| 02 | [Load and save](workflows/02_load_and_save/) | PD Load (drop zone, paste a path), EXR sequence with sidecar and header metadata, read back with `sequence_mode` and PD EXR Metadata Get |
 | 03 | [Video frames](workflows/03_video_frames/) | Images to video, mp4 out, get one frame, decode a range, pick from a batch, switch |
 | 04 | [Sound](workflows/04_sound/) | Inline and queue-finished sound cues, error buzzer |
 | 05 | [Colour with OCIO](workflows/05_color_ocio/) | OCIO transform and display, LUT, ACEScg EXR |
@@ -164,6 +165,7 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 - **EXR:** `half` or `float`, `zip`/`zips`/`rle`/`none`, values unclipped. `exr_colorspace` `sRGB to linear` decodes sRGB images to linear with the sRGB curve (no OCIO); for other spaces put PD OCIO Transform first.
 - **Safety:** with `overwrite` off nothing is written if the file, or any frame of the sequence, exists. Relative paths can't leave the output folder.
 - **Sidecar** (`save_metadata`): `<name>.json` next to the output (frame number dropped) with the template, tokens, context, files, frame range and pattern, alpha, wedge job, settings files, the ComfyUI prompt and the workflow. PD Load reads it back; drop it on ComfyUI to reopen the workflow that wrote it.
+- **EXR metadata** (exr only): `exr metadata` inputs write header attributes from PD Load, a context node or PD Profiler; a spare input appears as you connect one. See [EXR metadata](#exr-metadata).
 - **Outputs:** `path` (first file), `path_sidecar`, `path_all` (one per line), the images passed through, and `video` (video formats).
 - **Panel and preview:** after a run the panel lists every token and its value; the preview shows what was written (EXR, ProRes and files outside the output folder get a downscaled preview, video as a playable clip). **preview wedge** lists every wedge job's path without running the graph. **Explore Output** shows the last written file in Explorer/Finder (browser on the ComfyUI machine only).
 - Widgets and sockets that don't apply to the format are hidden (never while linked). Encoding uses PyAV: no ffmpeg install, audio as AAC/Opus, odd sizes padded to even for video codecs.
@@ -184,6 +186,7 @@ Loads an image, image sequence or video, and reads back what PD Output wrote.
 - **Video:** `start_frame` is a frame index. `fps_from_file` (on) uses the video's rate; off, `fps` overrides it (images always use `fps`). With defaults, `video` is the file itself; otherwise the loaded frames as an in-memory VIDEO with matching audio.
 - **Quality:** 16-bit PNG/TIFF and float EXR keep their precision. Alpha comes out as `mask`; EXR is un-premultiplied, and `exr_colorspace` `linear to sRGB` reverses PD Output's `sRGB to linear`.
 - **Preview:** one frame shows as an image, several as a playable clip; the panel lists the pattern, frames, size, alpha, fps and sidecar.
+- **EXR metadata:** for EXR, `exr_metadata` carries each frame's header attributes (everything but the structural ones), for PD Output or PD EXR Metadata Get. See [EXR metadata](#exr-metadata).
 - **Tokens (optional):** `file` takes PD Output's tokens from `context` and `wedge` (e.g. `{shot}_{version}`), so a wedge can load a different file per job. A sidecar next to the media fills `context` (incoming non-empty values win).
 - **Changes on disk** are picked up on the next queue; unchanged files stay cached. With context or wedge linked, the first queue after opening a workflow re-reads once.
 
@@ -231,6 +234,21 @@ Wire anything through `value` (passed on untouched), or leave it dangling.
 - Cached nodes don't run and aren't forced to; `when_cached` also plays for them. Errors play `error_tone`, a buzzer.
 - Sounds: `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` (synthesized) or a `custom URL`; each node has its own sound, volume and **test sound** button. Sounds play in the tab that queued the prompt.
 
+## EXR metadata
+
+EXR header metadata travels through the graph as an `EXR_METADATA` stream, frame by frame:
+
+- **In:** PD Load's `exr_metadata` output gives each loaded EXR frame's attributes (camera matrices, timecode, a renderer's or Nuke's own keys). A plate's per-frame values stay per frame.
+- **Set:** PD Project Context and PD Custom Context have an `exr_metadata` output: every token becomes a string attribute named `pipedream/<token>` (`pipedream/shot`, `pipedream/version`, `pipedream/client`...). The prefix is the `exr.metadata_prefix` setting. Custom Context pairs are how you add your own keys; empty values are left out.
+- **Profile:** PD Profiler's `exr_metadata` output stamps the run under `pipedream/profiler/`: budget, the peak estimate and its stage, each stage, the latent, model file paths, the measured time and VRAM peak. To feed PD Output, branch the profiler off before it (after it would be a loop). The profile changes every run, so a PD Output fed by it writes on every queue.
+- **Out:** PD Output's `exr metadata` inputs (exr only; a spare appears as you connect one, up to 8) are merged frame by frame, later inputs winning on the same name. A source with one table per frame writes frame N's table into frame N; a single table goes into every frame. The sidecar lists the names written.
+- **Nothing unless connected:** with no `exr metadata` input connected, PD Output writes no metadata: only FFmpeg's encoder defaults (`writer`, `gamma`). So loading an EXR and writing it back out without a connection strips its metadata.
+- **Inspect:** **PD EXR Metadata Get** lists every attribute with its type, marks those that vary by frame (`*`), and outputs one by `key` as `value`, `int` and `float`. `key` takes a full name or a unique last part (`shot`). `frame` picks the frame, `filter` narrows the list, and **preview** runs just the node and its inputs.
+
+Attributes keep their EXR types (string, int, float, double, vectors, matrices, box, chromaticities, timecode, rational, keycode, string and float vectors); any other type is carried as raw bytes, so a load-and-write round trip loses nothing. Structural attributes (channels, compression, data and display windows, line order, pixel aspect) always come from the writer. Nuke shows the names as `exr/pipedream/...`.
+
+PD Output's EXRs come from FFmpeg's encoder, which can't write custom attributes, so the header is rewritten after each frame is encoded: attributes are inserted and the chunk offset table shifted to match. The pixel data isn't touched (checked against the OpenEXR library for every compression and precision PD Output writes). Standard library only; no extra dependency.
+
 ## PD Profiler
 
 Like a profile node in Nuke: connect `source` to anything and it reports on everything that input reads from, and nothing else, so several flows in one graph each get their own numbers. It has no outputs: put it after PD Output (on its `images`) or branch it off a flow. Core Save nodes have no outputs; branch off what feeds them.
@@ -245,6 +263,7 @@ Like a profile node in Nuke: connect `source` to anything and it reports on ever
 - **Wedges:** only the selected row's branch is followed (the queued row, else `solo`, else row 1). The report shows the job count and says when rows read from different branches.
 - **API nodes** count as zero (they run off-site) and are flagged at the top, since their inputs leave the machine.
 - **Measured runs** add the time of each upstream node (or cached), the run's VRAM peak, the models ComfyUI holds and the input received. `vram_per_node` also measures each node's VRAM peak; it resets torch's peak counter as each node starts, so it is off by default (see its tooltip).
+- **EXR metadata output:** the run's profile as `pipedream/profiler/...` attributes for PD Output (see [EXR metadata](#exr-metadata)); branch the profiler off before PD Output to use it.
 - **Sidecar** (`export_sidecar`): the profile as JSON after each run. Link PD Output's `path` to `path` and it is written next to the output as `<name>.profile.json` (frame number dropped). Otherwise it goes into a typed folder, or `output/pipedream_profiles/`.
 
 Memory figures are ComfyUI's own estimates (the ones it loads and offloads by), not a guarantee. Text encoder activations and custom samplers with their own memory handling aren't modelled. Without a GPU, the profile uses ComfyUI's GPU formulas and 16-bit data types.
@@ -292,7 +311,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 |-------|------|
 | `[output]` | `template`, `path_mode`, `base_path`, `format`, `fps`, `crf`, `create_dirs`, `overwrite`, `save_metadata`, `prores_profile` |
 | `[load]` | `file`, `path_mode`, `base_path` |
-| `[exr]` | `precision`, `compression`, `colorspace` |
+| `[exr]` | `precision`, `compression`, `colorspace`, `metadata_prefix` |
 | `[sequence]` | `frame_padding`, `start_frame`, `frame_separator` |
 | `[tokens]` | `open`, `close`, `date_format`, `time_format` |
 | `[tokens.extra]` | Any fixed tokens (`frame` is reserved) |
@@ -300,6 +319,7 @@ config_path = '\\server\pipeline\ocio\config.ocio'
 | `[project]` | `version`, `auto_increment_version` |
 | `[ocio]` | `config`, `config_path`, `in_colorspace`, `out_colorspace`, `display`, `view` |
 | `[sound]` | `sound`, `volume`, `play_when` |
+| `[profiler]` | `enabled`, `vram_gb`, `ram_gb`, `vram_per_node`, `export_sidecar` |
 
 New nodes start with these values (saved workflows keep theirs), and inputs missing from an API prompt use them. Delimiters, date/time formats, extra tokens and the frame separator apply wherever tokens resolve. The token panel and sidecar name the settings files in use.
 

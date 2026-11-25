@@ -586,7 +586,7 @@ def existing_files(paths: list[str]) -> list[str]:
 
 def save_image_sequence(images, paths: list[str], alpha=None,
                         exr_precision: str = "half", exr_compression: str = "zip",
-                        exr_linearize: bool = False) -> list[str]:
+                        exr_linearize: bool = False, exr_metadata=None) -> list[str]:
     """
     Write IMAGE batch *images* ``(B, H, W, C)`` as one file per frame.
 
@@ -605,7 +605,10 @@ def save_image_sequence(images, paths: list[str], alpha=None,
     as everywhere in ComfyUI.  png/webp store straight alpha (their spec),
     so they are written as is.  OpenEXR defines RGBA as premultiplied, so
     EXR RGB is multiplied by the alpha, after the sRGB to linear decode
-    (which must see straight values).  See ``alpha_premultiplied``.  EXR failures raise ``RuntimeError``;
+    (which must see straight values).  See ``alpha_premultiplied``.
+    *exr_metadata*, when given, is called as ``exr_metadata(index, path)``
+    after each EXR frame is written (PD Output adds header metadata).
+    EXR failures raise ``RuntimeError``;
     other per-file failures are printed and skipped.  Callers handle the
     overwrite policy (see ``existing_files``).
 
@@ -627,6 +630,8 @@ def save_image_sequence(images, paths: list[str], alpha=None,
                 matte = np.asarray(matte, np.float32)[..., None]
                 rgb = np.concatenate([rgb * matte, matte], axis=-1)
             save_exr(np.ascontiguousarray(rgb), out_path, exr_precision, exr_compression)
+            if exr_metadata is not None:
+                exr_metadata(i, out_path)
             written.append(out_path)
             continue
 

@@ -95,6 +95,25 @@ With `export_sidecar` on, each run writes JSON:
 
 Byte values are plain numbers in bytes.
 
+## EXR metadata output
+
+The node's one output is the profile as EXR metadata (`profile_metadata` in `core/profiler.py`), every name under `<exr.metadata_prefix>profiler/`:
+
+| Name | Type | |
+|------|------|-|
+| `profiled_at`, `prompt_id`, `gpu` | string | |
+| `vram_budget_gb`, `ram_budget_gb` | float | the budget used |
+| `emulated` | int | 1 when `vram_gb` / `ram_gb` emulate another machine |
+| `peak_vram_estimate_gb`, `peak_stage` | float, string | the largest stage |
+| `stage_<n>` | string | e.g. `sample #7 KSampler: 25.10 GB (models 13.30 GB, working 11.80 GB, latents 0.008 GB), offloads` |
+| `latent`, `latent_size`, `latent_frames` | string, string, int | `[1, 16, 21, 60, 104]`, `832x480`, `81` |
+| `model_<n>`, `lora_<n>` | string | role and full file path |
+| `api_nodes` | string | when any are upstream |
+| `time_estimate_s`, `jobs` | float, int | when node times are known |
+| `time_upstream_s`, `measured_peak_vram_gb`, `wedge_job` | float, float, string | what this run measured |
+
+With `enabled` off the output is empty metadata. To feed PD Output, branch the profiler off before PD Output: a profiler after PD Output reading back into it would be a loop.
+
 ## Without the browser
 
 `POST /pipedream/profiler/evaluate` with `{"prompt": <API prompt>, "node_id": "<profiler id>", "timings": {...}}` returns `{"text", "report", "chart"}` (`timings` is optional). The budget comes from the profiler's `vram_gb` / `ram_gb` in the prompt. A prompt without a PD Profiler can still be profiled by adding one:

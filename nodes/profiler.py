@@ -3,7 +3,9 @@ PD Profiler node.
 
 Connect ``source`` to anything (after PD Output, or off a branch): the
 node profiles everything that input reads from, and nothing else, so
-several flows in one graph each get their own numbers.  It has no outputs.
+several flows in one graph each get their own numbers.  Its one output is
+the profile as EXR metadata (``profile_metadata``) for PD Output, which
+needs the profiler branched off before PD Output.
 
 * **profile** (button, ``web/pd_profiler.js``): evaluates without
   queuing anything, through ``POST /pipedream/profiler/evaluate``.
@@ -28,6 +30,7 @@ import time
 from ..core import capture, settings
 from ..core.comfy import server_routes
 from ..core.common import ANY, display_name
+from ..core.exr_meta import ExrMetadata
 from ..core.media import write_sidecar
 from ..core.profiler import (
     GIB,
@@ -39,6 +42,7 @@ from ..core.profiler import (
     estimate_time,
     fmt_bytes,
     format_report,
+    profile_metadata,
     profile_path,
     timings_from_run,
 )
@@ -159,7 +163,13 @@ class PDProfiler:
     CATEGORY = "Pipedream"
     FUNCTION = "execute"
     OUTPUT_NODE = True
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("EXR_METADATA",)
+    RETURN_NAMES = ("exr_metadata",)
+    OUTPUT_TOOLTIPS = (
+        "This run's profile as EXR metadata under pipedream/profiler/ (budget, peak, each "
+        "stage, latent, model paths, measured time and VRAM), for PD Output's exr_metadata. "
+        "To use it, branch the profiler off before PD Output (after it would be a loop).",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -227,7 +237,8 @@ class PDProfiler:
                 export_sidecar=False, path="", prompt=None, unique_id=None):
         if not enabled:
             return {"ui": {"profile_text": ["PD Profiler is off for runs: turn 'enabled' on to "
-                                            "measure, or press profile to evaluate."]}}
+                                            "measure, or press profile to evaluate."]},
+                    "result": (ExrMetadata(),)}
         env = comfy_env()
         node_id = str(unique_id)
         report = build_profile(prompt or {}, node_id, env, make_budget(vram_gb, ram_gb))
@@ -272,7 +283,9 @@ class PDProfiler:
             })
             actual["sidecar"] = written or f"failed: {target}"
 
-        return {"ui": {"profile_text": [format_report(report, actual)],
+        metadata = profile_metadata(report, actual, settings.get("exr.metadata_prefix"), prompt_id)
+        return {"result": (metadata,),
+                "ui": {"profile_text": [format_report(report, actual)],
                        "pd_profile_timings": [timings],
                        "pd_profile_chart": [build_chart(report, timings, actual)]}}
 

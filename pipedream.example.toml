@@ -64,6 +64,10 @@
 # EXR compression. One of: "zip", "zips", "rle", "none".
 # compression = "zip"
 
+# Prefix of the EXR metadata names made from context tokens (PD Project
+# Context, PD Custom Context): {shot} becomes pipedream/shot.
+# metadata_prefix = "pipedream/"
+
 # EXR: write values as is, or decode sRGB to linear. One of: "as is", "sRGB to
 # linear".
 # colorspace = "as is"

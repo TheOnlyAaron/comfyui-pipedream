@@ -306,6 +306,27 @@ class ChartTests(ProfilerCase):
         json.dumps(chart)
 
 
+class MetadataTests(ProfilerCase):
+    def test_profile_metadata(self):
+        report = self.profile(wan_flow(), budget={"vram": 24 * GIB, "ram": 64 * GIB,
+                                                  "machine": {"gpu": "RTX 4060"}})
+        meta = pf.profile_metadata(report, {"nodes": [{"node": "7", "seconds": 40.0}],
+                                            "vram_peak": 2 * GIB}, "pipedream/", "abc")
+        table = meta.frame(0)
+        get = lambda k: table[f"pipedream/profiler/{k}"].value
+        self.assertEqual(get("gpu"), "RTX 4060")
+        self.assertEqual(get("vram_budget_gb"), 24.0)
+        self.assertEqual(get("prompt_id"), "abc")
+        self.assertEqual(get("latent"), "[1, 16, 21, 90, 160]")
+        self.assertEqual(get("latent_frames"), 81)
+        self.assertEqual(table["pipedream/profiler/latent_frames"].type, "int")
+        self.assertTrue(get("model_1").startswith("diffusion: "))
+        self.assertTrue(get("model_1").endswith("wan14.safetensors"))
+        self.assertIn("sample #7", get("stage_2"))
+        self.assertEqual(get("time_upstream_s"), 40.0)
+        self.assertEqual(get("measured_peak_vram_gb"), 2.0)
+
+
 class OutputTests(ProfilerCase):
     def test_profile_path(self):
         self.assertEqual(pf.profile_path("/o/shot_v001.1001.exr", "T"),

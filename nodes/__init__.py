@@ -14,6 +14,7 @@ from .video import PDImagesToVideo, PDVideoToImages, PDVideoGetFrame, PDImageFro
 from .sound import PDSound
 from .ocio import PDOCIOTransform, PDOCIODisplay, PDOCIOApplyLUT
 from .profiler import PDProfiler
+from .exr_metadata import PDExrMetadataGet
 
 ALL_NODES: list = [
     PDProjectContext,
@@ -32,4 +33,5 @@ ALL_NODES: list = [
     PDOCIODisplay,
     PDOCIOApplyLUT,
     PDProfiler,
+    PDExrMetadataGet,
 ]
