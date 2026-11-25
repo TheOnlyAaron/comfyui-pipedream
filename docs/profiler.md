@@ -1,6 +1,6 @@
 # PD Profiler: how it works
 
-For using the node, see [PD Profiler in the README](../README.md#pd-profiler). This note covers where each number comes from, which ComfyUI internals the node relies on, the sidecar, and using it without the browser.
+For using the node, see [PD Profiler](../web/docs/PDProfiler.md). This note covers where each number comes from, which ComfyUI internals the node relies on, the sidecar, and using it without the browser.
 
 ![PD Profiler chart: Wan 14B at 1280×720, 81 frames, on an emulated 24 GB card](images/profiler_chart.png)
 
