@@ -168,7 +168,7 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 - **Sidecar** (`save_metadata`): `<name>.json` next to the output (frame number dropped) with the template, tokens, context, files, frame range and pattern, alpha, wedge job, settings files, the ComfyUI prompt and the workflow. PD Load reads it back; drop it on ComfyUI to reopen the workflow that wrote it.
 - **EXR metadata** (exr only): `exr metadata` inputs write header attributes from PD Load, a context node or PD Profiler; a spare input appears as you connect one. See [EXR metadata](#exr-metadata).
 - **Outputs:** `path` (first file), `path_sidecar`, `path_all` (one per line), the images passed through, and `video` (video formats).
-- **Panel and preview:** after a run the panel lists every token and its value; the preview shows what was written (EXR, ProRes and files outside the output folder get a downscaled preview, video as a playable clip). **preview wedge** lists every wedge job's path without running the graph. **Explore Output** shows the last written file in Explorer/Finder (browser on the ComfyUI machine only).
+- **Panel and preview:** after a run the panel lists every token and its value; the preview shows what was written (EXR, ProRes and files outside the output folder get a downscaled preview, video as a playable clip). **preview wedge** lists every wedge job's path without running the graph. **Copy Path** copies the last written file's full path (the first frame of a sequence), to paste into Explorer, Finder, Nuke or any other application; it works from any browser.
 - Widgets and sockets that don't apply to the format are hidden (never while linked). Encoding uses PyAV: no ffmpeg install, audio as AAC/Opus, odd sizes padded to even for video codecs.
 
 ## PD Load
@@ -176,7 +176,7 @@ Resolves `file` (the `template` input in API prompts and settings) under ComfyUI
 Loads an image, image sequence or video, and reads back what PD Output wrote.
 
 - **Paste a path:** copy a file's path (Explorer: shift+right click → *Copy as path*) into `file` or `base_path`. Quotes are removed, the path is split into folder and name, `path_mode` switches to `absolute`, and the file loads. **load** (or the selection toolbar's run button) runs just this node.
-- **Explore Input** opens the folder of the file in Explorer/Finder (the input folder in `relative` mode).
+- **Copy Path** copies the full path of the file the widgets point at (resolved from `path_mode`, `base_path` and `file`), to paste into Explorer, Finder, Nuke or any other application.
 - **Drop files:** drag files from Explorer onto the drop zone (or anywhere on the node in the classic canvas). Browsers don't reveal a dropped file's path, so the files are copied to ComfyUI's `input/pipedream` folder (overwriting same-named files) and loaded from there in `relative` mode. Drop every frame of a sequence, plus its sidecar for the tokens. For files on a share, pasting the path loads them in place without copying.
 - **Where:** `relative` reads from ComfyUI's input folder, `absolute` from `base_path` (`C:\Shots`, `/mnt/shows`, `\\server\shows`). A full path in `file` (e.g. PD Output's `path`) is used as is.
 - **What:** `file` may include the extension or leave it to `format`; `auto` tries every type and stops if more than one matches. Images: exr, png, jpg, webp, tif, dpx, bmp. Video: mp4, mov, webm, mkv, avi, m4v.

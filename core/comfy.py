@@ -1,6 +1,8 @@
 """
 ComfyUI integration shared by the node modules: its input, output and temp
-folders, the server routes, and showing a file in the OS file manager.
+folders and the server routes.  Nothing here starts other programs: the
+"Copy Path" buttons copy paths in the browser instead of opening a file
+manager.
 
 Everything degrades gracefully outside ComfyUI (tests, scripts): folders
 fall back to the working directory and ``server_routes`` returns
@@ -8,8 +10,6 @@ fall back to the working directory and ``server_routes`` returns
 """
 
 import os
-import subprocess
-import sys
 
 try:
     import folder_paths  # type: ignore[import-not-found]
@@ -53,40 +53,3 @@ def server_routes():
     if instance is None:
         return None, None
     return instance.routes, web
-
-
-_LOOPBACK = ("127.0.0.1", "::1", "localhost")
-
-
-def reveal_in_file_manager(path: str, remote: str | None = None, select: bool = True) -> dict:
-    """
-    Show *path* in the file manager of the machine running ComfyUI.
-
-    A file is selected in its folder (Explorer, Finder); on Linux, or
-    without *select*, its folder opens.  When the file is gone, the nearest existing parent
-    folder opens.  Requests from another machine (``--listen``) are
-    refused: the window would open on the server, not for the viewer.
-    Returns ``{"opened": path}`` or ``{"error": message}``.
-    """
-    if remote and remote not in _LOOPBACK:
-        return {"error": "Explore only works in a browser on the ComfyUI machine."}
-    target = os.path.normpath(path) if path else ""
-    while target and not os.path.exists(target):
-        parent = os.path.dirname(target)
-        if parent == target:
-            target = ""
-            break
-        target = parent
-    if not target:
-        return {"error": f"Neither '{path}' nor any parent folder exists."}
-    if not select and os.path.isfile(target):
-        target = os.path.dirname(target)
-    is_file = os.path.isfile(target)
-    if sys.platform == "win32":
-        command = f'explorer /select,"{target}"' if is_file else f'explorer "{target}"'
-        subprocess.Popen(command)
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", "-R", target] if is_file else ["open", target])
-    else:
-        subprocess.Popen(["xdg-open", os.path.dirname(target) if is_file else target])
-    return {"opened": target}

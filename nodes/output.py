@@ -38,7 +38,7 @@ import sys
 from datetime import datetime
 
 from ..core import settings
-from ..core.comfy import output_directory, reveal_in_file_manager, server_routes, temp_directory
+from ..core.comfy import output_directory, temp_directory
 from ..core.common import display_name
 from ..core.exr_meta import INPUT_NAMES as METADATA_INPUT_NAMES, ExrError, ExrMetadata, write_attributes
 from ..core.media import (
@@ -590,16 +590,3 @@ class PDOutput:
             "ui": ui,
             "result": (final, sidecar, "\n".join(written), passthrough, video_out),
         }
-
-
-routes, web = server_routes()
-if routes is not None:
-    @routes.post("/pipedream/output/reveal")
-    async def reveal_route(request):
-        """``{"path"}``: show that file (or its folder) in the file manager of the ComfyUI machine."""
-        try:
-            body = await request.json()
-            return web.json_response(reveal_in_file_manager(str(body.get("path", "")),
-                                                            request.remote))
-        except Exception as exc:
-            return web.json_response({"error": str(exc)}, status=400)

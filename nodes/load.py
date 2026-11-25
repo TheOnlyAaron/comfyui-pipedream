@@ -36,7 +36,7 @@ import os
 import sys
 
 from ..core import settings
-from ..core.comfy import input_directory, reveal_in_file_manager, server_routes, temp_directory
+from ..core.comfy import input_directory, server_routes, temp_directory
 from ..core.common import display_name
 from ..core.exr_meta import ExrMetadata
 from ..core.load import (
@@ -375,32 +375,29 @@ if routes is not None:
         except Exception as exc:
             return web.json_response({"error": str(exc)}, status=400)
 
-    @routes.post("/pipedream/load/explore")
-    async def load_explore_route(request):
+    @routes.post("/pipedream/load/path")
+    async def path_route(request):
         """
-        ``{"path_mode", "base_path", "file", "last"}``: open the folder the
-        widgets point at, or the folder of *last* (the last loaded file)
-        when they hold tokens only a linked context can fill.
+        ``{"path_mode", "base_path", "file", "last"}`` -> ``{"path"}``: the full
+        path of the file the widgets point at, for the Copy Path button.  Falls
+        back to the last loaded file, then the folder.  Nothing is opened.
         """
         try:
             body = await request.json()
-            folder = ""
+            mode = str(body.get("path_mode", "relative"))
+            path = ""
             try:
-                full = resolve_path(str(body.get("path_mode", "relative")),
-                                    str(body.get("base_path", "")), str(body.get("file", "")),
+                full = resolve_path(mode, str(body.get("base_path", "")), str(body.get("file", "")),
                                     {**auto_tokens(), **with_extra({})})
                 if "{" not in full:
-                    folder = os.path.dirname(full)
+                    path = full
             except Exception:
-                folder = ""
-            last = str(body.get("last") or "")
-            if not folder and last:
-                folder = os.path.dirname(last)
-            if not folder:
-                folder = (input_directory() if body.get("path_mode", "relative") == "relative"
-                          else str(body.get("base_path") or "").strip())
-            if not folder:
+                path = ""
+            path = path or str(body.get("last") or "")
+            if not path:
+                path = input_directory() if mode == "relative" else str(body.get("base_path") or "").strip()
+            if not path:
                 return web.json_response({"error": "Set base_path or file first."})
-            return web.json_response(reveal_in_file_manager(folder, request.remote, select=False))
+            return web.json_response({"path": os.path.normpath(path)})
         except Exception as exc:
             return web.json_response({"error": str(exc)}, status=400)
