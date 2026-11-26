@@ -1,9 +1,8 @@
 import { app } from "../../scripts/app.js";
-import { api } from "../../scripts/api.js";
 import { SAVE_CLASSES, chain, copyText, findWidget, isInputLinked, labelMetadata, metadataRules, showSlots, showWidgets, trackPreviewMedia } from "./pd_common.js";
 
 /* ------------------------------------------------------------------ */
-/*  Pipedream.Output — hide widgets and sockets that do not apply to   */
+/*  Pipedream.Save — hide widgets and sockets that do not apply to     */
 /*  the current path_mode / format:                                    */
 /*    base_path in relative mode; fps/crf for image formats (crf for   */
 /*    ProRes, fps while a VIDEO is connected); prores_profile unless   */

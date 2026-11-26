@@ -10,7 +10,7 @@ PD Save was called PD Output before 0.3.0. Old workflows still load.
 1. Put a PD Project Context (and optionally a PD Custom Context) upstream and connect its `context` to PD Save.
 2. Set `file` to a template such as `{project}/{shot}/{shot}_{version}.{frame}`, pick a `format`, and connect `images` (or `video`).
 3. Press **preview wedge** or run the graph. The panel lists every token and its value, and the preview shows what was written.
-4. Press **Copy Path** to paste the first file's full path into Explorer, Finder or Nuke.
+4. Press **Copy Path** to paste the full path of the first file the last run wrote into Explorer, Finder or Nuke.
 
 [02 Load and save](https://github.com/theonlyaaron/comfyui-pipedream/tree/main/workflows/02_load_and_save) writes an EXR sequence with a sidecar and header metadata, then reads it back. [06 Wedge basics](https://github.com/theonlyaaron/comfyui-pipedream/tree/main/workflows/06_wedge_basics) names files with a wedge token.
 
@@ -49,7 +49,7 @@ PD Save was called PD Output before 0.3.0. Old workflows still load.
 
 ### Alpha
 - Alpha comes from the `alpha` input (a MASK, or an IMAGE or VIDEO's luminance; one frame or one per frame) or from the images' fourth channel.
-- Written to png/webp (straight), exr (premultiplied) and mov ProRes 4444 (straight). jpg, mp4, webm and ProRes 422 HQ cannot store alpha: it is skipped with a console warning.
+- Written to png/webp (straight), exr (premultiplied) and mov ProRes 4444 (straight). jpg, mp4, webm and ProRes 422 HQ cannot store alpha: a connected `alpha` is ignored with a console warning, and a fourth image channel is dropped.
 - Masks use 1.0 = opaque. Core Load Image's mask is inverted, so put Invert Mask in between. See [Alpha](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/alpha.md).
 
 ### Sidecar
@@ -62,7 +62,7 @@ PD Save was called PD Output before 0.3.0. Old workflows still load.
 
 ### Buttons and panels
 - **preview wedge** lists the path every wedge job would write, without running the graph. It shows the job count and warns about wedges not chained into PD Save, paths written by more than one job, and existing files. See [Wedges](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/wedges.md).
-- **Copy Path** copies the last written file's full path. It works from any browser, and the path is stored on the node so it survives a save.
+- **Copy Path** copies the full path of the first file written by the last run (the first frame of a sequence). It works from any browser, and the path is stored on the node so it survives a save.
 - The panel lists every token with its value after a run. The preview shows what was written; EXR, ProRes and files outside the output folder get a downscaled preview, and video plays as a clip.
 
 <!-- media: clip, 10 s: Copy Path after a run, pasted into a file browser -->

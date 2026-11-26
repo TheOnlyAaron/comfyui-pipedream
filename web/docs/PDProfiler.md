@@ -32,8 +32,9 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - A size that loses pixels (1080 high on a 16 px model decodes to 1072) or a frame count that is not 4k+1 or 8k+1 is flagged with the values to use.
 
 ### Memory by stage
-- ComfyUI frees each model before the next, so memory is reported per stage: text encode, each sampler (weights, ComfyUI's `memory_required`, latent; Wan 2.2's two experts are two stages) and each VAE decode (weights plus the decode estimate, per tile for tiled decode).
-- Each stage reads **fits**, **offloads** (with how much) or **over budget** against the VRAM budget. The peak is the largest stage.
+- ComfyUI frees only what the next model load needs, so memory is reported per stage: text encode, each sampler (weights, ComfyUI's `memory_required`, latent; Wan 2.2's two experts are two stages) and each VAE decode (weights plus the decode estimate, per tile for tiled decode).
+- Each stage reads **fits**, **offloads** / **streams** (how much of the weights stay in RAM) or **over budget** against the VRAM budget, following ComfyUI's own loading rule: the weights get what is left after the working memory for one pass (or ComfyUI's minimum inference memory, if larger), the OS margin and the latents. **over budget** means the working memory, latents and margin alone exceed the card. When cond and uncond don't fit together they run one at a time, and the report says so. A VAE decode can also read **falls back to tiled decode** (the decode itself doesn't fit), or **tiled** for a tiled decode whose one tile still doesn't fit. The peak is the largest stage.
+- With Dynamic VRAM (ComfyUI's default on recent NVIDIA setups) weights page in from RAM as needed: a **streams** verdict then means slower, not out of memory.
 - RAM is model weights plus decoded frames (float32).
 
 ### Chart
@@ -51,7 +52,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - With wedges: a once-per-queue part (loaders, encoders, nodes before the wedge) plus the per-job part times the job count.
 
 ### Wedges
-- Only the selected row's branch is followed: the queued row, else `solo`, else row 1.
+- Only the selected row's branch is followed: `solo` if set, else the queued row, else row 1.
 - The report shows the job count and says when rows read from different branches.
 
 ### API nodes
@@ -79,7 +80,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - Text encoder activations, LoRA patch memory and custom samplers with their own memory handling are not modelled.
 - Latent sizes computed at run time are reported as only known at run time.
 
-This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md).
+This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md). How accurate the numbers are, checked against ComfyUI's source, 73 published model files and the models' own documentation: [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md).
 
 ## Tips
 - Branch the profiler off the flow rather than after PD Save when you want its output as EXR metadata.
@@ -89,7 +90,7 @@ This page covers the node. Where each number comes from, the sidecar format and 
 
 ## See also
 - [PD Save](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDSave.md), [PD Wedge](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDWedge.md), [PD EXR Metadata Get](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDExrMetadataGet.md)
-- Topic pages: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md), [EXR metadata](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/exr-metadata.md), [Settings](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/settings.md)
+- Topic pages: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md), [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md), [EXR metadata](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/exr-metadata.md), [Settings](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/settings.md)
 
 ## Inputs and outputs
 <!-- reference:start -->
@@ -99,7 +100,7 @@ This page covers the node. Where each number comes from, the sidecar format and 
 
 | Name | Type | Default | Required | Description |
 |------|------|---------|----------|-------------|
-| `source` | any |  | required | Anything. Everything this input reads from is profiled; other flows in the graph are ignored. Put it after PD Output or branch it off a flow. |
+| `source` | any |  | required | Anything. Everything this input reads from is profiled; other flows in the graph are ignored. Put it after PD Save or branch it off a flow. |
 | `enabled` | BOOLEAN | true | optional | Run with queued runs and report what was measured. Off: the node does nothing on runs (the profile button still works). |
 | `vram_gb` | FLOAT | `0.0` | optional | GPU memory to budget against, in GB, e.g. a farm node's card. 0: this machine. 'use this machine' fills in this machine's. |
 | `ram_gb` | FLOAT | `0.0` | optional | System memory to budget against, in GB. 0: this machine. |

@@ -91,7 +91,7 @@ Loads an image, an image sequence or a video from any local or network path, and
 | `start_frame` | INT | `0` | required | Sequences: first frame number to load (0: the first on disk). Video: first frame index (0: the start). |
 | `frame_count` | INT | `0` | required | Number of frames to load (0: all). |
 | `every_nth` | INT | `1` | required | Load every nth frame (fps is divided to match). |
-| `sequence_mode` | auto, single file, sequence | `auto` | optional | When file is one numbered image (shot.1001.exr): auto: load the whole sequence it belongs to, unless PD Output's sidecar, different frame sizes or unpadded numbers (wedge outputs) say it is a single image; the panel says why. single file: just this file. sequence: every file named like it. A frame mark (####) always loads a sequence. |
+| `sequence_mode` | auto, single file, sequence | `auto` | optional | When file is one numbered image (shot.1001.exr): auto: load the whole sequence it belongs to, unless PD Save's sidecar, different frame sizes or unpadded numbers (wedge outputs) say it is a single image; the panel says why. single file: just this file. sequence: every file named like it. A frame mark (####) always loads a sequence. |
 | `context` | PROJECT_CONTEXT |  | optional | Tokens for file, from PD Project/Custom Context. |
 | `wedge` | WEDGE |  | optional | Last PD Wedge of a chain: its tokens fill file, so each wedge job can load a different file. |
 | `fps_from_file` | BOOLEAN | true | optional | Use a video file's own frame rate. Off: use fps instead. Images and sequences always use fps. |
@@ -111,7 +111,7 @@ Loads an image, an image sequence or a video from any local or network path, and
 | `context` | PROJECT_CONTEXT | The tokens of PD Save's sidecar next to the media, with the incoming context's non-empty values on top. |
 | `video` | VIDEO | The video file, or the loaded frames as an in-memory VIDEO. |
 | `audio` | AUDIO | The video's audio (video files only). |
-| `exr_metadata` | EXR_METADATA | The EXR header metadata of each loaded frame (empty for other formats), for PD Output's exr_metadata or PD EXR Metadata Get. Structural attributes (channels, windows, compression) are left out. |
+| `exr_metadata` | EXR_METADATA | The EXR header metadata of each loaded frame (empty for other formats), for PD Save's exr_metadata or PD EXR Metadata Get. Structural attributes (channels, windows, compression) are left out. |
 
 This is an output node: it runs whenever it is in the graph, even with nothing connected after it.
 <!-- reference:end -->

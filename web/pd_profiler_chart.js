@@ -245,8 +245,9 @@ function draw(canvas, chart) {
         }
         lines.push(`total: ${fmtBytes(s.total)}`);
         if (chart.vram) lines.push(budgetNote(s.total, chart.vram));
-        if (s.offload) lines.push(`ComfyUI offloads ${fmtBytes(s.offload)} to RAM`);
+        if (s.offload) lines.push(`ComfyUI ${s.verdict === "streams" ? "streams" : "offloads"} ${fmtBytes(s.offload)} of the weights ${s.verdict === "streams" ? "from" : "to"} RAM`);
         else if (s.verdict && s.verdict !== "fits") lines.push(s.verdict);
+        if (s.note) lines.push(s.note);
         if (s.seconds != null) lines.push(`time: ${fmtTime(s.seconds)}`);
         regions.push({ x0, x1, y0: y, y1: y + ROW, text: lines.join("\n") });
     });
