@@ -16,8 +16,8 @@ can't be replaced, so everything below happens before the merge.
 - [ ] Tests: `python -m unittest discover -s tests`
 - [ ] Node page reference tables are current: `python tools/node_docs.py --check`
 - [ ] Example workflows load and run in a current ComfyUI (Nodes 2.0 and
-      classic): `node tools/smoke_workflows.mjs` (see the script's header for
-      the server and model setup).
+      classic): `node tools/smoke_workflows.mjs http://127.0.0.1:8188` against
+      a running ComfyUI with the pack installed (needs Node.js and Playwright).
 - [ ] A 0.2.x workflow that uses `PDOutput` still loads and saves the same
       files (the hidden alias).
 - [ ] Manual check in ComfyUI: each node's help panel page shows; PD Sound
