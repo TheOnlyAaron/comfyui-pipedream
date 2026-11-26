@@ -32,8 +32,9 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - A size that loses pixels (1080 high on a 16 px model decodes to 1072) or a frame count that is not 4k+1 or 8k+1 is flagged with the values to use.
 
 ### Memory by stage
-- ComfyUI frees each model before the next, so memory is reported per stage: text encode, each sampler (weights, ComfyUI's `memory_required`, latent; Wan 2.2's two experts are two stages) and each VAE decode (weights plus the decode estimate, per tile for tiled decode).
-- Each stage reads **fits**, **offloads** (with how much) or **over budget** against the VRAM budget. The peak is the largest stage.
+- ComfyUI frees only what the next model load needs, so memory is reported per stage: text encode, each sampler (weights, ComfyUI's `memory_required`, latent; Wan 2.2's two experts are two stages) and each VAE decode (weights plus the decode estimate, per tile for tiled decode).
+- Each stage reads **fits**, **offloads** / **streams** (how much of the weights stay in RAM) or **over budget** against the VRAM budget, following ComfyUI's own loading rule: the weights get what is left after the working memory for one pass. When cond and uncond don't fit together they run one at a time, and the report says so. The peak is the largest stage.
+- With Dynamic VRAM (ComfyUI's default on recent NVIDIA setups) weights page in from RAM as needed: an offload verdict then means slower, not out of memory.
 - RAM is model weights plus decoded frames (float32).
 
 ### Chart
@@ -79,7 +80,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - Text encoder activations, LoRA patch memory and custom samplers with their own memory handling are not modelled.
 - Latent sizes computed at run time are reported as only known at run time.
 
-This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md).
+This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md). How accurate the numbers are, checked against ComfyUI's source, 75 published model files and the models' own documentation: [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md).
 
 ## Tips
 - Branch the profiler off the flow rather than after PD Save when you want its output as EXR metadata.
@@ -89,7 +90,7 @@ This page covers the node. Where each number comes from, the sidecar format and 
 
 ## See also
 - [PD Save](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDSave.md), [PD Wedge](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDWedge.md), [PD EXR Metadata Get](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDExrMetadataGet.md)
-- Topic pages: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md), [EXR metadata](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/exr-metadata.md), [Settings](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/settings.md)
+- Topic pages: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md), [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md), [EXR metadata](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/exr-metadata.md), [Settings](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/settings.md)
 
 ## Inputs and outputs
 <!-- reference:start -->

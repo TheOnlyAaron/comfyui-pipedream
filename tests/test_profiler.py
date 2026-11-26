@@ -185,11 +185,19 @@ class CrawlTests(ProfilerCase):
         # ComfyUI: area (batch 2) * 2 bytes * 0.01 * memory_usage_factor MiB; Wan 14B's
         # factor is dim / 2222 = 2.30 (the file-name fallback uses ComfyUI's value).
         area = 2 * 21 * 90 * 160
-        self.assertAlmostEqual(sample["working"], area * 2 * 0.01 * 2.30 * 1024 ** 2)
+        batched = area * 2 * 0.01 * 2.30 * 1024 ** 2
+        self.assertAlmostEqual(sample["working_batched"], batched)
+        self.assertAlmostEqual(sample["working_single"], batched / 2)
+        # Weights + the batch-2 estimate don't fit 24 GB, so cond and uncond run one at a
+        # time; the weights get 24 GB - max(reserve, batch-1 estimate + OS margin) - latent.
+        self.assertAlmostEqual(sample["working"], batched / 2)
+        self.assertIn("one at a time", sample["note"])
+        room = 24 * GIB - (batched / 2 + pf.DEFAULT_OS_MARGIN) - sample["extra"]
+        self.assertEqual(sample["verdict"], "offloads")
+        self.assertAlmostEqual(sample["offload"], sample["weights"] - room)
         decode = report["stages"][2]
         self.assertEqual(decode["working"], 7000 * 90 * 160 * 64 * 2)
         self.assertEqual(report["peak"]["node"], max(report["stages"], key=lambda s: s["total"])["node"])
-        self.assertIn(sample["verdict"], ("fits", "offloads", "does not fit"))
         self.assertEqual(report["ram"]["frames_out"], 1280 * 720 * 3 * 4 * 81)
 
     def test_tiled_decode_is_per_tile(self):
@@ -265,6 +273,46 @@ class CheckpointTests(ProfilerCase):
         self.assertEqual(report["latents"][0]["shape"], [2, 4, 128, 128])
         decode = report["stages"][-1]
         self.assertEqual(decode["working"], 2178 * 128 * 128 * 64 * 2)
+
+
+class VerdictTests(ProfilerCase):
+    def verdict(self, vram_gb, **flow):
+        report = self.profile(wan_flow(**flow), budget={"vram": vram_gb * GIB, "ram": 64 * GIB})
+        return report["stages"][1]
+
+    def test_fits_batched_on_big_card(self):
+        sample = self.verdict(80, width=832, height=480)
+        self.assertEqual(sample["verdict"], "fits")
+        self.assertEqual(sample["working"], sample["working_batched"])
+        self.assertNotIn("note", sample)
+
+    def test_cfg_one_uses_single_estimate(self):
+        prompt = wan_flow(width=832, height=480)
+        prompt["7"]["inputs"]["cfg"] = 1.0
+        sample = self.profile(prompt, budget={"vram": 80 * GIB})["stages"][1]
+        self.assertEqual(sample["working"], sample["working_single"])
+        self.assertIn("cfg 1", sample["note"])
+
+    def test_does_not_fit_when_minimum_is_over_card(self):
+        sample = self.verdict(8, width=1920, height=1088, length=121)
+        self.assertGreater(sample["working_single"] + pf.DEFAULT_OS_MARGIN, 8 * GIB)
+        self.assertEqual(sample["verdict"], "does not fit")
+
+    def test_dynamic_vram_streams(self):
+        self.env.dynamic_vram = True
+        sample = self.verdict(24)
+        self.assertEqual(sample["verdict"], "streams")
+        report = self.profile(wan_flow(), budget={"vram": 24 * GIB, "ram": 64 * GIB})
+        self.assertIn("Dynamic VRAM", " ".join(report["notes"]))
+        self.assertIn("streams", pf.format_report(report))
+
+    def test_decode_offloads_weights_before_tiling(self):
+        report = self.profile(wan_flow(), budget={"vram": 12.6 * GIB, "ram": 64 * GIB})
+        decode = report["stages"][2]
+        # decode memory (12.02 GiB) fits next to the OS margin; the 0.24 GB of weights page out.
+        self.assertEqual(decode["verdict"], "offloads")
+        report = self.profile(wan_flow(), budget={"vram": 8 * GIB, "ram": 64 * GIB})
+        self.assertEqual(report["stages"][2]["verdict"], "falls back to tiled decode")
 
 
 class FamilyTests(ProfilerCase):

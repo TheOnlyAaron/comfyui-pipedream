@@ -8,7 +8,9 @@ registry also gets :class:`RunCapture`, a read-only handler that records:
 
 * per node: wall-clock seconds, or "cached" when ComfyUI reused the result;
 * the peak VRAM of the whole prompt (torch's allocator peak, reset when
-  the prompt starts);
+  the prompt starts), plus the device memory in use (total minus free,
+  which includes memory outside PyTorch's allocator) and Dynamic VRAM's
+  own usage, both sampled as each node finishes;
 * per node VRAM peaks, only when a PD Profiler in the prompt has
   ``vram_per_node`` on (the peak is reset as each node starts).
 
@@ -46,6 +48,18 @@ def _wants_per_node(dynprompt) -> bool:
             if inputs.get("enabled", True) is not False and inputs.get("vram_per_node") is True:
                 return True
     return False
+
+
+def _dynamic_usage():
+    """VRAM held by Dynamic VRAM (comfy-aimdo), or None when it is off."""
+    try:
+        import comfy.memory_management as memory  # type: ignore[import-not-found]
+        if not getattr(memory, "aimdo_enabled", False):
+            return None
+        import comfy_aimdo.control as control  # type: ignore[import-not-found]
+        return int(control.get_total_vram_usage())
+    except Exception:
+        return None
 
 
 def run(prompt_id) -> dict | None:
@@ -101,7 +115,8 @@ def install() -> bool:
         def __init__(self, prompt_id, per_node):
             super().__init__("pipedream_profiler")
             self.entry = {"started": time.time(), "nodes": {}, "vram_peak": None,
-                          "vram_reserved": None, "per_node": per_node}
+                          "vram_reserved": None, "device_peak": None, "dynamic_peak": None,
+                          "per_node": per_node}
             self._t0 = {}
             self.torch = _torch()
             if self.torch is not None:
@@ -135,6 +150,7 @@ def install() -> bool:
             if item is None or item.get("cached"):
                 item = nodes[node_id] = {"seconds": 0.0, "cached": False}
             item["seconds"] += time.perf_counter() - started
+            self._sample_device()
             if self.entry["per_node"] and self.torch is not None:
                 try:
                     peak = self.torch.cuda.max_memory_allocated()
@@ -142,6 +158,19 @@ def install() -> bool:
                     self._fold_peak(peak)
                 except Exception:
                     pass
+
+        def _sample_device(self):
+            """Device memory in use and Dynamic VRAM usage, sampled at node ends."""
+            if self.torch is None:
+                return
+            try:
+                free, total = self.torch.cuda.mem_get_info()
+                self.entry["device_peak"] = max(self.entry["device_peak"] or 0, total - free)
+            except Exception:
+                pass
+            usage = _dynamic_usage()
+            if usage is not None:
+                self.entry["dynamic_peak"] = max(self.entry["dynamic_peak"] or 0, usage)
 
         def _fold_peak(self, peak=None):
             if peak is None:
