@@ -28,6 +28,11 @@
   plain fp8 files upcast on GPUs without fp8 compute, VAEs cast as a whole
 - File-name fallbacks use ComfyUI's memory factors (Wan 14B 2.30, HunyuanVideo
   1.5 4.0, LTX 5.5, ...)
+- Cached nodes are reported as cached (ComfyUI sends no progress events for
+  them, so they showed as "not measured"). Only prompts with an enabled PD
+  Profiler are watched
+- `Wan22ImageToVideoLatent` applies `batch_size` only with a `start_image`,
+  as ComfyUI does
 - Measured runs also record device memory in use and Dynamic VRAM usage,
   which include memory PyTorch's allocator doesn't count; the chart uses
   the larger peak

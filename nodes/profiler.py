@@ -258,18 +258,17 @@ class PDProfiler:
         run = capture.snapshot(prompt_id) if prompt_id else None
         graph = Graph(prompt or {}, env)
         actual = {"source": describe_source(source), "loaded_models": capture.loaded_models(),
-                  "nodes": []}
+                  "nodes": [], "vram_total": capture.machine()["vram"]}
         timings = {}
         if run is not None:
             for nid in graph.upstream(node_id):
-                entry = run["nodes"].get(nid)
-                if entry is not None:
-                    actual["nodes"].append({"node": nid, "label": graph.label(nid), **entry})
+                # ComfyUI sends no progress events for a node it reuses from cache
+                entry = run["nodes"].get(nid) or {"seconds": 0.0, "cached": True}
+                actual["nodes"].append({"node": nid, "label": graph.label(nid), **entry})
             actual["vram_peak"] = run.get("vram_peak")
             actual["vram_reserved"] = run.get("vram_reserved")
             actual["device_peak"] = run.get("device_peak")
             actual["dynamic_peak"] = run.get("dynamic_peak")
-            actual["vram_total"] = capture.machine()["vram"]
             timings = timings_from_run(prompt or {}, node_id, env, run, report)
             report["time"] = estimate_time(report, graph, graph.upstream(node_id), timings)
         else:

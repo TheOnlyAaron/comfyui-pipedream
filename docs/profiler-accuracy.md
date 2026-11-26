@@ -15,16 +15,16 @@ No GPU large enough for the big video models was available. Measured GPU peaks f
 
 | Number | Accuracy | How it was checked |
 |---|---|---|
-| Latent shape, frame and pixel rounding | **Exact** | ComfyUI's latent nodes; real tensors in ComfyUI |
+| Latent shape, frame and pixel rounding | **Exact** | ComfyUI's latent nodes; 24 real tensors in ComfyUI ([CPU](#cpu-this-review)) |
 | Decoded pixels (float32 IMAGE) and latent bytes | **Exact** | ComfyUI's tensor layout; real tensors |
 | Model parameters, stored bytes, data type | **Exact** | 73 published files: tensor bytes plus header equal the file size |
 | Model family, latent channels, VAE compression | **Exact** for every ComfyUI-format file checked | ComfyUI's own detection on the real headers |
-| Bytes a model takes once loaded | **Exact** when the dtype rule is known (see [Loaded sizes](#loaded-sizes)) | ComfyUI's dtype selection |
+| Bytes a model takes once loaded | **Exact** when the dtype rule is known (see [Loaded sizes](#loaded-sizes)) | ComfyUI's dtype selection; measured within 0.05% ([CPU](#cpu-this-review)) |
 | Sampling memory | **ComfyUI's own estimate**, the number it loads models by, not a measurement | `memory_required`; compared with published peaks |
 | VAE decode memory | **ComfyUI's own estimate** for that VAE family | `memory_used_decode` |
 | Fits, offloads or over budget | **Follows ComfyUI's loading rule** on the estimate path; under Dynamic VRAM, weights page instead | `load_models_gpu`, `samplers.py` |
 | RAM | **Upper bound** | ComfyUI's offload and cache behaviour |
-| Time | **Measured** per node; estimates scale linearly, so they're rough when the size changes | ComfyUI's progress registry |
+| Time | **Measured** per node (within 0.1% of ComfyUI's timestamps); estimates scale linearly, so they're rough when the size changes | ComfyUI's progress registry ([CPU](#cpu-this-review)) |
 
 ## Exact numbers
 
@@ -197,7 +197,20 @@ How to read this:
 
 ### CPU (this review)
 
-<!-- measurements: filled from the CPU measurement run -->
+Run on a machine without a GPU (ComfyUI 0.46.0, PyTorch 2.15, `--cpu`), with random-weight model files built from ComfyUI's own classes so their key layouts and sizes match the published files. On `--cpu` ComfyUI keeps everything in float32, so loaded sizes were also checked with `--bf16-unet` / `--bf16-vae`, the 16-bit types a GPU picks. Memory on a CPU says little about CUDA, so only shapes, sizes and times are machine-independent results; the decode and sampling runs check scaling only.
+
+| Check | Result |
+|---|---|
+| Latent shapes and decoded IMAGE bytes, 24 cases: `EmptyLatentImage`, `EmptySD3LatentImage`, `EmptyHunyuanLatentVideo`, `EmptyLTXVLatentVideo`, `Wan22ImageToVideoLatent`, odd sizes (1078 → 1072), lengths (80 → 77 frames), batch 2 | **Exact**, after one fix: `Wan22ImageToVideoLatent` ignores `batch_size` without a `start_image`, so the profiler now applies the batch only when a start image is connected |
+| Loaded size, Wan 2.1 1.3B DiT stored as bf16, fp16 with fp32 norms, fp32; loader `weight_dtype` fp8 | **Within 0.05%** of ComfyUI's `model_size()` |
+| Loaded size, Wan 2.1, Wan 2.2, SD and 16-channel KL VAEs | **Exact** |
+| A file already in fp8, `weight_dtype` default | ComfyUI keeps it at 1 byte only with fp8 compute or when the 16-bit copy wouldn't fit; otherwise it upcasts. Confirmed by changing ComfyUI's weight budget (1 GiB keeps fp8, 24 GiB upcasts). On a GPU the profiler asks the same `unet_dtype` function; see [Limitations](#limitations) |
+| VAE decode peak against `memory_used_decode`, by resolution | The ratio is constant across sizes for each VAE (KL 2.72, Wan 2.2 0.59, Wan 2.1 at one latent frame 2.36), so the formulas scale correctly with resolution. KL's 2.72 is ComfyUI's own AMD factor (2.73). Over frame count the CPU doesn't follow the Wan 2.1 formula (CPU 3D convolutions); magnitude needs a GPU |
+| Sampling peak, Wan 1.3B, one step, 256 to 5,120 tokens | Grows linearly with tokens; cfg above 1 doubles it, as the batch-2 estimate assumes. Absolute values fall between ComfyUI's flash and non-flash formulas, which differ 7.5× by construction; a GPU is needed to check which applies |
+| Node times | The per-node sum was within 0.1% of ComfyUI's own start and finish timestamps (16.854 s against 16.866 s) |
+| Cached nodes | Were counted as "not measured" because ComfyUI sends no progress events for them. Fixed: an upstream node with no events is reported as cached |
+
+Fixes from this run, with tests: the `Wan22ImageToVideoLatent` batch rule, cached-node reporting, and no "on the GPU" detail on a machine without one.
 
 ### Field run: SDXL at 4096×4096 on an 8 GB RTX 4060
 
@@ -223,6 +236,7 @@ What it shows:
 - **MiniMax H3's Sol decoder** (non-causal) has a different decode estimate in ComfyUI, and the profiler uses the stock decoder's.
 - **AMD and Intel GPUs:** ComfyUI's 40% minimum weight share isn't modelled.
 - **Timing:** async nodes and nodes that expand into subgraphs include the time of whatever ran in between or inside them. With `vram_per_node`, their per-node peaks overlap.
+- **fp8 files on GPUs without fp8 compute** (Ampere and older, A6000 included): whether ComfyUI upcasts them depends on the card's VRAM. The profiler asks ComfyUI on the machine it runs on, so an emulated `vram_gb` doesn't change that decision, and on a machine without a GPU the stored 1 byte is used.
 - **`--fp8_e4m3fn-unet`** and similar flags aren't read; the loader's `weight_dtype` is.
 - **ComfyUI moves fast.** This review is against `62879ac`. Re-check after large memory-management changes.
 
@@ -232,6 +246,7 @@ Measured GPU peaks for the large models are planned for an NVIDIA RTX A6000 (48 
 
 1. **Runs:** the configurations in [Compared with published requirements](#compared-with-published-requirements) that fit 48 GB, plus an image model (SDXL, Flux.1) and the newer video models (Wan 2.2 A14B, HunyuanVideo 1.5, LTX-2.x, MiniMax H3), at two or three sizes each.
 2. **Record for each:** the profiler's evaluation before the run; then from the run, PD Profiler's measured PyTorch peak (allocated and reserved), device memory in use, Dynamic VRAM usage, per-node peaks (`vram_per_node` on) and node times; and `nvidia-smi`'s peak.
+   Also: VAE decode peaks for Wan 2.1 at one, two and five latent frames (the CPU couldn't check the formula over time), and a plain fp8 diffusion model (the A6000 has no fp8 compute, so ComfyUI should upcast it to 16-bit).
 3. **Run each twice:** once with Dynamic VRAM (the default) and once with `--disable-dynamic-vram`. The second exercises the estimate path the verdicts model.
 4. **Emulate smaller cards:** `vram_gb` 8, 12, 16 and 24, checked against `--reserve-vram` runs that limit what ComfyUI sees.
 5. **Collect** the profile sidecars (`export_sidecar`), which hold the estimate and the measurement side by side. Add a results table to this page, and adjust the profiler where the estimate and the measurement disagree consistently.

@@ -475,3 +475,17 @@ class RobustnessTests(ProfilerCase):
             fh.write(struct.pack("<Q", len(body)) + body)
         with self.assertRaises(mf.HeaderError):
             mf.read_header(path)
+
+    def test_wan22_latent_batch_needs_start_image(self):
+        NODES["Wan22ImageToVideoLatent"] = pf.NodeInfo(
+            inputs={"vae": "VAE", "start_image": "IMAGE"}, returns=("LATENT",), name="Wan22 Latent")
+        NODES["LoadImage"] = pf.NodeInfo(returns=("IMAGE", "MASK"), name="Load Image")
+        self.addCleanup(NODES.pop, "Wan22ImageToVideoLatent")
+        self.addCleanup(NODES.pop, "LoadImage")
+        prompt = wan_flow()
+        prompt["6"] = {"class_type": "Wan22ImageToVideoLatent", "inputs": {
+            "vae": ["3", 0], "width": 1280, "height": 704, "length": 121, "batch_size": 3}}
+        self.assertEqual(self.profile(prompt)["latents"][0]["shape"][0], 1)
+        prompt["5"] = {"class_type": "LoadImage", "inputs": {"image": "a.png"}}
+        prompt["6"]["inputs"]["start_image"] = ["5", 0]
+        self.assertEqual(self.profile(prompt)["latents"][0]["shape"][0], 3)

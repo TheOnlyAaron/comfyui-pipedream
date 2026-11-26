@@ -480,8 +480,8 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
     w, h = graph.value(nid, "width"), graph.value(nid, "height")
     length = graph.value(nid, "length", graph.value(nid, "video_frames", graph.value(nid, "num_frames")))
     batch = graph.value(nid, "batch_size", 1)
-    if graph.cls(nid) == "Wan22ImageToVideoLatent":
-        batch = 1  # the node ignores batch_size (nodes_wan.py)
+    if graph.cls(nid) == "Wan22ImageToVideoLatent" and not any(n == "start_image" for n, _, _ in graph.links(nid)):
+        batch = 1  # without start_image the node ignores batch_size (nodes_wan.py)
     source = "widgets"
     if not (isinstance(w, (int, float)) and isinstance(h, (int, float))):
         pixels = _input_named(graph, nid, "IMAGE")
@@ -1309,8 +1309,8 @@ def _format_actual(actual: dict) -> list:
     if actual.get("job"):
         lines.append(f"  wedge job {actual['job']}")
     for m in actual.get("loaded_models", []):
-        lines.append(f"  loaded now: {m['name']} {fmt_bytes(m['size'])}, "
-                     f"{fmt_bytes(m['on_gpu'])} on the GPU")
+        where = f", {fmt_bytes(m['on_gpu'])} on the GPU" if actual.get("vram_total") else ""
+        lines.append(f"  loaded now: {m['name']} {fmt_bytes(m['size'])}{where}")
     source = actual.get("source")
     if source:
         lines.append(f"  input: {source}")
