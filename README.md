@@ -96,7 +96,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 
 ## Settings
 
-Studios can set defaults (templates, network roots, formats, token delimiters, OCIO config...) in `pipedream.toml` in the pack folder, or in a facility file named by the `PIPEDREAM_COMFYUI_CONFIG` environment variable, which wins. [`pipedream.example.toml`](pipedream.example.toml) lists every key. Details and deployment: [docs/settings.md](docs/settings.md).
+Studios can set defaults (templates, network roots, formats, token delimiters, OCIO config...) in `pipedream.toml` in the pack folder, or in a shared facility file, which wins, named by a `pipedream_facility.txt` pointer file in ComfyUI's user folder (or the `PIPEDREAM_COMFYUI_CONFIG` environment variable). [`pipedream.example.toml`](pipedream.example.toml) lists every key. Details and deployment: [docs/settings.md](docs/settings.md).
 
 ## Compatibility
 

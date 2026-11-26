@@ -11,6 +11,12 @@
   rather than reading the environment itself
 - `tools/` (the docs generator and the sound renderer) is left out of the
   registry package
+- The facility settings file can be found through a pointer file instead of
+  the `PIPEDREAM_COMFYUI_CONFIG` environment variable: `pipedream_facility.txt`
+  in ComfyUI's user folder (survives pack updates), else in the pack folder,
+  holding the facility TOML's path. The variable still works and wins when
+  set. The settings summary, token panel and sidecar `sources` say whether
+  the facility file came from the variable or a pointer (`"found"`)
 
 ### PD Output is now PD Save
 - Renamed to pair with PD Load, as ComfyUI's Load Image / Save Image do.

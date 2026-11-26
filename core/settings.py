@@ -5,7 +5,13 @@ Precedence, lowest to highest:
 
 1. built-in defaults (:data:`SCHEMA`)
 2. user file: ``pipedream.toml`` in the pack root (:data:`USER_PATH`)
-3. facility file: the path in the ``PIPEDREAM_COMFYUI_CONFIG`` environment variable
+3. facility file, found by the first of:
+
+   a. the ``PIPEDREAM_COMFYUI_CONFIG`` environment variable (:data:`ENV_VAR`)
+   b. a pointer file ``pipedream_facility.txt`` in ComfyUI's user folder
+   c. a pointer file ``pipedream_facility.txt`` in the pack root
+
+   A pointer file holds just the facility file's path (see :func:`read_pointer`).
 
 A key overrides only when it is present and valid; missing keys fall
 through.  Invalid values, unknown keys, unreadable files and TOML syntax
@@ -16,8 +22,8 @@ API::
 
     from ..core import settings
     settings.get("output.format")      # "png" unless overridden
-    settings.sources                    # [{"scope": "facility", "path": ...}, ...]
-    settings.summary()                  # "settings: facility //nas/pd.toml, user (none)"
+    settings.sources                    # [{"scope": "facility", "path": ..., "found": "pointer", ...}]
+    settings.summary()                  # "settings: facility //nas/pd.toml (from pointer ...), user (none)"
 
 The schema also generates ``pipedream.example.toml``::
 
@@ -32,6 +38,7 @@ import textwrap
 from dataclasses import dataclass
 from datetime import datetime
 
+from .comfy import user_directory
 from .common import PLAY_WHEN, SOUNDS
 from .media import (
     EXR_COLORSPACES,
@@ -53,7 +60,9 @@ except ImportError:
         _toml = None
 
 ENV_VAR = "PIPEDREAM_COMFYUI_CONFIG"
-USER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pipedream.toml")
+PACK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+USER_PATH = os.path.join(PACK_DIR, "pipedream.toml")
+POINTER_NAME = "pipedream_facility.txt"
 EXTRA_KEY = "tokens.extra"
 RESERVED_TOKENS = ("frame",)
 # Built-in templates written with {}, rewritten to the configured delimiters when not set.
@@ -292,19 +301,80 @@ def _apply(path: str, data: dict, values: dict, given: set) -> None:
                     given.add(key)
 
 
-def load(user_path: str | None = USER_PATH, facility_path: str | None = None) -> None:
+def pointer_paths() -> list[str]:
+    """
+    Where to look for a facility pointer file, in order.
+
+    ComfyUI's user folder comes first: it survives reinstalling or updating
+    the pack and sits at a fixed place in each ComfyUI install, so a
+    deployment script can copy one file there.  The pack root is a fallback
+    for a single machine; ComfyUI-Manager replaces it on reinstall.
+    """
+    user_dir = user_directory()
+    paths = [os.path.join(user_dir, POINTER_NAME)] if user_dir else []
+    return paths + [os.path.join(PACK_DIR, POINTER_NAME)]
+
+
+def read_pointer(path: str) -> str:
+    """
+    Return the facility file path written in pointer file *path*.
+
+    The first line that is not blank or a ``#`` comment is the path; quotes
+    around it are dropped and ``~`` is expanded.  A relative path is relative
+    to the pointer file's folder.  Returns ``""`` after a warning when the
+    file cannot be read or names no path.
+    """
+    try:
+        with open(path, encoding="utf-8-sig") as fh:
+            lines = fh.read().splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        _warn(f"{path}: cannot read pointer file ({getattr(exc, 'strerror', None) or exc}); "
+              "ignored.")
+        return ""
+    for line in lines:
+        line = line.strip().strip('"\'').strip()
+        if line and not line.startswith("#"):
+            return os.path.join(os.path.dirname(path), os.path.expanduser(line))
+    _warn(f"{path}: pointer file names no facility file; ignored.")
+    return ""
+
+
+def find_facility(pointers: list[str] | None = None) -> tuple[str, dict]:
+    """
+    Locate the facility file: ``$PIPEDREAM_COMFYUI_CONFIG``, else the first
+    pointer file in *pointers* (default :func:`pointer_paths`) that names one.
+
+    Returns ``(path, how)`` with *how* ``{"found": "env", "env": ENV_VAR}`` or
+    ``{"found": "pointer", "pointer": <pointer file>}``, or ``("", {})``.
+    """
+    path = os.environ.get(ENV_VAR, "").strip().strip('"')
+    if path:
+        return path, {"found": "env", "env": ENV_VAR}
+    for pointer in pointer_paths() if pointers is None else pointers:
+        if os.path.isfile(pointer):
+            path = read_pointer(pointer)
+            if path:
+                return path, {"found": "pointer", "pointer": pointer}
+    return "", {}
+
+
+def load(user_path: str | None = USER_PATH, facility_path: str | None = None,
+         pointers: list[str] | None = None) -> None:
     """
     (Re)load the settings: built-ins, then *user_path*, then *facility_path*.
 
-    *facility_path* defaults to ``$PIPEDREAM_COMFYUI_CONFIG``.  A missing user file
-    is silently skipped; a missing facility file warns.  Updates the
-    module-level values, :data:`sources` and :data:`warnings` in place.
+    *facility_path* defaults to the file :func:`find_facility` locates (the
+    environment variable, else a pointer file from *pointers*); pass ``""``
+    for none.  A missing user file is silently skipped; a missing facility
+    file warns.  Updates the module-level values, :data:`sources` and
+    :data:`warnings` in place.
     """
+    warnings.clear()
+    how = {}
     if facility_path is None:
-        facility_path = os.environ.get(ENV_VAR, "").strip().strip('"')
+        facility_path, how = find_facility(pointers)
     values = {k: (dict(s.default) if isinstance(s.default, dict) else s.default)
               for k, s in SCHEMA.items()}
-    warnings.clear()
     loaded, given = [], set()
     for scope, path in (("user", user_path), ("facility", facility_path)):
         if not path:
@@ -312,10 +382,13 @@ def load(user_path: str | None = USER_PATH, facility_path: str | None = None) ->
         path = os.path.expanduser(path)
         if scope == "user" and not os.path.exists(path):
             continue
+        if scope == "facility" and "pointer" in how and not os.path.exists(path):
+            _warn(f"{path}: facility file named by {how['pointer']} not found; ignored.")
+            continue
         data = _read(path)
         if data is not None:
             _apply(path, data, values, given)
-            loaded.append({"scope": scope, "path": path})
+            loaded.append({"scope": scope, "path": path, **(how if scope == "facility" else {})})
     if values["tokens.open"] == values["tokens.close"]:
         _warn(f"tokens.open and tokens.close are both {values['tokens.open']!r}; "
               "using the built-in '{' and '}'.")
@@ -337,10 +410,21 @@ def get(key: str):
     return dict(value) if isinstance(value, dict) else value
 
 
+def _describe(source: dict) -> str:
+    if source.get("found") == "env":
+        return f"{source['path']} (from ${source['env']})"
+    if source.get("found") == "pointer":
+        return f"{source['path']} (from pointer {source['pointer']})"
+    return source["path"]
+
+
 def summary() -> str:
-    """One line naming the loaded files, e.g. ``settings: facility /p/pd.toml, user (none)``."""
-    paths = {s["scope"]: s["path"] for s in sources}
-    parts = [f"{scope} {paths.get(scope, '(none)')}" for scope in ("facility", "user")]
+    """
+    One line naming the loaded files and how the facility file was found, e.g.
+    ``settings: facility /p/pd.toml (from pointer /c/user/pipedream_facility.txt), user (none)``.
+    """
+    found = {s["scope"]: _describe(s) for s in sources}
+    parts = [f"{scope} {found.get(scope, '(none)')}" for scope in ("facility", "user")]
     return "settings: " + ", ".join(parts)
 
 
@@ -357,8 +441,10 @@ def example_toml() -> str:
     lines = [
         "# Pipedream facility / user defaults.",
         "#",
-        "# Copy to pipedream.toml in the pack folder (user), or point the",
-        f"# {ENV_VAR} environment variable at a copy (facility; wins over user).",
+        "# Copy to pipedream.toml in the pack folder (user), or share one copy and",
+        f"# write its path in ComfyUI/user/{POINTER_NAME} (facility; wins",
+        f"# over user). The {ENV_VAR} environment variable still",
+        "# works and wins over the pointer file.",
         "# Every key is optional: uncomment and edit only what you want to change.",
         "# New nodes get these defaults; saved workflows keep their values.",
         "# Restart ComfyUI after editing.",
