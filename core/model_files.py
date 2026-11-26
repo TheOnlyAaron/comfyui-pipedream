@@ -57,7 +57,9 @@ FULL_PRECISION = ("F32", "F64")
 CHECKPOINT_PREFIXES = {
     "diffusion": ("model.diffusion_model.",),
     "vae": ("first_stage_model.", "vae."),
-    "text_encoder": ("cond_stage_model.", "conditioner.", "text_encoders."),
+    "text_encoder": ("cond_stage_model.", "conditioner.", "text_encoders.",
+                     "text_embedding_projection."),
+    "audio": ("audio_vae.", "vocoder."),
 }
 
 
@@ -276,14 +278,19 @@ def _torch_dtype(name, torch_mod):
 # Used when ComfyUI's detection is unavailable.  latent: channels,
 # spatial and temporal compression; memory_usage_factor as ComfyUI sets it.
 FALLBACK_MODELS = [
-    (r"wan2\.?2.*ti2v.*5b|wan2\.?2.*5b", "Wan 2.2 5B", 48, 3, 1.0),
-    (r"wan2\.?[12]", "Wan 2.x 14B", 16, 3, 0.9),
-    (r"ltx", "LTX-Video", 128, 3, 0.061),
+    # pattern, family, latent channels, latent dims, memory_usage_factor (as ComfyUI sets it)
+    (r"minimax.*h3|h3.*minimax", "MiniMax H3", 24, 3, 0.114),
+    (r"hunyuan.?video.?1\.?5|hunyuanvideo1\.?5|hunyuan.*1\.5", "HunyuanVideo 1.5", 32, 3, 4.0),
+    (r"wan2\.?2.*(ti2v|5b)", "Wan 2.2 5B", 48, 3, 1.38),
+    (r"wan2\.?[12].*1\.3b", "Wan 2.1 1.3B", 16, 3, 0.69),
+    (r"wan2\.?[12]", "Wan 2.x 14B", 16, 3, 2.30),
+    (r"ltx", "LTX-Video / LTX-2", 128, 3, 5.5),
     (r"hunyuan.*video|hunyuanvideo", "HunyuanVideo", 16, 3, 1.8),
-    (r"flux", "Flux.1", 16, 2, 2.8),
-    (r"qwen.*image", "Qwen-Image", 16, 2, 2.0),
+    (r"qwen.*image", "Qwen-Image", 16, 3, 1.8),
+    (r"chroma", "Chroma", 16, 2, 3.2),
+    (r"flux", "Flux.1", 16, 2, 3.1),
+    (r"sd3", "SD3", 16, 2, 1.6),
     (r"sdxl|xl", "SDXL", 4, 2, 0.8),
-    (r"sd3", "SD3", 16, 2, 1.2),
     (r"", "SD 1.5 (assumed)", 4, 2, 1.0),
 ]
 
@@ -319,6 +326,9 @@ def diffusion_info(mf: ModelFile, tensors: dict | None = None, weight_dtype: str
             latent_dims=int(getattr(latent, "latent_dimensions", 2)),
             memory_usage_factor=float(getattr(config, "memory_usage_factor", 2.0)),
         )
+        if type(config).__name__.startswith("MiniMaxH3"):
+            # ComfyUI's MiniMaxH3AV format reports max(video 24, audio 32); the video latent is 24.
+            info["latent_channels"] = 24
         patch = (getattr(config, "unet_config", None) or {}).get("patch_size")
         if isinstance(patch, (int, list, tuple)):
             info["patch_size"] = list(patch) if isinstance(patch, (list, tuple)) else patch
@@ -374,6 +384,19 @@ def _kl(shape, b):
     return 2178 * shape[2] * shape[3] * 64 * b
 
 
+def _minimax_decode(shape, b):
+    """
+    ComfyUI's MiniMax H3 ``estimate_decode_memory``: the decoder streams
+    17-frame clips, so at most one chunk (28 frames, +2) is resident.
+    Frames follow its 5k+2 latents <-> 17k+5 frames mapping.
+    """
+    frames = max(1, (shape[2] - 2) // 5 * 17 + 5)
+    height, width = shape[3] * 16, shape[4] * 16
+    fixed = 110_000_000 if frames <= 22 else 270_000_000
+    frames = min(frames, 30)
+    return (9.5 * frames * height * width + fixed) * b * 1.03
+
+
 VAE_FAMILIES = {
     # name: (channels, spatial, temporal, decode(shape, dtype bytes), working dtypes)
     "Wan 2.1": (16, 8, 4, lambda s, b: (2200 if s[2] <= 4 else 7000) * s[3] * s[4] * 64 * b,
@@ -393,6 +416,7 @@ VAE_FAMILIES = {
                           ("fp16", "bf16", "fp32")),
     "Hunyuan refiner": (32, 16, 4, lambda s, b: 2800 * s[-3] * s[-2] * s[-1] * 256 * b,
                         ("fp16", "bf16", "fp32")),
+    "MiniMax H3": (24, 16, 4, lambda s, b: _minimax_decode(s, b), ("fp16", "fp32")),
     "KL": (4, 8, 1, _kl, ("bf16", "fp32")),
     "Flux 2": (128, 16, 1, _kl, ("bf16", "fp32")),
 }
@@ -405,6 +429,11 @@ def vae_family(tensors: dict) -> tuple[str, int]:
     def shape(name):
         t = tensors.get(name)
         return t.shape if t else ()
+
+    if ("decoder.transformer_blocks.0.scale1" in keys or "decoder.blocks.0.scale1" in keys
+            or "encoder.down.5.block.0.nin_shortcut.weight" in keys
+            or ("blocks.0.scale1" in keys and "x_embedder.weight" in keys)):
+        return "MiniMax H3", 24
 
     if "decoder.middle.0.residual.0.gamma" in keys:
         if "decoder.upsamples.0.upsamples.0.residual.2.weight" in keys:

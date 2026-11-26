@@ -293,9 +293,22 @@ class Models:
             if name not in names or mf is None:
                 continue
             if name == "ckpt_name":
-                return mf, mf.subset(mfiles.CHECKPOINT_PREFIXES[role], strip=role == "vae"), filename
+                part = mf.subset(mfiles.CHECKPOINT_PREFIXES[role], strip=role in ("vae", "audio"))
+                if not part and mf.tensors:
+                    # No such section: ComfyUI loads a prefix-less file as the diffusion
+                    # model, and the checkpoint has no VAE / text encoder / audio part.
+                    return (mf, None, filename) if role == "diffusion" else (None, None, None)
+                return mf, part, filename
             return mf, None, filename
         return None, None, None
+
+    def audio(self, nid) -> dict | None:
+        """A checkpoint's bundled audio VAE and vocoder (LTX-2), as weights only."""
+        mf, tensors, filename = self._part(nid, "audio", ("ckpt_name",))
+        if mf is None or not tensors:
+            return None
+        return {"node": nid, "file": filename, "path": mf.path, "format": mf.format,
+                **mfiles.encoder_info(mf, tensors, self.env)}
 
     def diffusion(self, nid) -> dict | None:
         mf, tensors, filename = self._part(nid, "diffusion", ("unet_name", "ckpt_name"))
@@ -353,6 +366,11 @@ def sampling_bytes(latent_shape, model: dict, env: ComfyEnv) -> float:
     if env.attention_fast:
         return area * model.get("inference_bytes", 2) * 0.01 * factor * MIB
     return area * 0.15 * factor * MIB
+
+
+def _minimax(model, vae) -> bool:
+    family = str((model or {}).get("family", "")) + " " + str((vae or {}).get("family", ""))
+    return "MiniMax" in family
 
 
 def latent_scales(model: dict | None, vae: dict | None) -> tuple:
@@ -473,6 +491,18 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
     frames_out = 1
     if dims == 3:
         length = int(length) if isinstance(length, (int, float)) and length > 0 else 1
+        if _minimax(model, vae):
+            # MiniMax H3: frames snap up to 17k+5; latents are 5k+2 (nodes_minimax_h3.py).
+            frames_out = length if length <= 5 else length + (-(length - 5)) % 17
+            frames_out = max(5, frames_out)
+            lt = 2 if frames_out <= 5 else (frames_out - 5) // 17 * 5 + 2
+            shape.append(lt)
+            if frames_out != length:
+                warnings.append(f"{graph.label(nid)}: length {length} becomes {frames_out} frames "
+                                "(MiniMax H3 snaps frame counts up to 17k+5).")
+            shape += [h // spatial, w // spatial]
+            return _latent_result(nid, source, shape, spatial, temporal, batch, frames_out, w, h,
+                                  graph, warnings)
         lt = (length - 1) // temporal + 1
         shape.append(lt)
         frames_out = (lt - 1) * temporal + 1
@@ -481,14 +511,19 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
                             f"(frame counts are {temporal}k+1); use {frames_out} or "
                             f"{frames_out + temporal}.")
     shape += [h // spatial, w // spatial]
+    return _latent_result(nid, source, shape, spatial, temporal if dims == 3 else 1, batch,
+                          frames_out if dims == 3 else batch, w, h, graph, warnings)
+
+
+def _latent_result(nid, source, shape, spatial, temporal, batch, frames, w, h, graph, warnings):
+    """The latent entry of a report, warning when the size loses pixels."""
     out_w, out_h = shape[-1] * spatial, shape[-2] * spatial
     for side, asked, got in (("width", w, out_w), ("height", h, out_h)):
         if asked != got:
             warnings.append(f"{graph.label(nid)}: {side} {asked} decodes to {got}: ComfyUI drops "
                             f"the last {asked - got} px. Use {got + spatial} (crop after) or {got}.")
     return {"node": nid, "source": source, "shape": shape, "width": out_w, "height": out_h,
-            "frames": frames_out if dims == 3 else batch, "batch": batch, "spatial": spatial,
-            "temporal": temporal if dims == 3 else 1}
+            "frames": frames, "batch": batch, "spatial": spatial, "temporal": temporal}
 
 
 def _apply_latent_op(graph, nid, latent):
@@ -702,6 +737,10 @@ def build_profile(prompt: dict, node_id, env: ComfyEnv, budget: dict | None = No
                                             "weights": sum(f["loaded_bytes"] for f in files),
                                             "working": 0, "extra": 0})
 
+    for loader in diffusion_by_loader:
+        audio = models.audio(loader)
+        if audio:
+            report["models"].append(dict(audio, role="audio vae"))
     report["models"] = (
         [dict(m, role="diffusion") for m in diffusion_by_loader.values() if m]
         + [{k: v for k, v in dict(m, role="vae").items() if k != "_info"}
