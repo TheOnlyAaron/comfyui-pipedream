@@ -4,7 +4,7 @@ PD Custom Context node.
 Adds user-defined key/value pairs to a PROJECT_CONTEXT dict, enabling
 arbitrary tokens like {task}, {department}, {element}, etc.  The context
 also comes out as EXR metadata (one string attribute per token) for PD
-Output, so these pairs are also how metadata is set.
+Save, so these pairs are also how metadata is set.
 
 Every pair is an optional input so any subset validates.  The JS extension
 (``web/pd_custom_context.js``) starts with one empty pair and reveals the

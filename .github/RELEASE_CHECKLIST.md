@@ -31,6 +31,10 @@ can't be replaced, so everything below happens before the merge.
       new environment reads or network calls. `.comfyignore` still leaves out
       `tests/`, `.github/` and `tools/`.
 
+- [ ] No branch has the version's name (e.g. a `0.3.0` dev branch): the
+      release creates a tag of that name, and a branch and tag with the same
+      name make the ref ambiguous. Rename or delete the branch first.
+
 ## Merge
 
 - [ ] Merge the dev branch into `main` (PR, merge commit).
@@ -42,5 +46,8 @@ can't be replaced, so everything below happens before the merge.
 - [ ] The registry page shows the new version, and its security scan isn't
       flagged (registry.comfy.org, or ComfyUI's Manager / extension browser).
 - [ ] The GitHub release notes read correctly.
-- [ ] ComfyUI-Manager installs the new version on a clean ComfyUI.
+- [ ] ComfyUI-Manager installs the new version on a clean ComfyUI, and
+      updates an existing install without leaving removed files behind
+      (for 0.3.0: no `web/pd_output.js`, which would add a second Copy Path
+      button to PDOutput nodes).
 - [ ] Start the next dev branch from `main`.

@@ -133,7 +133,12 @@ def comfy_env() -> ComfyEnv:
 
 
 def make_budget(vram_gb, ram_gb) -> dict:
-    """The memory to budget against: the widgets when set, else this machine."""
+    """The memory to budget against: the widgets when set, else this machine.
+
+    A linked widget (a ``[node, slot]`` pair in an API prompt) counts as unset.
+    """
+    vram_gb = vram_gb if isinstance(vram_gb, (int, float)) else 0
+    ram_gb = ram_gb if isinstance(ram_gb, (int, float)) else 0
     machine = capture.machine()
     vram = float(vram_gb or 0) * GIB or machine["vram"]
     ram = float(ram_gb or 0) * GIB or machine["ram"]

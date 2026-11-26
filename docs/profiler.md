@@ -61,7 +61,7 @@ With wedges, a node runs every job when it is downstream of a wedge or on a row'
 
 ## Measured runs
 
-ComfyUI creates a `comfy_execution.progress.ProgressRegistry` for each prompt and calls its handlers' `start_handler` / `finish_handler` around every node. `core/capture.py` wraps the registry's constructor to register a read-only handler on each new registry. It records:
+ComfyUI creates a `comfy_execution.progress.ProgressRegistry` for each prompt and calls its handlers' `start_handler` / `finish_handler` around every node. `core/capture.py` wraps the registry's constructor to register a read-only handler on each new registry whose prompt has an enabled PD Profiler (other prompts are left alone). It records:
 
 - wall-clock seconds per node, or "cached";
 - the prompt's VRAM peak (`torch.cuda.max_memory_allocated`, reset when the registry is created at prompt start);

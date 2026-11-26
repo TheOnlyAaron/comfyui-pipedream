@@ -4,7 +4,7 @@ What PD Profiler measures while a prompt runs, and the machine it runs on.
 ComfyUI reports node starts and finishes to the progress handlers of its
 ``comfy_execution.progress`` registry, which it creates afresh for every
 prompt.  ``install()`` wraps the registry's constructor so each new
-registry also gets :class:`RunCapture`, a read-only handler that records:
+registry of a prompt with an enabled PD Profiler gets :class:`RunCapture`, a read-only handler that records:
 
 * per node: wall-clock seconds, or "cached" when ComfyUI reused the result;
 * the peak VRAM of the whole prompt (torch's allocator peak, reset when
@@ -40,14 +40,12 @@ def _torch():
     return torch if torch.cuda.is_available() else None
 
 
-def _wants_per_node(dynprompt) -> bool:
+def _profilers(dynprompt) -> list:
+    """Inputs of the enabled PD Profilers in the prompt."""
     prompt = getattr(dynprompt, "original_prompt", None) or {}
-    for node in prompt.values():
-        if isinstance(node, dict) and node.get("class_type") == PROFILER_CLASS:
-            inputs = node.get("inputs", {})
-            if inputs.get("enabled", True) is not False and inputs.get("vram_per_node") is True:
-                return True
-    return False
+    return [node.get("inputs", {}) for node in prompt.values()
+            if isinstance(node, dict) and node.get("class_type") == PROFILER_CLASS
+            and node.get("inputs", {}).get("enabled", True) is not False]
 
 
 def _dynamic_usage():
@@ -187,7 +185,10 @@ def install() -> bool:
     def __init__(self, prompt_id, dynprompt, *args, **kwargs):
         original(self, prompt_id, dynprompt, *args, **kwargs)
         try:
-            self.register_handler(RunCapture(prompt_id, _wants_per_node(dynprompt)))
+            profilers = _profilers(dynprompt)
+            if profilers:
+                per_node = any(p.get("vram_per_node") is True for p in profilers)
+                self.register_handler(RunCapture(prompt_id, per_node))
         except Exception as exc:
             print(f"[Pipedream] PD Profiler could not watch this run: {exc}", file=sys.stderr)
 

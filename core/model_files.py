@@ -127,7 +127,8 @@ def read_header(path: str) -> ModelFile:
                 fmt = "safetensors"
             else:
                 tensors, metadata, fmt = {}, {}, ext.lstrip(".") or "unknown"
-    except (OSError, ValueError, struct.error, UnicodeDecodeError) as exc:
+    except (OSError, ValueError, struct.error, UnicodeDecodeError, AttributeError, TypeError,
+            KeyError) as exc:
         raise HeaderError(f"cannot read the header of '{path}': {exc}") from exc
     result = ModelFile(path, fmt, stat.st_size, tensors, metadata)
     _cache[key] = result
@@ -170,8 +171,10 @@ def _gguf_reader(fh, version):
             if item_kind in scalars and item_kind not in (8, 9):
                 fmt = scalars[item_kind]
                 size = struct.calcsize(fmt)
-                raw = fh.read(size * n)
-                return list(struct.unpack("<" + fmt[1:] * n, raw)) if n <= 64 else n
+                if n > 64:
+                    fh.seek(size * n, 1)
+                    return n
+                return list(struct.unpack("<" + fmt[1:] * n, fh.read(size * n)))
             return [value(item_kind) for _ in range(n)]
         fmt = scalars.get(kind)
         if fmt is None:
@@ -405,7 +408,9 @@ def _fp8_bytes(config, info, tensors, weight_dtype, comfy_env) -> int:
         return 1
     if any(k.endswith(("scale_weight", "weight_scale", "scaled_fp8", ".comfy_quant")) for k in tensors):
         return 1
-    stored = torch_mod.float8_e5m2 if info["dtype"] == "F8_E5M2" else torch_mod.float8_e4m3fn
+    stored = getattr(torch_mod, "float8_e5m2" if info["dtype"] == "F8_E5M2" else "float8_e4m3fn", None)
+    if stored is None:
+        return 1
     try:
         dtype = mm.unet_dtype(model_params=info["params"],
                               supported_dtypes=list(config.supported_inference_dtypes) + [stored],

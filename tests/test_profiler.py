@@ -453,3 +453,25 @@ class OutputTests(ProfilerCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RobustnessTests(ProfilerCase):
+    def test_capture_only_with_enabled_profiler(self):
+        from core import capture
+
+        class Prompt:
+            def __init__(self, nodes):
+                self.original_prompt = nodes
+        self.assertEqual(capture._profilers(Prompt({"1": {"class_type": "KSampler", "inputs": {}}})), [])
+        off = {"1": {"class_type": "PDProfiler", "inputs": {"enabled": False}}}
+        self.assertEqual(capture._profilers(Prompt(off)), [])
+        on = {"1": {"class_type": "PDProfiler", "inputs": {"vram_per_node": True}}}
+        self.assertEqual(capture._profilers(Prompt(on)), [{"vram_per_node": True}])
+
+    def test_malformed_safetensors_header(self):
+        path = os.path.join(self.tmp.name, "bad.safetensors")
+        body = json.dumps({"a": "not a tensor"}).encode()
+        with open(path, "wb") as fh:
+            fh.write(struct.pack("<Q", len(body)) + body)
+        with self.assertRaises(mf.HeaderError):
+            mf.read_header(path)
