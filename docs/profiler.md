@@ -32,24 +32,24 @@ For using the node, see [PD Profiler](../web/docs/PDProfiler.md). This note cove
 | latent source | the end of a LATENT chain |
 | API node | the class's `API_NODE` flag, or a class from `comfy_api_nodes` |
 
-**Model files.** Only the header is read: the safetensors JSON table, or the GGUF tensor table (dims reversed to torch order; ComfyUI-GGUF's `comfy.gguf.orig_shape.*` keys restore reshaped tensors). Shape-only stand-ins go through ComfyUI's own `comfy.model_detection.unet_prefix_from_state_dict` and `model_config_from_unet`, which give the model's config class (`WAN21_T2V`, `WAN22_T2V`, ...), latent format, `memory_usage_factor` and inference data types. A few model types read real weight values during detection; for those, and outside ComfyUI, a file-name table is used and the report says "guessed from file name". Checkpoints are split by key prefix (`model.diffusion_model.`, `first_stage_model.`, `cond_stage_model.` / `conditioner.` / `text_encoders.`).
+**Model files.** Only the header is read: the safetensors JSON table, or the GGUF tensor table (dims reversed to torch order; ComfyUI-GGUF's `comfy.gguf.orig_shape.*` keys restore reshaped tensors). Shape-only stand-ins go through ComfyUI's own `comfy.model_detection.unet_prefix_from_state_dict` and `model_config_from_unet`, which give the model's config class (`WAN21_T2V`, `WAN22_T2V`, ...), latent format, `memory_usage_factor` and inference data types. Diffusers-layout files go through ComfyUI's diffusers detection, as its loader does. When detection fails, or outside ComfyUI, a file-name table (with ComfyUI's memory factors) is used and the report says "guessed from file name". Checkpoints are split by key prefix (`model.diffusion_model.`, `first_stage_model.`, `cond_stage_model.` / `conditioner.` / `text_encoders.`).
 
-**Bytes in memory.** GGUF and fp8 weights stay as stored. fp32 weights are cast to the inference type. A loader's `weight_dtype` fp8 setting stores every weight with two or more dimensions in 1 byte. Inference and VAE data types come from `comfy.model_management` (`unet_dtype`, `vae_dtype`, `text_encoder_dtype`).
+**Bytes in memory.** GGUF, scaled fp8, int8 and nvfp4 weights stay as stored. fp32 weights are cast to the inference type. A plain fp8 file is upcast to 16-bit on a GPU without fp8 compute when it fits (ComfyUI's `unet_dtype`). A loader's `weight_dtype` fp8 setting stores every weight with two or more dimensions in 1 byte. A VAE is cast as a whole to its working dtype. Inference and VAE data types come from `comfy.model_management` (`unet_dtype`, `vae_dtype`, `text_encoder_dtype`).
 
 **Latent shape.** `[batch, channels, (length - 1) // temporal + 1, height // spatial, width // spatial]`, with ComfyUI's floor division. Channels come from the model when ComfyUI identified it, else from the VAE. Spatial and temporal compression come from the VAE family. Widgets fed by a constant node or a PD Wedge's `text` / `int` / `float` are resolved; anything computed at run time is reported as "only known at run time". `LatentUpscale`, `LatentUpscaleBy` and `RepeatLatentBatch` along the chain are applied.
 
-**Sampling memory** is `BaseModel.memory_required` for a batch of two (what `comfy/sampler_helpers.estimate_memory` loads models against): `batch × prod(spatial dims) × dtype size × 0.01 × memory_usage_factor` MiB with xformers or flash attention, `× 0.15 × memory_usage_factor` MiB otherwise. ComfyUI marks this formula as needing tuning: expect it to read high.
+**Sampling memory** is `BaseModel.memory_required`, which `comfy/sampler_helpers.estimate_memory` computes for twice the batch (cond and uncond together) and for the batch alone: `batch × prod(spatial dims) × dtype size × 0.01 × memory_usage_factor` MiB with xformers or flash attention, `× 0.15 × memory_usage_factor` MiB otherwise. ComfyUI marks this formula as needing tuning. How it compares with published and measured peaks: [Profiler accuracy](profiler-accuracy.md).
 
 **VAE decode memory** is the family's `memory_used_decode` from `comfy/sd.py` (Wan 2.1, Wan 2.2, LTX-Video, LTX 2.4, HunyuanVideo, HunyuanVideo 1.5, CogVideoX, Hunyuan image VAEs, KL/SD/SDXL/Flux, Flux 2, Qwen-Image 2.1) for one sample, or for one tile with tiled decode (`tile_size`, `temporal_size`).
 
-**Stages and verdicts.** Text encode is the weights. Each sampler is weights + sampling + latent. Each decode is weights + decode memory. The budget available is the VRAM budget minus `comfy.model_management.minimum_inference_memory()` (0.8 GB plus `--reserve-vram`):
+**Stages and verdicts.** Text encode is the weights. Each sampler is weights + sampling + latent. Each decode is weights + decode memory. ComfyUI frees only what the next load needs, so the peak is the largest stage. The verdicts follow ComfyUI's `load_models_gpu`: a model's weights get the VRAM budget minus the larger of `minimum_inference_memory()` (0.8 GiB plus the OS margin, which `--reserve-vram` replaces) and the batch-1 sampling estimate plus the margin.
 
-- fits;
-- offloads N (weights + working memory over what's available, so ComfyUI loads part of the model);
-- over budget (working memory alone is over: ComfyUI offloads every weight and may still run out);
-- falls back to tiled decode (ComfyUI retries a decode that doesn't fit as tiled).
+- **fits:** weights and the batch-2 estimate fit. When only the batch-1 estimate fits, cond and uncond run one at a time, and the stage says so (cfg 1 always uses the batch-1 estimate).
+- **offloads N** / **streams N** (Dynamic VRAM): N of the weights stay in RAM and are cast or paged in as needed. Slower, not a failure.
+- **over budget:** the batch-1 estimate alone, with no weights at all, is over the card; likely out of memory.
+- **falls back to tiled decode:** the decode memory itself doesn't fit. VAE weights are offloaded first, except LTX 2.4's.
 
-**RAM** is all model weights in the branch plus the decoded frames (`width × height × 3 × 4` bytes per frame, float32).
+**RAM** is all model weights in the branch (the memory-mapped files at stored size under Dynamic VRAM) plus the decoded frames (`width × height × 3 × 4` bytes per frame, float32; 4 channels for RGBA VAEs).
 
 **No GPU.** On a machine without one, the GPU formulas and 16-bit data types are used, since the numbers are only useful for a machine that has a GPU. Set `vram_gb` to budget against a card.
 
@@ -128,6 +128,8 @@ report = post("/pipedream/profiler/evaluate", {"prompt": prompt, "node_id": "pro
 Queued through `/prompt` (scripts, Deadline), the profiler runs like any output node: with `export_sidecar` on, each render leaves a `.profile.json` beside its output, a per-shot record of time and memory.
 
 ## Limits
+
+The full accuracy review, with sources: [Profiler accuracy](profiler-accuracy.md).
 
 - Memory figures are ComfyUI's own estimates, not measurements; compare them with a measured run's peak on your hardware.
 - Text encoder activations, LoRA patch memory and custom samplers that manage their own memory (WanVideoWrapper, for example) aren't modelled. A sampler built on other socket types isn't recognised as a stage.
