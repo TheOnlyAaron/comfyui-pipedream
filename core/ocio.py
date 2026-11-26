@@ -88,7 +88,8 @@ def available() -> bool:
 def _source(config: str, config_path: str = "") -> str:
     """Resolve a config choice to the file path or ``ocio://`` URI to load."""
     if config == CONFIG_ENV:
-        env = os.environ.get("OCIO", "").strip()
+        # OpenColorIO owns the $OCIO variable; ask it rather than reading it here.
+        env = (ocio().GetEnvVariable("OCIO") or "").strip()
         return env or BUILTIN_URIS[CONFIG_STUDIO]
     if config in BUILTIN_URIS:
         return BUILTIN_URIS[config]

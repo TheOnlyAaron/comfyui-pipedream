@@ -23,7 +23,7 @@ Plays a sound in the browser when its point in the graph runs, or when the whole
 - `enabled` turns the node off.
 
 ### Sounds
-- `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` are synthesized in the browser. `custom URL` plays a file from `custom_url` (shown only for that choice).
+- `chime`, `happy`, `sad`, `ding`, `beeps`, `alert` are short WAV files shipped with the pack (`web/sounds/`), played by the browser. `custom URL` plays a file from `custom_url` (shown only for that choice).
 - Each node has its own `sound` and `volume`.
 - Sounds play in the browser tab that queued the run.
 

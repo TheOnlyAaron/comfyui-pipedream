@@ -14,127 +14,47 @@ import { chain, findWidget, showWidgets } from "./pd_common.js";
 /*  prompt that contains one arms it, and it plays when               */
 /*  queue_remaining reaches 0 after work has run (error tone if a     */
 /*  prompt failed, nothing if interrupted).                           */
+/*                                                                    */
+/*  Built-in sounds are WAV files in web/sounds/, played with an       */
+/*  <audio> element (rendered from tools/sound_synths.js by            */
+/*  tools/render_sounds.mjs).                                          */
 /* ------------------------------------------------------------------ */
 
 const NODE_CLASS = "PDSound";
 const UI_KEY = "pd_sound";
 const CACHED_STAGGER = 0.35;
 
-let audioCtx = null;
+const BUILT_IN = ["chime", "happy", "sad", "ding", "beeps", "alert", "error"];
+const cache = new Map();
 
-/** Return a shared AudioContext, creating and resuming it as needed. */
-function getAudioContext() {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return null;
-    if (!audioCtx) audioCtx = new Ctx();
-    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-    return audioCtx;
+/** The <audio> element template for a built-in sound (web/sounds/<name>.wav). */
+function builtIn(name) {
+    const key = BUILT_IN.includes(name) ? name : "chime";
+    if (!cache.has(key)) {
+        const audio = new Audio(new URL(`sounds/${key}.wav`, import.meta.url).href);
+        audio.preload = "auto";
+        cache.set(key, audio);
+    }
+    return cache.get(key);
+}
+
+/** Load every built-in sound so the first cue plays without a fetch delay. */
+function preload() {
+    BUILT_IN.forEach(builtIn);
 }
 
 /**
- * Schedule one enveloped note.
- *
- * `partials` is a list of [frequency ratio, amplitude, duration scale];
- * `glide` bends the pitch by that factor over the note.  With `hold`, the
- * note sustains at full level and releases over its last `hold` seconds
- * (a buzzer) instead of decaying from the attack (a bell).
+ * Play a built-in sound after `delay` seconds; unknown names use the chime.
+ * Each play uses its own copy, so cues can overlap.
  */
-function voice(ctx, out, {
-    freq, start, dur, type = "sine", gain = 1, attack = 0.006, glide = 0,
-    partials = [[1, 1, 1]], hold = 0,
-}) {
-    for (const [ratio, amp, scale = 1] of partials) {
-        const end = start + dur * scale;
-        const osc = ctx.createOscillator();
-        const env = ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq * ratio, start);
-        if (glide) osc.frequency.exponentialRampToValueAtTime(freq * ratio * glide, end);
-        env.gain.setValueAtTime(0.0001, start);
-        const level = Math.max(0.0002, gain * amp);
-        env.gain.exponentialRampToValueAtTime(level, start + attack);
-        if (hold) env.gain.setValueAtTime(level, Math.max(start + attack, end - hold));
-        env.gain.exponentialRampToValueAtTime(0.0001, end);
-        osc.connect(env).connect(out);
-        osc.start(start);
-        osc.stop(end + 0.05);
-    }
-}
-
-/** Return a lowpass filter feeding `out`, to soften square/saw waves. */
-function lowpass(ctx, out, hz) {
-    const f = ctx.createBiquadFilter();
-    f.type = "lowpass";
-    f.frequency.value = hz;
-    f.connect(out);
-    return f;
-}
-
-const BELL = [[1, 1, 1], [2, 0.25, 0.6], [3.01, 0.08, 0.4]];
-const BRIGHT_BELL = [[1, 1, 1], [2.76, 0.3, 0.5], [5.4, 0.1, 0.3]];
-
-/** Built-in sounds, each `(ctx, out, t0)`; all finish within ~1.4s. */
-export const SYNTHS = {
-    /** Two-note bell, E5 then B5: the classic render-complete chime. */
-    chime(ctx, out, t) {
-        voice(ctx, out, { freq: 659.25, start: t, dur: 1.2, gain: 0.8, partials: BELL });
-        voice(ctx, out, { freq: 987.77, start: t + 0.16, dur: 1.2, gain: 0.8, partials: BELL });
-    },
-    /** Bright rising C major arpeggio. */
-    happy(ctx, out, t) {
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-            voice(ctx, out, {
-                freq, start: t + i * 0.09, dur: i === 3 ? 0.7 : 0.32,
-                type: "triangle", gain: 0.7, partials: [[1, 1], [2, 0.15, 0.5]],
-            });
-        });
-    },
-    /** Falling C minor line whose last note sags flat. */
-    sad(ctx, out, t) {
-        const f = lowpass(ctx, out, 1800);
-        voice(ctx, f, { freq: 392.0, start: t, dur: 0.4, type: "triangle", gain: 0.8 });
-        voice(ctx, f, { freq: 311.13, start: t + 0.3, dur: 0.45, type: "triangle", gain: 0.8 });
-        voice(ctx, f, {
-            freq: 261.63, start: t + 0.6, dur: 0.75, type: "triangle", gain: 0.8,
-            glide: 0.94, attack: 0.02,
-        });
-    },
-    /** Single bright bell strike. */
-    ding(ctx, out, t) {
-        voice(ctx, out, { freq: 880, start: t, dur: 1.3, gain: 0.8, partials: BRIGHT_BELL });
-    },
-    /** Three short, even beeps. */
-    beeps(ctx, out, t) {
-        const f = lowpass(ctx, out, 2500);
-        for (let i = 0; i < 3; i++) {
-            voice(ctx, f, { freq: 1000, start: t + i * 0.15, dur: 0.09, type: "square", gain: 0.35, attack: 0.004 });
-        }
-    },
-    /** Buzzy two-tone alternation, high-low twice. */
-    alert(ctx, out, t) {
-        const f = lowpass(ctx, out, 2000);
-        [880, 659.25, 880, 659.25].forEach((freq, i) => {
-            voice(ctx, f, { freq, start: t + i * 0.16, dur: 0.14, type: "sawtooth", gain: 0.35, attack: 0.005 });
-        });
-    },
-    /** Game-show buzzer used for errors: a sustained, rasping low blat. */
-    error(ctx, out, t) {
-        const f = lowpass(ctx, out, 2400);
-        const buzz = { start: t, dur: 0.65, gain: 0.32, attack: 0.008, hold: 0.06 };
-        voice(ctx, f, { ...buzz, freq: 110, type: "sawtooth" });
-        voice(ctx, f, { ...buzz, freq: 116.5, type: "sawtooth" });
-        voice(ctx, f, { ...buzz, freq: 55, type: "square", gain: 0.22 });
-    },
-};
-
-/** Synthesize a built-in sound after `delay` seconds; unknown names use the chime. */
-function playSynth(name, volume, delay = 0) {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const master = ctx.createGain();
-    master.gain.value = Math.max(0, Math.min(1, volume)) * 0.5;
-    master.connect(ctx.destination);
-    (SYNTHS[name] || SYNTHS.chime)(ctx, master, ctx.currentTime + 0.02 + delay);
+function playBuiltIn(name, volume, delay = 0) {
+    const play = () => {
+        const audio = builtIn(name).cloneNode();
+        audio.volume = Math.max(0, Math.min(1, volume));
+        audio.play().catch((err) => console.warn("[Pipedream] Could not play sound:", err));
+    };
+    if (delay > 0) setTimeout(play, delay * 1000);
+    else play();
 }
 
 /**
@@ -150,7 +70,7 @@ function resolveSoundUrl(url) {
 export function playSound(settings, isError = false, delay = 0) {
     const raw = Number(settings.volume ?? 0.6);
     const volume = Number.isFinite(raw) ? raw : 0.6;
-    if (isError) return playSynth("error", volume, delay);
+    if (isError) return playBuiltIn("error", volume, delay);
 
     const url = String(settings.custom_url || "").trim();
     if (settings.sound === "custom URL" && url) {
@@ -158,15 +78,15 @@ export function playSound(settings, isError = false, delay = 0) {
             const audio = new Audio(resolveSoundUrl(url));
             audio.volume = Math.max(0, Math.min(1, volume));
             audio.play().catch((err) => {
-                console.warn("[Pipedream] Could not play custom sound, using synth chime:", err);
-                playSynth("chime", volume);
+                console.warn("[Pipedream] Could not play custom sound, using the chime:", err);
+                playBuiltIn("chime", volume);
             });
         };
         if (delay > 0) setTimeout(play, delay * 1000);
         else play();
         return;
     }
-    playSynth(settings.sound, volume, delay);
+    playBuiltIn(settings.sound, volume, delay);
 }
 
 /**
@@ -220,7 +140,7 @@ app.registerExtension({
             prompts.delete(String(promptId ?? ""));
         };
 
-        const unlock = () => getAudioContext();
+        const unlock = () => preload();
         window.addEventListener("pointerdown", unlock, { once: true, capture: true });
         window.addEventListener("keydown", unlock, { once: true, capture: true });
 
@@ -235,7 +155,7 @@ app.registerExtension({
                 pending = info;
                 const finisher = [...info.nodes.values()].find((e) => e.mode === "finished");
                 if (finisher) armed = finisher.settings;
-                if (info.nodes.size) getAudioContext();
+                if (info.nodes.size) preload();
             } catch (err) {
                 console.warn("[Pipedream] Sound arm failed:", err);
             }

@@ -2,6 +2,16 @@
 
 ## 0.3.0 (unreleased)
 
+### Comfy Registry scan
+- PD Sound's built-in sounds are WAV files in `web/sounds/`, played with
+  an `<audio>` element, instead of being synthesized with Web Audio when
+  they play. They sound the same: they were rendered from the same synths
+  (`tools/sound_synths.js`, re-render with `node tools/render_sounds.mjs`)
+- The `$OCIO environment` config choice asks OpenColorIO for `$OCIO`
+  rather than reading the environment itself
+- `tools/` (the docs generator and the sound renderer) is left out of the
+  registry package
+
 ### PD Output is now PD Save
 - Renamed to pair with PD Load, as ComfyUI's Load Image / Save Image do.
   The node class is now `PDSave`; sidecars record `"node": "PDSave"`
