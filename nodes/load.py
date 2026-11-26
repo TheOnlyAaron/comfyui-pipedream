@@ -155,7 +155,7 @@ class PDLoad:
         "The video file, or the loaded frames as an in-memory VIDEO.",
         "The video's audio (video files only).",
         "The EXR header metadata of each loaded frame (empty for other formats), for PD "
-        "Output's exr_metadata or PD EXR Metadata Get. Structural attributes (channels, "
+        "Save's exr_metadata or PD EXR Metadata Get. Structural attributes (channels, "
         "windows, compression) are left out.",
     )
 
@@ -205,7 +205,7 @@ class PDLoad:
                     "default": "auto",
                     "tooltip": "When file is one numbered image (shot.1001.exr): "
                                "auto: load the whole sequence it belongs to, unless PD "
-                               "Output's sidecar, different frame sizes or unpadded numbers "
+                               "Save's sidecar, different frame sizes or unpadded numbers "
                                "(wedge outputs) say it is a single image; the panel says "
                                "why. single file: just this file. sequence: every file "
                                "named like it. A frame mark (####) always loads a sequence.",

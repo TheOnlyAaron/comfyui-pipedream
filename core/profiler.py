@@ -9,7 +9,7 @@ turns it into the text shown on the node and ``build_chart`` into the
 data for the chart (``web/pd_profiler_chart.js``).  See docs/profiler.md.
 
 The walk follows links; at a PD Wedge only the selected row's input is
-followed (the queued row, else the solo row, else row 1), so one wedge
+followed (the solo row if set, else the queued row, else row 1), so one wedge
 job is profiled.  Socket types come from the node classes, which is how
 the walk finds, without a list of node names:
 

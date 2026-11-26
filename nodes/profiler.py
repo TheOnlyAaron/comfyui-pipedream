@@ -187,7 +187,7 @@ class PDProfiler:
                     "lazy": True,
                     "tooltip": "Anything. Everything this input reads from is profiled; "
                                "other flows in the graph are ignored. Put it after PD "
-                               "Output or branch it off a flow.",
+                               "Save or branch it off a flow.",
                 }),
             },
             "optional": {

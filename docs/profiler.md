@@ -19,7 +19,7 @@ For using the node, see [PD Profiler](../web/docs/PDProfiler.md). This note cove
 
 ## Where each number comes from
 
-**The walk.** The frontend sends the API prompt (`app.graphToPrompt()`), the graph as it will run: subgraphs flattened, bypassed nodes passed through, muted nodes left out. From the profiler's `source`, every link is followed upstream. At a PD Wedge only the selected row's `input_N` is followed: the queued row (`pd_wedge_row`), else `solo`, else row 1. A wildcard output (PD Wedge, PD Switch) takes the type of the input it passes on.
+**The walk.** The frontend sends the API prompt (`app.graphToPrompt()`), the graph as it will run: subgraphs flattened, bypassed nodes passed through, muted nodes left out. From the profiler's `source`, every link is followed upstream. At a PD Wedge only the selected row's `input_N` is followed: `solo` if set, else the queued row (`pd_wedge_row`), else row 1. A wildcard output (PD Wedge, PD Switch) takes the type of the input it passes on.
 
 **Roles come from socket types, not node names**, so custom node packs are covered when they use ComfyUI's types:
 
@@ -42,12 +42,12 @@ For using the node, see [PD Profiler](../web/docs/PDProfiler.md). This note cove
 
 **VAE decode memory** is the family's `memory_used_decode` from `comfy/sd.py` (Wan 2.1, Wan 2.2, LTX-Video, LTX 2.4, HunyuanVideo, HunyuanVideo 1.5, CogVideoX, Hunyuan image VAEs, KL/SD/SDXL/Flux, Flux 2, Qwen-Image 2.1) for one sample, or for one tile with tiled decode (`tile_size`, `temporal_size`).
 
-**Stages and verdicts.** Text encode is the weights. Each sampler is weights + sampling + latent. Each decode is weights + decode memory. ComfyUI frees only what the next load needs, so the peak is the largest stage. The verdicts follow ComfyUI's `load_models_gpu`: a model's weights get the VRAM budget minus the larger of `minimum_inference_memory()` (0.8 GiB plus the OS margin, which `--reserve-vram` replaces) and the batch-1 sampling estimate plus the margin.
+**Stages and verdicts.** Text encode is the weights. Each sampler is weights + sampling + latent. Each decode is weights + decode memory. ComfyUI frees only what the next load needs, so the peak is the largest stage. The verdicts follow ComfyUI's `load_models_gpu`: a model's weights get the VRAM budget minus the larger of `minimum_inference_memory()` (0.8 GiB plus the OS margin, which `--reserve-vram` replaces) and the batch-1 sampling estimate plus the margin, less the latents.
 
 - **fits:** weights and the batch-2 estimate fit. When only the batch-1 estimate fits, cond and uncond run one at a time, and the stage says so (cfg 1 always uses the batch-1 estimate).
 - **offloads N** / **streams N** (Dynamic VRAM): N of the weights stay in RAM and are cast or paged in as needed. Slower, not a failure.
-- **over budget:** the batch-1 estimate alone, with no weights at all, is over the card; likely out of memory.
-- **falls back to tiled decode:** the decode memory itself doesn't fit. VAE weights are offloaded first, except LTX 2.4's.
+- **over budget:** the batch-1 estimate, the latents and the OS margin alone, with no weights at all, are over the card; likely out of memory.
+- **falls back to tiled decode:** the decode memory itself doesn't fit. VAE weights are offloaded first, except LTX 2.4's. A tiled decode node whose one tile still doesn't fit reads **tiled**.
 
 **RAM** is all model weights in the branch (the memory-mapped files at stored size under Dynamic VRAM) plus the decoded frames (`width × height × 3 × 4` bytes per frame, float32; 4 channels for RGBA VAEs).
 
