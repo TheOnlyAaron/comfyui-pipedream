@@ -38,6 +38,13 @@ def temp_directory() -> str | None:
     return None
 
 
+def user_directory() -> str | None:
+    """ComfyUI's user folder (``ComfyUI/user`` or ``--user-directory``), or None outside ComfyUI."""
+    if folder_paths is not None and hasattr(folder_paths, "get_user_directory"):
+        return folder_paths.get_user_directory()
+    return None
+
+
 def server_routes():
     """
     ``(routes, web)``: the ComfyUI server's aiohttp route table and the

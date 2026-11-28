@@ -11,6 +11,17 @@
   rather than reading the environment itself
 - `tools/` (the docs generator and the sound renderer) is left out of the
   registry package
+- **Breaking:** the facility settings file is named by a pointer file,
+  `pipedream_facility.txt` in ComfyUI's user folder (survives pack updates),
+  else in the pack folder, holding the facility TOML's path. The
+  `PIPEDREAM_COMFYUI_CONFIG` environment variable is no longer read: deploy
+  a pointer file before updating (see docs/settings.md, "Moving from the
+  environment variable"). The settings summary, token panel and sidecar
+  `sources` name the pointer file used
+- Pipedream reads no environment variables and starts no programs
+- [Pipeline integration](docs/pipeline.md): connecting ftrack, Flow,
+  Deadline or a publish tool through settings, sidecars, EXR metadata and
+  ComfyUI's own API, without a script-running node
 
 ### PD Profiler accuracy
 - The node no longer runs on every queue: like any ComfyUI node it re-runs

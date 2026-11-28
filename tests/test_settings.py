@@ -67,11 +67,12 @@ class TestLoading(SettingsCase):
         self.assertEqual([s["scope"] for s in settings.sources], ["user", "facility"])
         self.assertEqual(settings.summary(), f"settings: facility {facility}, user {user}")
 
-    def test_facility_from_env(self):
+    def test_environment_variable_is_not_read(self):
         facility = self.write("fac.toml", "[exr]\ncompression = 'none'\n")
-        with mock.patch.dict(os.environ, {settings.ENV_VAR: facility}):
-            self.load(None, None)
-        self.assertEqual(settings.get("exr.compression"), "none")
+        with mock.patch.dict(os.environ, {"PIPEDREAM_COMFYUI_CONFIG": facility}):
+            settings.load(user_path=None, pointers=[])
+        self.assertEqual(settings.get("exr.compression"), settings.SCHEMA["exr.compression"].default)
+        self.assertEqual(settings.sources, [])
 
     def test_int_accepted_for_float(self):
         self.load(None, self.write("f.toml", "[output]\nfps = 25\n"))
@@ -128,8 +129,11 @@ class TestLoading(SettingsCase):
 
     def test_missing_facility_file_warns_once(self):
         missing = os.path.join(self.tmp.name, "nope.toml")
-        with mock.patch.dict(os.environ, {settings.ENV_VAR: missing}):
-            printed = self.load(None, None)
+        pointer = self.write(settings.POINTER_NAME, missing)
+        err = StringIO()
+        with redirect_stderr(err):
+            settings.load(user_path=None, pointers=[pointer])
+        printed = err.getvalue()
         self.assertEqual(printed.count("Settings warning"), 1)
         self.assertIn(missing, printed)
         self.assertEqual(settings.sources, [])
@@ -155,6 +159,87 @@ class TestLoading(SettingsCase):
         self.assertEqual(tokens.delimiters(), ("{", "}"))
         self.assertWarned("tokens.open", "must not be empty")
         self.assertWarned("tokens.close", "letters")
+
+
+class TestFacilityPointer(SettingsCase):
+    def setUp(self):
+        super().setUp()
+        self.facility = self.write("fac.toml", '[output]\nformat = "exr"\n')
+
+    def load_pointers(self, *pointers, user=None):
+        err = StringIO()
+        with redirect_stderr(err):
+            settings.load(user_path=user, pointers=list(pointers))
+        return err.getvalue()
+
+    def test_pointer_names_facility(self):
+        pointer = self.write(settings.POINTER_NAME, f"# facility settings\n\n{self.facility}\n")
+        self.assertEqual(self.load_pointers(pointer), "")
+        self.assertEqual(settings.get("output.format"), "exr")
+        self.assertEqual(settings.sources, [{"scope": "facility", "path": self.facility,
+                                             "found": "pointer", "pointer": pointer}])
+        self.assertEqual(settings.summary(), f"settings: facility {self.facility} "
+                                             f"(from pointer {pointer}), user (none)")
+
+    def test_pointer_quotes_bom_and_relative_path(self):
+        pointer = os.path.join(self.tmp.name, settings.POINTER_NAME)
+        with open(pointer, "w", encoding="utf-8-sig") as fh:
+            fh.write('  "fac.toml"  \r\n')
+        self.assertEqual(settings.read_pointer(pointer), os.path.join(self.tmp.name, "fac.toml"))
+        self.load_pointers(pointer)
+        self.assertEqual(settings.get("output.format"), "exr")
+
+    def test_pointer_used_even_with_old_variable_set(self):
+        other = self.write("env.toml", '[output]\nformat = "mov"\n')
+        pointer = self.write(settings.POINTER_NAME, self.facility)
+        with mock.patch.dict(os.environ, {"PIPEDREAM_COMFYUI_CONFIG": other}):
+            self.load_pointers(pointer)
+        self.assertEqual(settings.get("output.format"), "exr")
+        self.assertEqual(settings.sources[0]["found"], "pointer")
+
+    def test_pointer_wins_over_user(self):
+        user = self.write("user.toml", '[output]\nformat = "jpg"\ncrf = 20\n')
+        pointer = self.write(settings.POINTER_NAME, self.facility)
+        self.load_pointers(pointer, user=user)
+        self.assertEqual(settings.get("output.format"), "exr")
+        self.assertEqual(settings.get("output.crf"), 20)
+
+    def test_first_usable_pointer_wins(self):
+        os.mkdir(os.path.join(self.tmp.name, "a"))
+        empty = self.write(os.path.join("a", settings.POINTER_NAME), "# nothing yet\n")
+        missing = os.path.join(self.tmp.name, "b", settings.POINTER_NAME)
+        good = self.write(settings.POINTER_NAME, self.facility)
+        self.load_pointers(missing, empty, good)
+        self.assertWarned(empty, "names no facility file")
+        self.assertEqual(settings.sources[0]["pointer"], good)
+
+    def test_pointer_to_missing_file_warns(self):
+        gone = os.path.join(self.tmp.name, "gone.toml")
+        pointer = self.write(settings.POINTER_NAME, gone)
+        printed = self.load_pointers(pointer)
+        self.assertEqual(printed.count("Settings warning"), 1)
+        self.assertWarned(gone, pointer, "not found")
+        self.assertEqual(settings.sources, [])
+
+    def test_no_pointer_no_facility(self):
+        self.assertEqual(self.load_pointers(os.path.join(self.tmp.name, "none.txt")), "")
+        self.assertEqual(settings.sources, [])
+
+    def test_explicit_empty_facility_skips_pointers(self):
+        pointer = self.write(settings.POINTER_NAME, self.facility)
+        err = StringIO()
+        with redirect_stderr(err):
+            settings.load(user_path=None, facility_path="", pointers=[pointer])
+        self.assertEqual(settings.sources, [])
+
+    def test_pointer_paths_order(self):
+        with mock.patch.object(settings, "user_directory", return_value="/comfy/user"):
+            self.assertEqual(settings.pointer_paths(),
+                             [os.path.join("/comfy/user", settings.POINTER_NAME),
+                              os.path.join(settings.PACK_DIR, settings.POINTER_NAME)])
+        with mock.patch.object(settings, "user_directory", return_value=None):
+            self.assertEqual(settings.pointer_paths(),
+                             [os.path.join(settings.PACK_DIR, settings.POINTER_NAME)])
 
 
 class TestTokens(SettingsCase):

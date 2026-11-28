@@ -1,7 +1,8 @@
 # Pipedream facility / user defaults.
 #
-# Copy to pipedream.toml in the pack folder (user), or point the
-# PIPEDREAM_COMFYUI_CONFIG environment variable at a copy (facility; wins over user).
+# Copy to pipedream.toml in the pack folder (user), or share one copy and
+# write its path in ComfyUI/user/pipedream_facility.txt (facility; wins
+# over user).
 # Every key is optional: uncomment and edit only what you want to change.
 # New nodes get these defaults; saved workflows keep their values.
 # Restart ComfyUI after editing.
