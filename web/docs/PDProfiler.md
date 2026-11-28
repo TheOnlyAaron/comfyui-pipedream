@@ -62,7 +62,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - `enabled` makes the node run with the graph. It adds each upstream node's time (or "cached"), the run's VRAM peak, the models ComfyUI holds and the input received.
 - `vram_per_node` also measures each node's VRAM peak. It resets torch's peak counter as each node starts, so it is off by default (see its tooltip).
 - With `enabled` off the node does nothing on runs; **profile** still works.
-- The node runs on every queue.
+- The node runs again only when something it reads changes: its own widgets or anything upstream (a new seed, a new wedge job). Re-queuing an unchanged graph reuses the last profile, as ComfyUI does for any node.
 
 ### Sidecar
 - With `export_sidecar` on, the profile is written as JSON after each run.
@@ -72,7 +72,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 ### EXR metadata output
 - The `exr_metadata` output stamps the run as `pipedream/profiler/...` attributes for PD Save: budget, the peak estimate and its stage, each stage, the latent, model file paths, measured time and VRAM peak. See [EXR metadata](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/exr-metadata.md).
 - Branch the profiler off before PD Save to use it. A profiler after PD Save, feeding back into it, would be a loop.
-- The profile changes every run, so a PD Save fed by it writes on every queue.
+- PD Save fed by it writes again only when the profiler re-ran, i.e. when something upstream changed.
 - With `enabled` off the output is empty.
 
 ### Limits

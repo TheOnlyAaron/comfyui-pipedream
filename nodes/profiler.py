@@ -238,10 +238,6 @@ class PDProfiler:
     def VALIDATE_INPUTS(cls, input_types):
         return True
 
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        return float("nan")
-
     def check_lazy_status(self, source=None, enabled=True, **kwargs):
         return ["source"] if enabled and source is None else []
 

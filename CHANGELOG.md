@@ -13,6 +13,10 @@
   registry package
 
 ### PD Profiler accuracy
+- The node no longer runs on every queue: like any ComfyUI node it re-runs
+  when its widgets or anything upstream change. A PD Save fed by its
+  `exr_metadata` no longer writes (or reports "nothing written") on every
+  queue of an unchanged graph
 - Verdicts follow ComfyUI's `load_models_gpu`: weights get the budget left
   after the batch-1 sampling estimate and the OS margin. A stage that only
   fits with cond and uncond run one at a time says so; cfg 1 uses the

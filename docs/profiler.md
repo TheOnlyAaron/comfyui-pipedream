@@ -69,7 +69,7 @@ ComfyUI creates a `comfy_execution.progress.ProgressRegistry` for each prompt an
 
 Nothing ComfyUI does or sends changes. On a ComfyUI without the registry, runs carry no measurements and the report says so. The last 8 runs are kept.
 
-The profiler is an output node with `IS_CHANGED` returning NaN, so it runs every queue. Its `source` input is lazy: with `enabled` off the input isn't requested, so a branch that only feeds the profiler doesn't run.
+The profiler is an output node cached like any other: ComfyUI re-runs it when its widgets or anything upstream changes, and otherwise reuses the last result (report, sidecar and EXR metadata), so a PD Save it feeds doesn't write again on an unchanged queue. Its `source` input is lazy: with `enabled` off the input isn't requested, so a branch that only feeds the profiler doesn't run.
 
 ## Sidecar
 
