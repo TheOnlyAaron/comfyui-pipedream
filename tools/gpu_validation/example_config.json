@@ -1,0 +1,78 @@
+{
+  "comfy": {
+    "dir": "C:/ComfyUI",
+    "python": "C:/ComfyUI/.venv/Scripts/python.exe",
+    "port": 8199,
+    "args": []
+  },
+  "gpu_index": 0,
+  "results_dir": "",
+  "timeout": 3600,
+  "modes": ["dynamic", "estimate"],
+  "emulate_gb": [8, 12, 16, 24],
+  "emulate_modes": ["dynamic", "estimate"],
+  "vram_cap": true,
+  "emulate_cases": ["sdxl-1024", "flux1-1024", "wan21-1.3b-480p", "wan22-5b-704p", "hv15-480p", "wan21-14b-480p"],
+
+  "models": {
+    "sdxl_ckpt": "sd_xl_base_1.0.safetensors",
+    "flux1_unet": "flux1-dev.safetensors",
+    "clip_l": "clip_l.safetensors",
+    "t5xxl": "t5xxl_fp16.safetensors",
+    "flux1_vae": "ae.safetensors",
+    "umt5": "umt5_xxl_fp16.safetensors",
+    "wan21_vae": "wan_2.1_vae.safetensors",
+    "wan22_vae": "wan2.2_vae.safetensors",
+    "wan13_t2v": "wan2.1_t2v_1.3B_fp16.safetensors",
+    "wan14_t2v": "wan2.1_t2v_14B_bf16.safetensors",
+    "wan14_t2v_fp8": "wan2.1_t2v_14B_fp8_e4m3fn.safetensors",
+    "wan22_5b": "wan2.2_ti2v_5B_fp16.safetensors",
+    "wan22_a14b_high": "wan2.2_t2v_high_noise_14B_fp16.safetensors",
+    "wan22_a14b_low": "wan2.2_t2v_low_noise_14B_fp16.safetensors",
+    "hunyuan_unet": "hunyuan_video_t2v_720p_bf16.safetensors",
+    "llava_llama3": "llava_llama3_fp16.safetensors",
+    "hunyuan_vae": "hunyuan_video_vae_bf16.safetensors",
+    "hunyuan15_unet": "hunyuanvideo1.5_720p_t2v_fp16.safetensors",
+    "qwen25vl": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "byt5": "byt5_small_glyphxl_fp16.safetensors",
+    "hunyuan15_vae": "hunyuanvideo15_vae_fp16.safetensors"
+  },
+
+  "cases": [
+    {"name": "sdxl-1024", "builder": "sdxl", "width": 1024, "height": 1024, "steps": 4},
+    {"name": "sdxl-2048", "builder": "sdxl", "width": 2048, "height": 2048, "steps": 4},
+    {"name": "sdxl-4096-tiled", "builder": "sdxl", "width": 4096, "height": 4096, "steps": 2, "tiled": true},
+
+    {"name": "flux1-1024", "builder": "flux1", "width": 1024, "height": 1024, "steps": 4},
+    {"name": "flux1-1536", "builder": "flux1", "width": 1536, "height": 1536, "steps": 4},
+    {"name": "flux1-2048", "builder": "flux1", "width": 2048, "height": 2048, "steps": 4},
+
+    {"name": "wan21-1.3b-480p", "builder": "wan21_t2v", "unet_role": "wan13_t2v", "width": 832, "height": 480, "length": 81, "steps": 4},
+    {"name": "wan21-1.3b-720p", "builder": "wan21_t2v", "unet_role": "wan13_t2v", "width": 1280, "height": 720, "length": 81, "steps": 4},
+    {"name": "wan21-vae-1f", "builder": "wan21_t2v", "unet_role": "wan13_t2v", "width": 832, "height": 480, "length": 1, "steps": 2},
+    {"name": "wan21-vae-2f", "builder": "wan21_t2v", "unet_role": "wan13_t2v", "width": 832, "height": 480, "length": 5, "steps": 2},
+    {"name": "wan21-vae-5f", "builder": "wan21_t2v", "unet_role": "wan13_t2v", "width": 832, "height": 480, "length": 17, "steps": 2},
+    {"name": "wan21-14b-480p", "builder": "wan21_t2v", "unet_role": "wan14_t2v", "width": 832, "height": 480, "length": 81, "steps": 4},
+    {"name": "wan21-14b-720p", "builder": "wan21_t2v", "unet_role": "wan14_t2v", "width": 1280, "height": 720, "length": 81, "steps": 4},
+    {"name": "wan21-14b-fp8-480p", "builder": "wan21_t2v", "unet_role": "wan14_t2v_fp8", "width": 832, "height": 480, "length": 81, "steps": 4},
+
+    {"name": "wan22-5b-480p", "builder": "wan22_ti2v_5b", "width": 832, "height": 480, "length": 121, "steps": 4},
+    {"name": "wan22-5b-704p", "builder": "wan22_ti2v_5b", "width": 1280, "height": 704, "length": 121, "steps": 4},
+
+    {"name": "wan22-a14b-480p", "builder": "wan22_a14b", "width": 832, "height": 480, "length": 81, "steps": 4},
+    {"name": "wan22-a14b-720p", "builder": "wan22_a14b", "width": 1280, "height": 720, "length": 81, "steps": 4},
+
+    {"name": "hv-544p", "builder": "hunyuan_video", "width": 960, "height": 544, "length": 129, "steps": 4},
+    {"name": "hv-720p", "builder": "hunyuan_video", "width": 1280, "height": 720, "length": 129, "steps": 4},
+
+    {"name": "hv15-480p", "builder": "hunyuan15", "width": 848, "height": 480, "length": 121, "steps": 4},
+    {"name": "hv15-720p", "builder": "hunyuan15", "width": 1280, "height": 720, "length": 121, "steps": 4},
+
+    {"name": "ltx2-512p", "template": "workflows/ltx2_t2v_api.json", "width": 768, "height": 512, "length": 97, "steps": 8},
+    {"name": "ltx2-720p", "template": "workflows/ltx2_t2v_api.json", "width": 1280, "height": 704, "length": 121, "steps": 8},
+    {"name": "ltx2-1080p", "template": "workflows/ltx2_t2v_api.json", "width": 1920, "height": 1088, "length": 121, "steps": 8},
+
+    {"name": "h3-480p", "template": "workflows/minimax_h3_t2v_api.json", "width": 832, "height": 480, "length": 124, "steps": 8},
+    {"name": "h3-768p", "template": "workflows/minimax_h3_t2v_api.json", "width": 1344, "height": 768, "length": 124, "steps": 8}
+  ]
+}

@@ -9,7 +9,7 @@ Checked in November 2026 against ComfyUI [`62879ac`](https://github.com/comfyano
 3. **Published requirements.** The profiler was run on the real files at the settings model authors published VRAM figures for.
 4. **Measurement.** Real ComfyUI graphs on a CPU machine, plus one field run on an 8 GB RTX 4060.
 
-No GPU large enough for the big video models was available. Measured GPU peaks for those are planned (see [GPU validation](#gpu-validation-planned)).
+No GPU large enough for the big video models was available. Measured GPU peaks for those are planned (see [GPU validation](#gpu-validation)).
 
 ## Summary
 
@@ -238,18 +238,57 @@ What it shows:
 - **Timing:** async nodes and nodes that expand into subgraphs include the time of whatever ran in between or inside them. With `vram_per_node`, their per-node peaks overlap.
 - **fp8 files on GPUs without fp8 compute** (Ampere and older, A6000 included): whether ComfyUI upcasts them depends on the card's VRAM. The profiler asks ComfyUI on the machine it runs on, so an emulated `vram_gb` doesn't change that decision, and on a machine without a GPU the stored 1 byte is used.
 - **`--fp8_e4m3fn-unet`** and similar flags aren't read; the loader's `weight_dtype` is.
+- **`vram_gb` on a machine started with `--reserve-vram`:** the profiler takes this machine's reserve as the OS margin, also for the emulated card. A large reserve then counts against the emulated card too.
 - **ComfyUI moves fast.** This review is against `62879ac`. Re-check after large memory-management changes.
 
-## GPU validation (planned)
+## GPU validation
 
-Measured GPU peaks for the large models are planned for an NVIDIA RTX A6000 (48 GB), in a separate session. The plan:
+Measured GPU peaks for the large models are the next step, on an NVIDIA RTX A6000 (48 GB). The harness is in [`tools/gpu_validation`](../tools/gpu_validation/README.md). **No results yet:** this page's estimates are still unmeasured on a large GPU.
 
-1. **Runs:** the configurations in [Compared with published requirements](#compared-with-published-requirements) that fit 48 GB, plus an image model (SDXL, Flux.1) and the newer video models (Wan 2.2 A14B, HunyuanVideo 1.5, LTX-2.x, MiniMax H3), at two or three sizes each.
-2. **Record for each:** the profiler's evaluation before the run; then from the run, PD Profiler's measured PyTorch peak (allocated and reserved), device memory in use, Dynamic VRAM usage, per-node peaks (`vram_per_node` on) and node times; and `nvidia-smi`'s peak.
-   Also: VAE decode peaks for Wan 2.1 at one, two and five latent frames (the CPU couldn't check the formula over time), and a plain fp8 diffusion model (the A6000 has no fp8 compute, so ComfyUI should upcast it to 16-bit).
-3. **Run each twice:** once with Dynamic VRAM (the default) and once with `--disable-dynamic-vram`. The second exercises the estimate path the verdicts model.
-4. **Emulate smaller cards:** `vram_gb` 8, 12, 16 and 24, checked against `--reserve-vram` runs that limit what ComfyUI sees.
-5. **Collect** the profile sidecars (`export_sidecar`), which hold the estimate and the measurement side by side. Add a results table to this page, and adjust the profiler where the estimate and the measurement disagree consistently.
+### Method
+
+`run_validation.py` drives a real ComfyUI through its HTTP API. For each server configuration it starts ComfyUI, then for each graph:
+
+1. Frees models (`POST /free`) and takes the idle `nvidia-smi` reading.
+2. Presses **profile** (the node's evaluate route) at the full card and at each emulated `vram_gb`, keeping the reports.
+3. Queues the graph with PD Profiler attached, `export_sidecar` and `vram_per_node` on. ComfyUI's websocket gives each node's start time.
+4. Records the outcome, ComfyUI's `loaded partially` / `loaded completely` and tiled-fallback log lines, and `nvidia-smi`'s peak over the run and over each node (sampled every 200 ms, idle reading subtracted).
+
+Each graph runs in these server configurations:
+
+| Session | ComfyUI flags | What it checks |
+|---|---|---|
+| Dynamic VRAM | defaults | ComfyUI's default loader on NVIDIA |
+| Estimate path | `--disable-dynamic-vram` | The loading rule the verdicts model; per-node PyTorch peaks include the resident weights |
+| Emulated 8, 12, 16 and 24 GB, both modes | `--reserve-vram` set to card − X + ComfyUI's OS margin; PyTorch's allocator capped at X GB | Whether fits / offloads / over budget match out of memory, partial loads, tiled fallback and slowdown |
+
+The verdicts for emulated runs come from evaluations made in the full-card session of the same mode. A profiler running inside a `--reserve-vram` server counts that reserve as its OS margin, on top of the emulated `vram_gb` (see [Limitations](#limitations)). `--reserve-vram` only changes ComfyUI's loading plan: without the allocator cap, a 48 GB card would complete stages an 8 GB card can't.
+
+Graphs (sizes in the [example config](../tools/gpu_validation/example_config.json)):
+- the [published configurations](#compared-with-published-requirements);
+- SDXL at 1024, 2048 and 4096 (tiled), and Flux.1 dev at 1024, 1536 and 2048;
+- Wan 2.1 1.3B and 14B at 480p and 720p, a plain fp8 14B (the A6000 has no fp8 compute, so ComfyUI should upcast it), and the Wan 2.1 VAE at one, two and five latent frames;
+- Wan 2.2 TI2V 5B and A14B (two experts) at 480p and 720p;
+- HunyuanVideo at 544p and 720p, HunyuanVideo 1.5 at 480p and 720p;
+- LTX-2.x at 512p, 720p and 1080p, and MiniMax H3 at 480p and 768p. These two use exported ComfyUI template workflows, resized by the harness.
+
+Each sampler runs 2 to 8 steps: the peak is reached in the first step.
+
+`tabulate.py` turns a results folder into four tables:
+- per stage, estimate beside measurement;
+- per run, the estimated peak beside PyTorch's allocated and reserved peaks, device memory in use, Dynamic VRAM usage and `nvidia-smi`;
+- the verdicts on emulated cards;
+- the calibration summary: the median ratio of measured to estimated working memory per family and stage.
+
+Measured working memory is the per-node PyTorch peak minus the weights, taken from estimate-path runs where the stage fits. Under Dynamic VRAM, paged weights sit outside PyTorch's allocator, so the PyTorch peak is compared on its own.
+
+### Results
+
+Not yet run. When they are, this section will give the hardware (GPU, driver, ComfyUI commit, PyTorch, OS) and the four tables.
+
+### Calibration
+
+None yet. Where the measurements disagree with an estimate consistently, the profiler may get calibrated figures, shown and labelled as **calibrated**, never in place of ComfyUI's own estimate. ComfyUI's estimate decides how it loads models, so the verdicts stay on it.
 
 ## Sources
 
