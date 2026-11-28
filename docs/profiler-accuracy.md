@@ -282,6 +282,8 @@ Each sampler runs 2 to 8 steps: the peak is reached in the first step.
 
 Measured working memory is the per-node PyTorch peak minus the weights, taken from estimate-path runs where the stage fits. Under Dynamic VRAM, paged weights sit outside PyTorch's allocator, so the PyTorch peak is compared on its own.
 
+The harness was tested end to end on a CPU-only ComfyUI ([`5f0d863a`](https://github.com/comfyanonymous/ComfyUI/tree/5f0d863a), 27 November 2026), using a random-weight SD 1.5 checkpoint, both server modes, an emulated 8 GB session and an exported workflow. That checks the plumbing only: memory on a CPU says nothing about a GPU.
+
 ### Results
 
 Not yet run. When they are, this section will give the hardware (GPU, driver, ComfyUI commit, PyTorch, OS) and the four tables.

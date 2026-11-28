@@ -153,7 +153,8 @@ class PlanTests(unittest.TestCase):
         self.assertTrue(plan[0][4])
 
     def test_windows_and_outcome(self):
-        events = {"starts": [("1", 10.0), ("2", 11.0), ("1", 13.0)], "t_end": 15.0}
+        events = {"starts": [(graphs.PROFILER_ID, 9.0), ("1", 10.0), ("2", 11.0), ("1", 13.0),
+                             (graphs.PROFILER_ID, 14.0)], "t_end": 15.0}
         self.assertEqual(rv.node_windows(events), {"1": (10.0, 15.0), "2": (11.0, 13.0)})
         self.assertEqual(rv.outcome({}), "ok")
         self.assertEqual(rv.outcome({"error": {"type": "OutOfMemoryError", "message": ""}}), "oom")

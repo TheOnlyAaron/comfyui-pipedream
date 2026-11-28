@@ -44,6 +44,7 @@ import asyncio
 import json
 import os
 import platform
+import re
 import shutil
 import statistics
 import subprocess
@@ -67,6 +68,7 @@ except ImportError:
 GIB = 1024 ** 3
 CAP_LINK = "pd_vram_cap"
 OOM_MARKERS = ("outofmemory", "out of memory", "allocation on device")
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
 LOG_MARKERS = ("loaded partially", "loaded completely", "Unloaded partially",
                "retrying with tiled", "Requested to load", "out of memory")
 
@@ -195,7 +197,7 @@ class Server:
         with open(self.log_path, "rb") as fh:
             fh.seek(offset)
             text = fh.read().decode("utf-8", "replace")
-        return [line.strip() for line in text.splitlines()
+        return [ANSI.sub("", line).strip() for line in text.splitlines()
                 if any(m.lower() in line.lower() for m in LOG_MARKERS)]
 
     def stop(self):
@@ -279,8 +281,12 @@ async def queue_and_follow(session, url, prompt, timeout) -> dict:
 
 
 def node_windows(events) -> dict:
-    """node id -> (start, end) from consecutive websocket start times."""
-    starts = events.get("starts", [])
+    """
+    node id -> (start, end) from consecutive websocket start times.  PD
+    Profiler is left out: its lazy input makes it start first and resume
+    last, so its window would be the whole run.
+    """
+    starts = [s for s in events.get("starts", []) if s[0] != graphs.PROFILER_ID]
     out = {}
     for i, (nid, t0) in enumerate(starts):
         t1 = starts[i + 1][1] if i + 1 < len(starts) else events.get("t_end", t0)
