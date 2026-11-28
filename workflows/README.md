@@ -1,6 +1,6 @@
 # Pipedream workflows
 
-Drag a `workflow.json` onto the ComfyUI canvas. 01–06 run as is, using ComfyUI's `input/example.png`, and write into `output/pipedream_demo/`. 05 needs `opencolorio`; 07–08 need a checkpoint (and images for 08).
+Drag a `workflow.json` onto the ComfyUI canvas. 01–06 run as is, using ComfyUI's `input/example.png`; 05 needs `opencolorio`, and 07–08 need a checkpoint (and images for 08). Each workflow that writes files puts them in `output/pipedream_demo/<workflow folder>/` (02, 03, 05–08; 01 and 04 write nothing), and overwrites them when run again.
 
 | # | Workflow | Shows |
 |---|----------|-------|

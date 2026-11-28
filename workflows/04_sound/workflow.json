@@ -24,9 +24,6 @@
       "widgets_values": [
         "Sound cues.\n\n1. The PD Sound in the middle is inline: the images pass through it unchanged, and it plays ding when the flow reaches it (play_when: node reached).\n2. The PD Sound on its own plays chime once the whole queue has finished (a node with nothing connected always waits for the queue).\n3. If a run fails, the inline node plays the error buzzer instead (error_tone). Try it: type a file name that doesn't exist into PD Load and run.\n\nPress test sound to hear a node's sound. Sounds play in the browser tab that queued the run."
       ],
-      "widgets_values_named": {
-        "text": "Sound cues.\n\n1. The PD Sound in the middle is inline: the images pass through it unchanged, and it plays ding when the flow reaches it (play_when: node reached).\n2. The PD Sound on its own plays chime once the whole queue has finished (a node with nothing connected always waits for the queue).\n3. If a run fails, the inline node plays the error buzzer instead (error_tone). Try it: type a file name that doesn't exist into PD Load and run.\n\nPress test sound to hear a node's sound. Sounds play in the browser tab that queued the run."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -236,20 +233,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "example.png",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 3,
@@ -358,16 +342,7 @@
         "",
         false,
         true
-      ],
-      "widgets_values_named": {
-        "enabled": true,
-        "play_when": "node reached",
-        "sound": "ding",
-        "volume": 0.6,
-        "custom_url": "",
-        "when_cached": false,
-        "error_tone": true
-      }
+      ]
     },
     {
       "id": 4,
@@ -508,16 +483,7 @@
         "",
         false,
         true
-      ],
-      "widgets_values_named": {
-        "enabled": true,
-        "play_when": "queue finished",
-        "sound": "chime",
-        "volume": 0.6,
-        "custom_url": "",
-        "when_cached": false,
-        "error_tone": true
-      }
+      ]
     }
   ],
   "links": [

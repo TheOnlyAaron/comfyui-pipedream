@@ -24,9 +24,6 @@
       "widgets_values": [
         "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Save."
       ],
-      "widgets_values_named": {
-        "text": "Product matrix: 3 products x 2 looks = 6 outputs from one graph.\n\n- product (images) and product_prompt (text) share group \"product\": they step together.\n- look multiplies them. product is first in the chain, so it varies fastest.\n- The base image, negative prompt, model and seed stay the same in every job.\n\nLoad your base and product images, pick a checkpoint, then press \"preview wedge\" on PD Save."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -88,10 +85,7 @@
       },
       "widgets_values": [
         null
-      ],
-      "widgets_values_named": {
-        "ckpt_name": null
-      }
+      ]
     },
     {
       "id": 3,
@@ -150,11 +144,7 @@
       "widgets_values": [
         "example.png",
         "image"
-      ],
-      "widgets_values_named": {
-        "image": "example.png",
-        "upload": "image"
-      }
+      ]
     },
     {
       "id": 4,
@@ -453,28 +443,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "token": "product",
-        "group": "product",
-        "solo": 0,
-        "value_1": "cola",
-        "value_2": "lime",
-        "value_3": "berry",
-        "value_4": "",
-        "value_5": "",
-        "value_6": "",
-        "value_7": "",
-        "value_8": "",
-        "value_9": "",
-        "value_10": "",
-        "value_11": "",
-        "value_12": "",
-        "value_13": "",
-        "value_14": "",
-        "value_15": "",
-        "value_16": ""
-      }
+      ]
     },
     {
       "id": 5,
@@ -533,11 +502,7 @@
       "widgets_values": [
         "example.png",
         "image"
-      ],
-      "widgets_values_named": {
-        "image": "example.png",
-        "upload": "image"
-      }
+      ]
     },
     {
       "id": 6,
@@ -596,11 +561,7 @@
       "widgets_values": [
         "example.png",
         "image"
-      ],
-      "widgets_values_named": {
-        "image": "example.png",
-        "upload": "image"
-      }
+      ]
     },
     {
       "id": 7,
@@ -659,11 +620,7 @@
       "widgets_values": [
         "example.png",
         "image"
-      ],
-      "widgets_values_named": {
-        "image": "example.png",
-        "upload": "image"
-      }
+      ]
     },
     {
       "id": 8,
@@ -962,28 +919,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "token": "product_prompt",
-        "group": "product",
-        "solo": 0,
-        "value_1": "a red cola can",
-        "value_2": "a green lime soda bottle",
-        "value_3": "a purple berry juice carton",
-        "value_4": "",
-        "value_5": "",
-        "value_6": "",
-        "value_7": "",
-        "value_8": "",
-        "value_9": "",
-        "value_10": "",
-        "value_11": "",
-        "value_12": "",
-        "value_13": "",
-        "value_14": "",
-        "value_15": "",
-        "value_16": ""
-      }
+      ]
     },
     {
       "id": 9,
@@ -1276,28 +1212,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "token": "look",
-        "group": "",
-        "solo": 0,
-        "value_1": "on a picnic table in summer sunlight",
-        "value_2": "on a bar counter at night, moody lighting",
-        "value_3": "",
-        "value_4": "",
-        "value_5": "",
-        "value_6": "",
-        "value_7": "",
-        "value_8": "",
-        "value_9": "",
-        "value_10": "",
-        "value_11": "",
-        "value_12": "",
-        "value_13": "",
-        "value_14": "",
-        "value_15": "",
-        "value_16": ""
-      }
+      ]
     },
     {
       "id": 10,
@@ -1360,12 +1275,7 @@
         "",
         "",
         ", "
-      ],
-      "widgets_values_named": {
-        "string_a": "",
-        "string_b": "",
-        "delimiter": ", "
-      }
+      ]
     },
     {
       "id": 11,
@@ -1446,12 +1356,7 @@
         256,
         256,
         false
-      ],
-      "widgets_values_named": {
-        "x": 256,
-        "y": 256,
-        "resize_source": false
-      }
+      ]
     },
     {
       "id": 12,
@@ -1542,10 +1447,7 @@
       },
       "widgets_values": [
         ""
-      ],
-      "widgets_values_named": {
-        "text": ""
-      }
+      ]
     },
     {
       "id": 14,
@@ -1594,10 +1496,7 @@
       },
       "widgets_values": [
         "blurry, distorted label, text, watermark"
-      ],
-      "widgets_values_named": {
-        "text": "blurry, distorted label, text, watermark"
-      }
+      ]
     },
     {
       "id": 15,
@@ -1714,16 +1613,7 @@
         "euler",
         "simple",
         0.55
-      ],
-      "widgets_values_named": {
-        "seed": 1234,
-        "control_after_generate": "fixed",
-        "steps": 20,
-        "cfg": 8,
-        "sampler_name": "euler",
-        "scheduler": "simple",
-        "denoise": 0.55
-      }
+      ]
     },
     {
       "id": 16,
@@ -1994,7 +1884,7 @@
       "widgets_values": [
         "relative",
         "",
-        "wedges/06_products/{product}/{product}_{look_idx}",
+        "pipedream_demo/08_product_matrix/{product}/{product}_{look_idx}",
         "png",
         1001,
         4,
@@ -2002,29 +1892,12 @@
         18,
         "auto",
         true,
-        false,
+        true,
         true,
         "half",
         "zip",
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "wedges/06_products/{product}/{product}_{look_idx}",
-        "format": "png",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": false,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "as is"
-      }
+      ]
     }
   ],
   "links": [

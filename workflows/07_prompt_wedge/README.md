@@ -4,7 +4,7 @@ One PD Wedge with three rows. Each row pairs a prompt (a String (Multiline) node
 
 Run queues 3 jobs. The prompt is built once per click, so the seed (fixed at 1234 here, but randomize works too) is the same in every job; only the prompt changes. The checkpoint, negative prompt and latent are computed once and cached.
 
-PD Save template: `wedges/05_prompt/{look}_{date}`, giving `studio_20261122.png`, `kitchen_...`, `night_...`.
+PD Save template: `pipedream_demo/07_prompt_wedge/{look}_{date}`, giving `studio_20261122.png`, `kitchen_...`, `night_...`.
 
 Try:
 - **preview wedge** on PD Save lists the three paths without running anything.

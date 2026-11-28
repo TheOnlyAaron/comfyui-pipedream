@@ -24,9 +24,6 @@
       "widgets_values": [
         "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Save, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Save to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
       ],
-      "widgets_values_named": {
-        "text": "Wedge basics: one graph, one job per row. No model needed.\n\n1. PD Wedge has three rows for the token {size}: 256, 512 and 1024. Its int output feeds Upscale Image's width and height, so each job renders a different size.\n2. Its wedge output goes to PD Save, where {size} names the file: example_256.png, example_512.png, example_1024.png.\n3. Press preview wedge on PD Save to list the paths, then Run: 3 jobs are queued.\n\nTry solo = 2 to render only 512, or chain a second PD Wedge into the first one's wedge input for every combination (see 08). Load one result back with PD Load: its sidecar tells sequence_mode auto it is a single image."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -236,20 +233,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "example.png",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 3,
@@ -531,28 +515,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "token": "size",
-        "group": "",
-        "solo": 0,
-        "value_1": "256",
-        "value_2": "512",
-        "value_3": "1024",
-        "value_4": "",
-        "value_5": "",
-        "value_6": "",
-        "value_7": "",
-        "value_8": "",
-        "value_9": "",
-        "value_10": "",
-        "value_11": "",
-        "value_12": "",
-        "value_13": "",
-        "value_14": "",
-        "value_15": "",
-        "value_16": ""
-      }
+      ]
     },
     {
       "id": 4,
@@ -863,7 +826,7 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/wedge/example_{size}",
+        "pipedream_demo/06_wedge_basics/example_{size}",
         "png",
         1001,
         4,
@@ -876,24 +839,7 @@
         "half",
         "zip",
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "pipedream_demo/wedge/example_{size}",
-        "format": "png",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": true,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 6,

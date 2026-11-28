@@ -24,9 +24,6 @@
       "widgets_values": [
         "Video frames, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Save writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip."
       ],
-      "widgets_values_named": {
-        "text": "Video utilities, all in memory until something writes.\n\n1. 48 frames become a VIDEO (PD Images To Video, 24 fps) and PD Save writes an mp4.\n2. PD Video Get Frame seeks to one frame (here the last); PD Video To Images decodes a range (frames 12-35, every 2nd); PD Image From Batch picks one image (-1 = last).\n3. PD Switch chooses which single frame to preview (select 0 or 1).\n4. PD Load reads the written mp4 back and previews it as a playable clip.\n5. PD Sound chimes when the queue finishes."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -237,20 +234,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "example.png",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 3,
@@ -298,10 +282,7 @@
       },
       "widgets_values": [
         48
-      ],
-      "widgets_values_named": {
-        "amount": 48
-      }
+      ]
     },
     {
       "id": 4,
@@ -364,10 +345,7 @@
       },
       "widgets_values": [
         24
-      ],
-      "widgets_values_named": {
-        "fps": 24
-      }
+      ]
     },
     {
       "id": 5,
@@ -596,7 +574,7 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/clip_review",
+        "pipedream_demo/03_video_frames/clip_review",
         "mp4",
         1001,
         4,
@@ -609,24 +587,7 @@
         "half",
         "zip",
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "pipedream_demo/clip_review",
-        "format": "mp4",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": true,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 6,
@@ -833,20 +794,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 8,
@@ -928,11 +876,7 @@
       "widgets_values": [
         "last",
         0
-      ],
-      "widgets_values_named": {
-        "mode": "last",
-        "index": 0
-      }
+      ]
     },
     {
       "id": 9,
@@ -1027,12 +971,7 @@
         12,
         12,
         2
-      ],
-      "widgets_values_named": {
-        "start_frame": 12,
-        "frame_limit": 12,
-        "step": 2
-      }
+      ]
     },
     {
       "id": 10,
@@ -1115,11 +1054,7 @@
       "widgets_values": [
         "index",
         -1
-      ],
-      "widgets_values_named": {
-        "mode": "index",
-        "index": -1
-      }
+      ]
     },
     {
       "id": 11,
@@ -1197,11 +1132,7 @@
       "widgets_values": [
         "manual",
         0
-      ],
-      "widgets_values_named": {
-        "mode": "manual",
-        "select": 0
-      }
+      ]
     },
     {
       "id": 12,

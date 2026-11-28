@@ -24,9 +24,6 @@
       "widgets_values": [
         "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Save writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Save's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Save, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
       ],
-      "widgets_values_named": {
-        "text": "Load and save, then read back.\n\n1. PD Load reads example.png from ComfyUI's input folder. For your own file, drop it on the node's drop zone, or paste its full path (Explorer: shift+right click > Copy as path) into file. Copy Path copies its full path.\n2. Repeat Image Batch makes 5 frames; PD Save writes them as an EXR sequence (sRGB to linear) with a sidecar .json. Copy Path copies the first frame's path.\n3. The second PD Load takes PD Save's path (the first frame). sequence_mode auto loads all 5 frames because the sidecar says they are a sequence; its panel says so. linear to sRGB undoes the conversion, and its context output carries the sidecar's tokens.\n4. EXR metadata: PD EXR Metadata Merge assembles PD Project Context's exr_metadata with a PD Custom Context's (client = MAKE) and feeds PD Save, so every frame carries pipedream/project, pipedream/shot, pipedream/version and pipedream/client in its header. The read-back PD Load's exr_metadata shows them in PD EXR Metadata Get (key shot outputs sh020).\n\nPress load on a PD Load to run just that node."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -243,20 +240,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "example.png",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 3,
@@ -304,10 +288,7 @@
       },
       "widgets_values": [
         5
-      ],
-      "widgets_values_named": {
-        "amount": 5
-      }
+      ]
     },
     {
       "id": 4,
@@ -416,15 +397,7 @@
         "v001",
         "",
         false
-      ],
-      "widgets_values_named": {
-        "project": "demo",
-        "sequence": "",
-        "shot": "sh020",
-        "version": "v001",
-        "user": "",
-        "auto_increment_version": false
-      }
+      ]
     },
     {
       "id": 5,
@@ -671,7 +644,7 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/{project}/{shot}/{shot}_{version}",
+        "pipedream_demo/02_load_and_save/{project}/{shot}/{shot}_{version}",
         "exr",
         1001,
         4,
@@ -684,24 +657,7 @@
         "half",
         "zip",
         "sRGB to linear"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "pipedream_demo/{project}/{shot}/{shot}_{version}",
-        "format": "exr",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": true,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "sRGB to linear"
-      }
+      ]
     },
     {
       "id": 6,
@@ -920,20 +876,7 @@
         true,
         24,
         "linear to sRGB"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "linear to sRGB"
-      }
+      ]
     },
     {
       "id": 7,
@@ -1026,11 +969,7 @@
       "widgets_values": [
         "{project} / {shot} / {version}",
         4
-      ],
-      "widgets_values_named": {
-        "template": "{project} / {shot} / {version}",
-        "frame_padding": 4
-      }
+      ]
     },
     {
       "id": 9,
@@ -1118,12 +1057,7 @@
         "shot",
         1,
         ""
-      ],
-      "widgets_values_named": {
-        "key": "shot",
-        "frame": 1,
-        "filter": ""
-      }
+      ]
     },
     {
       "id": 10,
@@ -1388,29 +1322,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "custom_1_name": "client",
-        "custom_1_value": "MAKE",
-        "custom_2_name": "",
-        "custom_2_value": "",
-        "custom_3_name": "",
-        "custom_3_value": "",
-        "custom_4_name": "",
-        "custom_4_value": "",
-        "custom_5_name": "",
-        "custom_5_value": "",
-        "custom_6_name": "",
-        "custom_6_value": "",
-        "custom_7_name": "",
-        "custom_7_value": "",
-        "custom_8_name": "",
-        "custom_8_value": "",
-        "custom_9_name": "",
-        "custom_9_value": "",
-        "custom_10_name": "",
-        "custom_10_value": ""
-      }
+      ]
     },
     {
       "id": 11,

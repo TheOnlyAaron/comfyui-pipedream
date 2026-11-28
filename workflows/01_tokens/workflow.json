@@ -24,9 +24,6 @@
       "widgets_values": [
         "Tokens: turn shot details into text.\n\n1. PD Project Context holds project, sequence, shot, version and user. PD Custom Context adds any tokens of your own (task, client). Each becomes {name}.\n2. PD Tokens To String fills a template with them. Press preview on it to see the result without running anything else.\n3. Automatic tokens: {date}, {time} and {frame} (#### here) need no context.\n\nThe same templates name files in PD Save and PD Load (see 02)."
       ],
-      "widgets_values_named": {
-        "text": "Output basics: name and write files from tokens.\n\n1. PD Project Context and PD Custom Context hold the shot details. Their values become tokens: {project}, {sequence}, {shot}, {version}, {user}, {task}.\n2. PD Save builds the path from its template and writes the image into ComfyUI's output folder, with a sidecar .json.\n3. PD Tokens To String turns the same tokens into text (for prompts, titles, other paths).\n\nRun it, then look at PD Save's token panel. Try version 002, auto_increment_version, or path_mode absolute with a network base_path."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -129,15 +126,7 @@
         "v001",
         "jsmith",
         false
-      ],
-      "widgets_values_named": {
-        "project": "demo",
-        "sequence": "sq010",
-        "shot": "sh010",
-        "version": "v001",
-        "user": "jsmith",
-        "auto_increment_version": false
-      }
+      ]
     },
     {
       "id": 4,
@@ -397,29 +386,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "custom_1_name": "task",
-        "custom_1_value": "comp",
-        "custom_2_name": "",
-        "custom_2_value": "",
-        "custom_3_name": "",
-        "custom_3_value": "",
-        "custom_4_name": "",
-        "custom_4_value": "",
-        "custom_5_name": "",
-        "custom_5_value": "",
-        "custom_6_name": "",
-        "custom_6_value": "",
-        "custom_7_name": "",
-        "custom_7_value": "",
-        "custom_8_name": "",
-        "custom_8_value": "",
-        "custom_9_name": "",
-        "custom_9_value": "",
-        "custom_10_name": "",
-        "custom_10_value": ""
-      }
+      ]
     },
     {
       "id": 6,
@@ -476,11 +443,7 @@
       "widgets_values": [
         "{shot} {task} {version} by {user} for {client}",
         4
-      ],
-      "widgets_values_named": {
-        "template": "{shot} {task} {version} by {user}",
-        "frame_padding": 4
-      }
+      ]
     },
     {
       "id": 7,
@@ -537,11 +500,7 @@
       "widgets_values": [
         "{project}/{sequence}/{shot}/{task}/{shot}_{task}_{version}.{frame}",
         4
-      ],
-      "widgets_values_named": {
-        "template": "{project}/{sequence}/{shot}/{task}/{shot}_{task}_{version}.{frame}",
-        "frame_padding": 4
-      }
+      ]
     },
     {
       "id": 8,
@@ -598,11 +557,7 @@
       "widgets_values": [
         "Rendered {date} at {time}",
         4
-      ],
-      "widgets_values_named": {
-        "template": "Rendered {date} at {time}",
-        "frame_padding": 4
-      }
+      ]
     }
   ],
   "links": [

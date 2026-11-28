@@ -24,9 +24,6 @@
       "widgets_values": [
         "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Save writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
       ],
-      "widgets_values_named": {
-        "text": "Colour with OpenColorIO (needs the opencolorio package).\n\n1. PD OCIO Transform converts the sRGB image to scene-linear ACEScg; PD Save writes it as EXR.\n2. PD OCIO Display applies the ACES output transform for an sRGB monitor.\n3. PD OCIO Apply LUT is bypassed: set lut_path to a .cube/.3dl/.spi3d file, then un-bypass it (Ctrl+B).\n\nTry the built-in configs' Linear Rec.709 (sRGB) or Linear Rec.2020 spaces, or your studio config (config: custom file)."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -237,20 +234,7 @@
         true,
         24,
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "file": "example.png",
-        "format": "auto",
-        "start_frame": 0,
-        "frame_count": 0,
-        "every_nth": 1,
-        "sequence_mode": "auto",
-        "fps_from_file": true,
-        "fps": 24,
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 3,
@@ -351,15 +335,7 @@
         "ACEScg",
         "none",
         false
-      ],
-      "widgets_values_named": {
-        "config": "ACES studio (built-in)",
-        "config_path": "",
-        "in_colorspace": "sRGB Encoded Rec.709 (sRGB)",
-        "out_colorspace": "ACEScg",
-        "look": "none",
-        "inverse_look": false
-      }
+      ]
     },
     {
       "id": 4,
@@ -588,7 +564,7 @@
       "widgets_values": [
         "relative",
         "",
-        "pipedream_demo/color_acescg",
+        "pipedream_demo/05_color_ocio/color_acescg",
         "exr",
         1001,
         4,
@@ -601,24 +577,7 @@
         "half",
         "zip",
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "pipedream_demo/color_acescg",
-        "format": "exr",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": true,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "as is"
-      }
+      ]
     },
     {
       "id": 5,
@@ -716,15 +675,7 @@
         "sRGB - Display",
         "ACES 2.0 - SDR 100 nits (Rec.709)",
         false
-      ],
-      "widgets_values_named": {
-        "config": "ACES studio (built-in)",
-        "config_path": "",
-        "in_colorspace": "ACEScg",
-        "display": "sRGB - Display",
-        "view": "ACES 2.0 - SDR 100 nits (Rec.709)",
-        "inverse": false
-      }
+      ]
     },
     {
       "id": 6,
@@ -792,12 +743,7 @@
         "",
         "best",
         false
-      ],
-      "widgets_values_named": {
-        "lut_path": "",
-        "interpolation": "best",
-        "inverse": false
-      }
+      ]
     },
     {
       "id": 7,
