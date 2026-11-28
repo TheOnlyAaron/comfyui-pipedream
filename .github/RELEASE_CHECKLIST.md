@@ -1,6 +1,6 @@
 # Release checklist
 
-For a release from the dev branch (e.g. `0.3.0`) to `main`. Publishing to the
+For a release from the dev branch (`<version>-Dev`, e.g. `0.3.0-Dev`) to `main`. Feature branches come off the dev branch and merge back into it. Publishing to the
 Comfy Registry happens when `pyproject.toml` changes on `main`
 (`publish_action.yml`); a minor or major version (patch 0) then gets a GitHub
 release with its CHANGELOG section (`github_release.yml`). A published version
@@ -31,9 +31,9 @@ can't be replaced, so everything below happens before the merge.
       new environment reads or network calls. `.comfyignore` still leaves out
       `tests/`, `.github/` and `tools/`.
 
-- [ ] No branch has the version's name (e.g. a `0.3.0` dev branch): the
-      release creates a tag of that name, and a branch and tag with the same
-      name make the ref ambiguous. Rename or delete the branch first.
+- [ ] No branch has the bare version's name (`0.3.0`): the release creates
+      a tag of that name, and a branch and tag with the same name make the
+      ref ambiguous. Dev branches carry `-Dev`.
 
 ## Merge
 
@@ -50,4 +50,4 @@ can't be replaced, so everything below happens before the merge.
       updates an existing install without leaving removed files behind
       (for 0.3.0: no `web/pd_output.js`, which would add a second Copy Path
       button to PDOutput nodes).
-- [ ] Start the next dev branch from `main`.
+- [ ] Start the next dev branch (`<next version>-Dev`) from `main`.

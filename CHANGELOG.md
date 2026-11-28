@@ -55,6 +55,13 @@
   checked against ComfyUI's code, 73 real model headers, published
   requirements and measured runs, with sources
 
+### Example workflows
+- Every workflow writes into `output/pipedream_demo/<workflow folder>/`
+  (07 and 08 used `wedges/05_prompt/` and `wedges/06_products/`), and
+  overwrites its own files when run again
+- Stale per-node `widgets_values_named` copies (out of date in places) are
+  removed from the workflow files; ComfyUI never read them
+
 ### Tools
 - `tools/smoke_workflows.mjs` loads every example workflow in Nodes 2.0
   and the classic frontend and queues the ones whose models are present

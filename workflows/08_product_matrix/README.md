@@ -18,13 +18,13 @@ The product wedge is first in the chain, so it varies fastest:
 | 004 | lime | bar counter |
 | 005 | berry | bar counter |
 
-PD Save template: `wedges/06_products/{product}/{product}_{look_idx}`, one folder per product (`cola/cola_000.png`, `cola/cola_001.png`, ...). The sidecar JSON records each job's wedge rows.
+PD Save template: `pipedream_demo/08_product_matrix/{product}/{product}_{look_idx}`, one folder per product (`cola/cola_000.png`, `cola/cola_001.png`, ...). The sidecar JSON records each job's wedge rows.
 
 Setup: load a base image and the three product images (the composite places the product at x/y 256; adjust to taste), pick a checkpoint, then press **preview wedge** on PD Save:
 
 ```
 Wedge preview: 6 outputs (product+product_prompt 3 x look 2), nothing written.
-  [000] wedges/06_products/cola/cola_000.png
+  [000] pipedream_demo/08_product_matrix/cola/cola_000.png
   ...
 ```
 

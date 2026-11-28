@@ -71,7 +71,7 @@ Display names carry a 💭 prefix (left out on consoles that can't print emoji).
 
 ## Example workflows
 
-Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 run as is (they use ComfyUI's `input/example.png` and write to `output/pipedream_demo/`); 05 needs `opencolorio`, 07–08 need a checkpoint. Every node appears in at least one.
+Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 run as is (they use ComfyUI's `input/example.png`); 05 needs `opencolorio`, 07–08 need a checkpoint. Files go to `output/pipedream_demo/<workflow folder>/`. Every node appears in at least one.
 
 | # | Workflow | Shows |
 |---|----------|-------|

@@ -24,9 +24,6 @@
       "widgets_values": [
         "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Save.\n\nPress \"preview wedge\" on PD Save to see the file names, then Run: 3 jobs, same seed."
       ],
-      "widgets_values_named": {
-        "text": "Prompt wedge: one graph, one job per row.\n\nEach row of the PD Wedge pairs a prompt (String node) with a short name (value_n). The prompt goes to CLIP Text Encode; the name becomes {look} in PD Save.\n\nPress \"preview wedge\" on PD Save to see the file names, then Run: 3 jobs, same seed."
-      },
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -87,10 +84,7 @@
       },
       "widgets_values": [
         null
-      ],
-      "widgets_values_named": {
-        "ckpt_name": null
-      }
+      ]
     },
     {
       "id": 3,
@@ -389,28 +383,7 @@
         "",
         "",
         ""
-      ],
-      "widgets_values_named": {
-        "token": "look",
-        "group": "",
-        "solo": 0,
-        "value_1": "studio",
-        "value_2": "kitchen",
-        "value_3": "night",
-        "value_4": "",
-        "value_5": "",
-        "value_6": "",
-        "value_7": "",
-        "value_8": "",
-        "value_9": "",
-        "value_10": "",
-        "value_11": "",
-        "value_12": "",
-        "value_13": "",
-        "value_14": "",
-        "value_15": "",
-        "value_16": ""
-      }
+      ]
     },
     {
       "id": 4,
@@ -453,10 +426,7 @@
       },
       "widgets_values": [
         "product photo of a ceramic mug, white seamless studio backdrop, softbox lighting"
-      ],
-      "widgets_values_named": {
-        "value": "product photo of a ceramic mug, white seamless studio backdrop, softbox lighting"
-      }
+      ]
     },
     {
       "id": 5,
@@ -499,10 +469,7 @@
       },
       "widgets_values": [
         "product photo of a ceramic mug on a wooden kitchen counter, morning window light"
-      ],
-      "widgets_values_named": {
-        "value": "product photo of a ceramic mug on a wooden kitchen counter, morning window light"
-      }
+      ]
     },
     {
       "id": 6,
@@ -545,10 +512,7 @@
       },
       "widgets_values": [
         "product photo of a ceramic mug on a balcony at night, city bokeh, neon rim light"
-      ],
-      "widgets_values_named": {
-        "value": "product photo of a ceramic mug on a balcony at night, city bokeh, neon rim light"
-      }
+      ]
     },
     {
       "id": 7,
@@ -597,10 +561,7 @@
       },
       "widgets_values": [
         ""
-      ],
-      "widgets_values_named": {
-        "text": ""
-      }
+      ]
     },
     {
       "id": 8,
@@ -649,10 +610,7 @@
       },
       "widgets_values": [
         "blurry, low quality, text, watermark"
-      ],
-      "widgets_values_named": {
-        "text": "blurry, low quality, text, watermark"
-      }
+      ]
     },
     {
       "id": 9,
@@ -714,12 +672,7 @@
         1024,
         1024,
         1
-      ],
-      "widgets_values_named": {
-        "width": 1024,
-        "height": 1024,
-        "batch_size": 1
-      }
+      ]
     },
     {
       "id": 10,
@@ -836,16 +789,7 @@
         "euler",
         "simple",
         1
-      ],
-      "widgets_values_named": {
-        "seed": 1234,
-        "control_after_generate": "fixed",
-        "steps": 20,
-        "cfg": 8,
-        "sampler_name": "euler",
-        "scheduler": "simple",
-        "denoise": 1
-      }
+      ]
     },
     {
       "id": 11,
@@ -1116,7 +1060,7 @@
       "widgets_values": [
         "relative",
         "",
-        "wedges/05_prompt/{look}_{date}",
+        "pipedream_demo/07_prompt_wedge/{look}_{date}",
         "png",
         1001,
         4,
@@ -1124,29 +1068,12 @@
         18,
         "auto",
         true,
-        false,
+        true,
         true,
         "half",
         "zip",
         "as is"
-      ],
-      "widgets_values_named": {
-        "path_mode": "relative",
-        "base_path": "",
-        "template": "wedges/05_prompt/{look}_{date}",
-        "format": "png",
-        "start_frame": 1001,
-        "frame_padding": 4,
-        "fps": 24,
-        "crf": 18,
-        "prores_profile": "auto",
-        "create_dirs": true,
-        "overwrite": false,
-        "save_metadata": true,
-        "exr_precision": "half",
-        "exr_compression": "zip",
-        "exr_colorspace": "as is"
-      }
+      ]
     }
   ],
   "links": [
