@@ -80,7 +80,7 @@ Reports what everything upstream of its `source` input will cost: models, latent
 - Text encoder activations, LoRA patch memory and custom samplers with their own memory handling are not modelled.
 - Latent sizes computed at run time are reported as only known at run time.
 
-This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md). How accurate the numbers are, checked against ComfyUI's source, 73 published model files and the models' own documentation: [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md).
+This page covers the node. Where each number comes from, the sidecar format and use without the browser: [Profiler reference](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler.md). How accurate the numbers are, checked against ComfyUI's source, 73 published model files and the models' own documentation: [Profiler accuracy](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md). Every formula on one table, marked as exact, ComfyUI's own estimate or tested: [Formulas at a glance](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/profiler-accuracy.md#formulas-at-a-glance).
 
 ## Tips
 - Branch the profiler off the flow rather than after PD Save when you want its output as EXR metadata.

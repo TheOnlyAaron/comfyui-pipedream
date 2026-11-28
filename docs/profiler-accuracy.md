@@ -26,6 +26,35 @@ No GPU large enough for the big video models was available. Measured GPU peaks f
 | RAM | **Upper bound** | ComfyUI's offload and cache behaviour |
 | Time | **Measured** per node (within 0.1% of ComfyUI's timestamps); estimates scale linearly, so they're rough when the size changes | ComfyUI's progress registry ([CPU](#cpu-this-review)) |
 
+## Formulas at a glance
+
+Roughly what the profiler computes for each number, and what that rests on. Shapes use ComfyUI's order: `b` batch, `c` channels, `T` latent frames, `h × w` latent height and width, `L` video frames, `H × W` pixels, `s` and `t` the VAE's spatial and temporal compression. "B" is bytes; "dtype B" is bytes per value of the data type in use (2 for fp16 and bf16).
+
+| Number | Formula (roughly) | Basis | Checked by |
+|---|---|---|---|
+| Latent shape | `[b, c, (L − 1) // t + 1, H // s, W // s]` | **Exact**: ComfyUI's latent nodes | **Tested**: 24 cases in ComfyUI, all matched ([CPU](#cpu-this-review)) |
+| Latent bytes | `b × c × T × h × w × 4 B` (float32) | **Exact**: ComfyUI's tensor layout | **Tested** |
+| Decoded frames | `frames × H × W × 3 × 4 B` (float32 IMAGE; 4 channels for RGBA VAEs) | **Exact**: ComfyUI's IMAGE type | **Tested**: 15 decodes matched to the byte |
+| File size | `Σ parameters × bytes per value + header` | **Exact**: safetensors and GGUF headers | **Tested**: 73 published files ([appendix](profiler-accuracy-models.md)) |
+| Loaded weights | `parameters × inference dtype B`: fp32 and 16-bit files load at 2 B; scaled fp8, int8, nvfp4 and GGUF stay as stored; plain fp8 stays 1 B only with fp8 compute or when 2 B wouldn't fit | **Exact**: ComfyUI's `unet_dtype` / `vae_dtype` rules | **Tested**: within 0.05% of ComfyUI's `model_size()` with 16-bit forced; the fp8 branch by changing ComfyUI's weight budget |
+| Sampling, batch 1 (`est1`) | `b × T × h × w × dtype B × 0.01 × factor` MiB with flash attention or xformers; `× 0.15 × factor` without. `factor` is per model (Wan 14B 2.30, Flux 3.1, SDXL 0.8, ...) | **Theoretical**: ComfyUI's own `memory_required`, which it loads models by | **Partly tested**: grows linearly with tokens on CPU; the GPU magnitude is untested. Published peaks run 20–35% higher ([comparison](#compared-with-published-requirements)) |
+| Sampling, cond + uncond (`est2`) | `2 × est1`, used when `weights + est2 + margin` fits; otherwise `est1` (one pass at a time). cfg 1 always uses `est1` | **Theoretical**: ComfyUI's `estimate_memory` and `samplers.py` | **Tested** (shape only): cfg above 1 doubled the CPU peak |
+| OS margin | 400 MB on Linux, 600 MB on Windows (+100 MB on cards over 15 GB); `--reserve-vram` replaces it | **Exact**: ComfyUI's constants | Read from ComfyUI when running in it |
+| Room for weights | `VRAM − max(0.8 GiB + margin, est1 + margin) − latent bytes` | **Theoretical**: ComfyUI's `load_models_gpu` rule | **Field run**: an 8 GB card ran SDXL at 4096² partly offloaded, as predicted ([field run](#field-run-sdxl-at-40964096-on-an-8-gb-rtx-4060)) |
+| Sampler verdict | **fits** when `weights ≤ room`; **offloads / streams** `weights − room`; **over budget** when `est1 + latent bytes + margin > VRAM` | **Theoretical**: follows the rule above | Field run; GPU validation planned |
+| VAE decode | Per family, × dtype B. KL (SD, SDXL, Flux.1): `2178 × h × w × 64`. Wan 2.1: `(2200 if T ≤ 4 else 7000) × h × w × 64`. Wan 2.2: `8000 × h × w × 256`. LTX-Video: `1200 × T × h × w × 512`. Others in [VAE decode memory](#vae-decode-memory) | **Theoretical**: ComfyUI's `memory_used_decode` per family | **Partly tested**: on CPU the ratio to the formula stays constant across resolutions (KL 2.72, Wan 2.2 0.59, Wan 2.1 2.36); magnitude and frame scaling need a GPU |
+| Decode verdict | **falls back to tiled decode** when `decode + margin > VRAM`; else VAE weights offload first (LTX 2.4's can't) | **Theoretical**: ComfyUI's `VAE.decode` | GPU validation planned |
+| Stage total and peak | stage `= weights + working + latent bytes`; peak `= max(stages)` | **Theoretical**: ComfyUI frees only what the next load needs | Field run |
+| RAM | `Σ model weights + decoded frames`; stored bytes (memory-mapped) under Dynamic VRAM | **Upper bound**: ComfyUI's offload and cache behaviour | Not measured |
+| Time | `measured seconds × (new steps ÷ steps) × (new tokens ÷ tokens)` | **Measured** per node; the scaling is **theoretical** | **Tested**: per-node sum within 0.1% of ComfyUI's own timestamps; scaling rough when the size changes |
+| Measured VRAM peak | `max(PyTorch allocator peak, device memory in use)` | **Measured** | Device memory includes what Dynamic VRAM holds outside PyTorch |
+
+Basis key:
+- **Exact:** arithmetic on known sizes, or the same rule ComfyUI's code applies.
+- **Theoretical:** ComfyUI's own estimate or loading rule, copied faithfully but not a measurement of memory use.
+- **Tested / partly tested:** checked against real runs in this review; "partly" means the shape of the curve was confirmed but not the GPU magnitude.
+- **Upper bound:** can only be lower in practice.
+
 ## Exact numbers
 
 ### Latent shapes
@@ -139,7 +168,7 @@ The profiler's verdicts follow this:
 |---|---|
 | **fits** | Weights plus the doubled estimate fit. The stage notes when only the batch-1 estimate fits, because cond and uncond then run one at a time. |
 | **offloads N** | N of the weights stay in RAM. Slower, not a failure. |
-| **over budget** | The batch-1 estimate alone, with no weights at all, is over the card. Likely out of memory. |
+| **over budget** | The batch-1 estimate, the latents and the OS margin alone, with no weights at all, are over the card. Likely out of memory. |
 
 On AMD and Intel GPUs, ComfyUI also gives at least 40% of free VRAM to weights, which the profiler doesn't model.
 

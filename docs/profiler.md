@@ -129,7 +129,7 @@ Queued through `/prompt` (scripts, Deadline), the profiler runs like any output 
 
 ## Limits
 
-The full accuracy review, with sources: [Profiler accuracy](profiler-accuracy.md).
+The full accuracy review, with sources: [Profiler accuracy](profiler-accuracy.md); every formula on one table: [Formulas at a glance](profiler-accuracy.md#formulas-at-a-glance).
 
 - Memory figures are ComfyUI's own estimates, not measurements; compare them with a measured run's peak on your hardware.
 - Text encoder activations, LoRA patch memory and custom samplers that manage their own memory (WanVideoWrapper, for example) aren't modelled. A sampler built on other socket types isn't recognised as a stage.
