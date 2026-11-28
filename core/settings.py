@@ -5,13 +5,13 @@ Precedence, lowest to highest:
 
 1. built-in defaults (:data:`SCHEMA`)
 2. user file: ``pipedream.toml`` in the pack root (:data:`USER_PATH`)
-3. facility file, found by the first of:
+3. facility file, named by the first pointer file ``pipedream_facility.txt``
+   found in ComfyUI's user folder, then in the pack root.  A pointer file
+   holds just the facility file's path (see :func:`read_pointer`).
 
-   a. the ``PIPEDREAM_COMFYUI_CONFIG`` environment variable (:data:`ENV_VAR`)
-   b. a pointer file ``pipedream_facility.txt`` in ComfyUI's user folder
-   c. a pointer file ``pipedream_facility.txt`` in the pack root
-
-   A pointer file holds just the facility file's path (see :func:`read_pointer`).
+   Nothing is read from the environment (the Comfy Registry's security scan
+   flags environment reads); the facility file's location lives in a file
+   that a person or a deployment script puts there.
 
 A key overrides only when it is present and valid; missing keys fall
 through.  Invalid values, unknown keys, unreadable files and TOML syntax
@@ -59,7 +59,6 @@ except ImportError:
     except ImportError:
         _toml = None
 
-ENV_VAR = "PIPEDREAM_COMFYUI_CONFIG"
 PACK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USER_PATH = os.path.join(PACK_DIR, "pipedream.toml")
 POINTER_NAME = "pipedream_facility.txt"
@@ -341,15 +340,12 @@ def read_pointer(path: str) -> str:
 
 def find_facility(pointers: list[str] | None = None) -> tuple[str, dict]:
     """
-    Locate the facility file: ``$PIPEDREAM_COMFYUI_CONFIG``, else the first
-    pointer file in *pointers* (default :func:`pointer_paths`) that names one.
+    Locate the facility file: the first pointer file in *pointers* (default
+    :func:`pointer_paths`) that names one.
 
-    Returns ``(path, how)`` with *how* ``{"found": "env", "env": ENV_VAR}`` or
-    ``{"found": "pointer", "pointer": <pointer file>}``, or ``("", {})``.
+    Returns ``(path, {"found": "pointer", "pointer": <pointer file>})``, or
+    ``("", {})``.
     """
-    path = os.environ.get(ENV_VAR, "").strip().strip('"')
-    if path:
-        return path, {"found": "env", "env": ENV_VAR}
     for pointer in pointer_paths() if pointers is None else pointers:
         if os.path.isfile(pointer):
             path = read_pointer(pointer)
@@ -363,8 +359,8 @@ def load(user_path: str | None = USER_PATH, facility_path: str | None = None,
     """
     (Re)load the settings: built-ins, then *user_path*, then *facility_path*.
 
-    *facility_path* defaults to the file :func:`find_facility` locates (the
-    environment variable, else a pointer file from *pointers*); pass ``""``
+    *facility_path* defaults to the file :func:`find_facility` locates (a
+    pointer file from *pointers*); pass ``""``
     for none.  A missing user file is silently skipped; a missing facility
     file warns.  Updates the module-level values, :data:`sources` and
     :data:`warnings` in place.
@@ -411,8 +407,6 @@ def get(key: str):
 
 
 def _describe(source: dict) -> str:
-    if source.get("found") == "env":
-        return f"{source['path']} (from ${source['env']})"
     if source.get("found") == "pointer":
         return f"{source['path']} (from pointer {source['pointer']})"
     return source["path"]
@@ -443,8 +437,7 @@ def example_toml() -> str:
         "#",
         "# Copy to pipedream.toml in the pack folder (user), or share one copy and",
         f"# write its path in ComfyUI/user/{POINTER_NAME} (facility; wins",
-        f"# over user). The {ENV_VAR} environment variable still",
-        "# works and wins over the pointer file.",
+        "# over user).",
         "# Every key is optional: uncomment and edit only what you want to change.",
         "# New nodes get these defaults; saved workflows keep their values.",
         "# Restart ComfyUI after editing.",

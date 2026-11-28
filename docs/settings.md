@@ -43,11 +43,12 @@ The `[output]` table applies to [PD Save](../web/docs/PDSave.md) (the setting na
 
 ## Finding the facility file
 
-The first of these that names a file is used:
+The facility file is named by a pointer file, `pipedream_facility.txt`. The first of these that names a file is used:
 
-1. The `PIPEDREAM_COMFYUI_CONFIG` environment variable (kept for existing setups).
-2. A pointer file `pipedream_facility.txt` in ComfyUI's user folder (`ComfyUI/user/`, or the folder given with `--user-directory`).
-3. A pointer file `pipedream_facility.txt` in the pack folder.
+1. `pipedream_facility.txt` in ComfyUI's user folder (`ComfyUI/user/`, or the folder given with `--user-directory`).
+2. `pipedream_facility.txt` in the pack folder.
+
+Pipedream doesn't read environment variables: the Comfy Registry's security scan flags them, and a file in a known place is easier to inspect and deploy. See [Pipeline integration](pipeline.md) for the rest of the pipeline picture.
 
 A pointer file is plain text holding just the path of the facility TOML:
 
@@ -74,13 +75,15 @@ copy /Y "\\server\pipeline\comfyui\pipedream_facility.txt" "C:\ComfyUI\user\pipe
 
 Restart ComfyUI afterwards. To move the facility file later, edit the one pointer file on the share and push it again (or point every pointer at a path that does not change).
 
-The environment variable still works, and wins over any pointer file:
+The startup line and the token panel say which file was used, e.g. `settings: facility \\server\pipeline\comfyui\pipedream.toml (from pointer C:\ComfyUI\user\pipedream_facility.txt), user (none)`.
+
+### Moving from the environment variable
+
+Before 0.3.0 the facility file was named by the `PIPEDREAM_COMFYUI_CONFIG` environment variable. 0.3.0 no longer reads it, so a machine that only has the variable starts with no facility settings (the startup line says `facility (none)`). Deploy the pointer file as above, then remove the variable:
 
 ```bat
-setx PIPEDREAM_COMFYUI_CONFIG "\\server\pipeline\comfyui\pipedream.toml" /M
+reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PIPEDREAM_COMFYUI_CONFIG /f
 ```
-
-To switch an existing setup to pointer files, deploy the pointer, then remove the variable (`reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PIPEDREAM_COMFYUI_CONFIG /f`) and restart ComfyUI. The startup line and the token panel say which one was used, e.g. `settings: facility \\server\pipeline\comfyui\pipedream.toml (from pointer C:\ComfyUI\user\pipedream_facility.txt), user (none)`.
 
 ## For maintainers
 

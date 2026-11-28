@@ -67,11 +67,12 @@ class TestLoading(SettingsCase):
         self.assertEqual([s["scope"] for s in settings.sources], ["user", "facility"])
         self.assertEqual(settings.summary(), f"settings: facility {facility}, user {user}")
 
-    def test_facility_from_env(self):
+    def test_environment_variable_is_not_read(self):
         facility = self.write("fac.toml", "[exr]\ncompression = 'none'\n")
-        with mock.patch.dict(os.environ, {settings.ENV_VAR: facility}):
-            self.load(None, None)
-        self.assertEqual(settings.get("exr.compression"), "none")
+        with mock.patch.dict(os.environ, {"PIPEDREAM_COMFYUI_CONFIG": facility}):
+            settings.load(user_path=None, pointers=[])
+        self.assertEqual(settings.get("exr.compression"), settings.SCHEMA["exr.compression"].default)
+        self.assertEqual(settings.sources, [])
 
     def test_int_accepted_for_float(self):
         self.load(None, self.write("f.toml", "[output]\nfps = 25\n"))
@@ -128,8 +129,11 @@ class TestLoading(SettingsCase):
 
     def test_missing_facility_file_warns_once(self):
         missing = os.path.join(self.tmp.name, "nope.toml")
-        with mock.patch.dict(os.environ, {settings.ENV_VAR: missing}):
-            printed = self.load(None, None)
+        pointer = self.write(settings.POINTER_NAME, missing)
+        err = StringIO()
+        with redirect_stderr(err):
+            settings.load(user_path=None, pointers=[pointer])
+        printed = err.getvalue()
         self.assertEqual(printed.count("Settings warning"), 1)
         self.assertIn(missing, printed)
         self.assertEqual(settings.sources, [])
@@ -160,10 +164,6 @@ class TestLoading(SettingsCase):
 class TestFacilityPointer(SettingsCase):
     def setUp(self):
         super().setUp()
-        env = mock.patch.dict(os.environ)
-        env.start()
-        self.addCleanup(env.stop)
-        os.environ.pop(settings.ENV_VAR, None)
         self.facility = self.write("fac.toml", '[output]\nformat = "exr"\n')
 
     def load_pointers(self, *pointers, user=None):
@@ -189,14 +189,13 @@ class TestFacilityPointer(SettingsCase):
         self.load_pointers(pointer)
         self.assertEqual(settings.get("output.format"), "exr")
 
-    def test_env_wins_over_pointer(self):
+    def test_pointer_used_even_with_old_variable_set(self):
         other = self.write("env.toml", '[output]\nformat = "mov"\n')
         pointer = self.write(settings.POINTER_NAME, self.facility)
-        os.environ[settings.ENV_VAR] = other
-        self.load_pointers(pointer)
-        self.assertEqual(settings.get("output.format"), "mov")
-        self.assertEqual(settings.sources[0]["found"], "env")
-        self.assertIn(f"(from ${settings.ENV_VAR})", settings.summary())
+        with mock.patch.dict(os.environ, {"PIPEDREAM_COMFYUI_CONFIG": other}):
+            self.load_pointers(pointer)
+        self.assertEqual(settings.get("output.format"), "exr")
+        self.assertEqual(settings.sources[0]["found"], "pointer")
 
     def test_pointer_wins_over_user(self):
         user = self.write("user.toml", '[output]\nformat = "jpg"\ncrf = 20\n')

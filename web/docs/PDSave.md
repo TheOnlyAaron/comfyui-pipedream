@@ -55,6 +55,7 @@ PD Save was called PD Output before 0.3.0. Old workflows still load.
 ### Sidecar
 - With `save_metadata` on, `<name>.json` is written next to the output (frame number dropped). It holds the template, tokens, context, files, frame range and pattern, alpha convention, wedge job, settings files, the ComfyUI prompt and the workflow.
 - [PD Load](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDLoad.md) reads it back. Drop the sidecar on the ComfyUI canvas to reopen the workflow that wrote it.
+- Pipeline tools (ftrack, Flow, Deadline, a publish script) pick renders up from the sidecar, which is written after the files, or from ComfyUI's own API. Pipedream runs no scripts itself: see [Pipeline integration](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/pipeline.md).
 
 ### Outputs
 - `path` is the first file (the first frame of a sequence), `path_sidecar` the sidecar, `path_all` every file one per line.

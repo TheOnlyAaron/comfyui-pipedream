@@ -37,6 +37,7 @@ Holds the shot details of a workflow (`project`, `sequence`, `shot`, `version`, 
 ## Tips
 - `user` is optional and sits below the context input; fill it for `{user}` in paths.
 - Defaults for `version` and `auto_increment_version` come from the `[project]` settings. See [Settings](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/settings.md).
+- A pipeline tool that builds workflows sets these widgets per shot, and reads the same tokens back from PD Save's sidecar. Facility-wide tokens (`{facility}`, a show root) belong in the shared settings file. See [Pipeline integration](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/docs/pipeline.md).
 
 ## See also
 - [PD Custom Context](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDCustomContext.md), [PD Tokens To String](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDTokensToString.md), [PD Save](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDSave.md), [PD Load](https://github.com/theonlyaaron/comfyui-pipedream/blob/main/web/docs/PDLoad.md)

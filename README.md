@@ -93,11 +93,12 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 - [Profiler](docs/profiler.md): how each number is worked out, the sidecar, use without the browser.
 - [Profiler accuracy](docs/profiler-accuracy.md): how each number was checked against ComfyUI's source, 73 published model files and published requirements.
 - [Settings](docs/settings.md): facility and user defaults in TOML.
+- [Pipeline integration](docs/pipeline.md): settings, sidecars and ComfyUI's API for ftrack, Flow, Deadline and publish tools, without running scripts from ComfyUI.
 - [Installation](docs/install.md): Manager, comfy-cli, git clone, updating.
 
 ## Settings
 
-Studios can set defaults (templates, network roots, formats, token delimiters, OCIO config...) in `pipedream.toml` in the pack folder, or in a shared facility file, which wins, named by a `pipedream_facility.txt` pointer file in ComfyUI's user folder (or the `PIPEDREAM_COMFYUI_CONFIG` environment variable). [`pipedream.example.toml`](pipedream.example.toml) lists every key. Details and deployment: [docs/settings.md](docs/settings.md).
+Studios can set defaults (templates, network roots, formats, token delimiters, OCIO config...) in `pipedream.toml` in the pack folder, or in a shared facility file, which wins, named by a `pipedream_facility.txt` pointer file in ComfyUI's user folder. [`pipedream.example.toml`](pipedream.example.toml) lists every key. Details and deployment: [docs/settings.md](docs/settings.md).
 
 ## Compatibility
 
