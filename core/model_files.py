@@ -57,7 +57,9 @@ FULL_PRECISION = ("F32", "F64")
 CHECKPOINT_PREFIXES = {
     "diffusion": ("model.diffusion_model.",),
     "vae": ("first_stage_model.", "vae."),
-    "text_encoder": ("cond_stage_model.", "conditioner.", "text_encoders."),
+    "text_encoder": ("cond_stage_model.", "conditioner.", "text_encoders.",
+                     "text_embedding_projection."),
+    "audio": ("audio_vae.", "vocoder."),
 }
 
 
@@ -125,7 +127,8 @@ def read_header(path: str) -> ModelFile:
                 fmt = "safetensors"
             else:
                 tensors, metadata, fmt = {}, {}, ext.lstrip(".") or "unknown"
-    except (OSError, ValueError, struct.error, UnicodeDecodeError) as exc:
+    except (OSError, ValueError, struct.error, UnicodeDecodeError, AttributeError, TypeError,
+            KeyError) as exc:
         raise HeaderError(f"cannot read the header of '{path}': {exc}") from exc
     result = ModelFile(path, fmt, stat.st_size, tensors, metadata)
     _cache[key] = result
@@ -168,8 +171,10 @@ def _gguf_reader(fh, version):
             if item_kind in scalars and item_kind not in (8, 9):
                 fmt = scalars[item_kind]
                 size = struct.calcsize(fmt)
-                raw = fh.read(size * n)
-                return list(struct.unpack("<" + fmt[1:] * n, raw)) if n <= 64 else n
+                if n > 64:
+                    fh.seek(size * n, 1)
+                    return n
+                return list(struct.unpack("<" + fmt[1:] * n, fh.read(size * n)))
             return [value(item_kind) for _ in range(n)]
         fmt = scalars.get(kind)
         if fmt is None:
@@ -221,19 +226,29 @@ def dominant_dtype(tensors: dict) -> str:
     return max(totals, key=totals.get) if totals else ""
 
 
-def loaded_bytes(tensors: dict, inference_bytes: int = 2, weight_dtype: str = "default") -> float:
+FLOATS = ("F64", "F32", "F16", "BF16", "F8_E4M3", "F8_E5M2")
+
+
+def loaded_bytes(tensors: dict, inference_bytes: int = 2, weight_dtype: str = "default",
+                 fp8_bytes: int = 1, cast_all: bool = False) -> float:
     """
     Bytes the *tensors* take once ComfyUI has loaded them.
 
     fp32 tensors are cast to the inference type; a loader ``weight_dtype``
-    of fp8 stores every weight with two or more dims in 1 byte; quantized
-    and fp8 tensors stay as stored.
+    of fp8 stores every weight with two or more dims in 1 byte; fp8 tensors
+    take *fp8_bytes* (2 when ComfyUI upcasts a plain fp8 file on a GPU
+    without fp8 compute); quantized tensors stay as stored.  *cast_all*
+    casts every float tensor to *inference_bytes* (a VAE is cast as a whole).
     """
     fp8 = str(weight_dtype).startswith("fp8")
     total = 0.0
     for t in tensors.values():
-        if fp8 and len(t.shape) >= 2 and t.dtype in ("F32", "F16", "BF16"):
+        if cast_all and t.dtype in FLOATS:
+            total += t.numel * inference_bytes
+        elif fp8 and len(t.shape) >= 2 and t.dtype in ("F32", "F16", "BF16"):
             total += t.numel
+        elif t.dtype in ("F8_E4M3", "F8_E5M2"):
+            total += t.numel * fp8_bytes
         elif t.dtype in FULL_PRECISION:
             total += t.numel * inference_bytes
         else:
@@ -276,14 +291,19 @@ def _torch_dtype(name, torch_mod):
 # Used when ComfyUI's detection is unavailable.  latent: channels,
 # spatial and temporal compression; memory_usage_factor as ComfyUI sets it.
 FALLBACK_MODELS = [
-    (r"wan2\.?2.*ti2v.*5b|wan2\.?2.*5b", "Wan 2.2 5B", 48, 3, 1.0),
-    (r"wan2\.?[12]", "Wan 2.x 14B", 16, 3, 0.9),
-    (r"ltx", "LTX-Video", 128, 3, 0.061),
+    # pattern, family, latent channels, latent dims, memory_usage_factor (as ComfyUI sets it)
+    (r"minimax.*h3|h3.*minimax", "MiniMax H3", 24, 3, 0.114),
+    (r"hunyuan.?video.?1\.?5|hunyuanvideo1\.?5|hunyuan.*1\.5", "HunyuanVideo 1.5", 32, 3, 4.0),
+    (r"wan2\.?2.*(ti2v|5b)", "Wan 2.2 5B", 48, 3, 1.38),
+    (r"wan2\.?[12].*1\.3b", "Wan 2.1 1.3B", 16, 3, 0.69),
+    (r"wan2\.?[12]", "Wan 2.x 14B", 16, 3, 2.30),
+    (r"ltx", "LTX-Video / LTX-2", 128, 3, 5.5),
     (r"hunyuan.*video|hunyuanvideo", "HunyuanVideo", 16, 3, 1.8),
-    (r"flux", "Flux.1", 16, 2, 2.8),
-    (r"qwen.*image", "Qwen-Image", 16, 2, 2.0),
+    (r"qwen.*image", "Qwen-Image", 16, 3, 1.8),
+    (r"chroma", "Chroma", 16, 2, 3.2),
+    (r"flux", "Flux.1", 16, 2, 3.1),
+    (r"sd3", "SD3", 16, 2, 1.6),
     (r"sdxl|xl", "SDXL", 4, 2, 0.8),
-    (r"sd3", "SD3", 16, 2, 1.2),
     (r"", "SD 1.5 (assumed)", 4, 2, 1.0),
 ]
 
@@ -319,6 +339,9 @@ def diffusion_info(mf: ModelFile, tensors: dict | None = None, weight_dtype: str
             latent_dims=int(getattr(latent, "latent_dimensions", 2)),
             memory_usage_factor=float(getattr(config, "memory_usage_factor", 2.0)),
         )
+        if type(config).__name__.startswith("MiniMaxH3"):
+            # ComfyUI's MiniMaxH3AV format reports max(video 24, audio 32); the video latent is 24.
+            info["latent_channels"] = 24
         patch = (getattr(config, "unet_config", None) or {}).get("patch_size")
         if isinstance(patch, (int, list, tuple)):
             info["patch_size"] = list(patch) if isinstance(patch, (list, tuple)) else patch
@@ -332,10 +355,14 @@ def diffusion_info(mf: ModelFile, tensors: dict | None = None, weight_dtype: str
                     latent_dims=dims, memory_usage_factor=factor)
         inference = 2
     info["inference_bytes"] = inference
+    fp8_bytes = _fp8_bytes(config, info, tensors, weight_dtype, comfy_env)
+    if fp8_bytes > 1:
+        info["fp8_upcast"] = True
     if mf.format == "gguf":
         info["loaded_bytes"] = info["stored_bytes"]
     else:
-        info["loaded_bytes"] = loaded_bytes(tensors, inference, weight_dtype) if tensors else mf.size
+        info["loaded_bytes"] = (loaded_bytes(tensors, inference, weight_dtype, fp8_bytes)
+                                if tensors else mf.size)
     return info
 
 
@@ -349,9 +376,48 @@ def _comfy_config(tensors: dict, metadata: dict, comfy_env):
         stripped = {k[len(prefix):]: v for k, v in stubs.items() if prefix and k.startswith(prefix)}
         if stripped:
             stubs = stripped
-        return detection.model_config_from_unet(stubs, "", metadata=metadata or None)
+        config = detection.model_config_from_unet(stubs, "", metadata=metadata or None)
     except Exception:
-        return None
+        config = None
+    if config is None:
+        # Diffusers-layout files, as comfy.sd.load_diffusion_model_state_dict tries them.
+        for attempt in ("model_config_from_diffusers_unet", "convert_diffusers_mmdit"):
+            try:
+                if attempt == "model_config_from_diffusers_unet":
+                    config = detection.model_config_from_diffusers_unet(stubs)
+                else:
+                    converted = detection.convert_diffusers_mmdit(stubs, "")
+                    config = detection.model_config_from_unet(converted, "") if converted else None
+            except Exception:
+                config = None
+            if config is not None:
+                break
+    return config
+
+
+def _fp8_bytes(config, info, tensors, weight_dtype, comfy_env) -> int:
+    """
+    Bytes per weight of a plain (unscaled) fp8 file once loaded: ComfyUI's
+    ``unet_dtype`` upcasts it to 16-bit on a GPU without fp8 compute when
+    it fits (load_diffusion_model_state_dict).  Scaled fp8 stays 1 byte.
+    """
+    mm = comfy_env.model_management if comfy_env else None
+    torch_mod = comfy_env.torch if comfy_env else None
+    if (config is None or mm is None or torch_mod is None or not getattr(comfy_env, "gpu", True)
+            or not str(info.get("dtype", "")).startswith("F8") or str(weight_dtype).startswith("fp8")):
+        return 1
+    if any(k.endswith(("scale_weight", "weight_scale", "scaled_fp8", ".comfy_quant")) for k in tensors):
+        return 1
+    stored = getattr(torch_mod, "float8_e5m2" if info["dtype"] == "F8_E5M2" else "float8_e4m3fn", None)
+    if stored is None:
+        return 1
+    try:
+        dtype = mm.unet_dtype(model_params=info["params"],
+                              supported_dtypes=list(config.supported_inference_dtypes) + [stored],
+                              weight_dtype=stored)
+        return int(mm.dtype_size(dtype))
+    except Exception:
+        return 1
 
 
 def _inference_bytes(config, info, comfy_env) -> int:
@@ -374,6 +440,19 @@ def _kl(shape, b):
     return 2178 * shape[2] * shape[3] * 64 * b
 
 
+def _minimax_decode(shape, b):
+    """
+    ComfyUI's MiniMax H3 ``estimate_decode_memory``: the decoder streams
+    17-frame clips, so at most one chunk (28 frames, +2) is resident.
+    Frames follow its 5k+2 latents <-> 17k+5 frames mapping.
+    """
+    frames = max(1, (shape[2] - 2) // 5 * 17 + 5)
+    height, width = shape[3] * 16, shape[4] * 16
+    fixed = 110_000_000 if frames <= 22 else 270_000_000
+    frames = min(frames, 30)
+    return (9.5 * frames * height * width + fixed) * b * 1.03
+
+
 VAE_FAMILIES = {
     # name: (channels, spatial, temporal, decode(shape, dtype bytes), working dtypes)
     "Wan 2.1": (16, 8, 4, lambda s, b: (2200 if s[2] <= 4 else 7000) * s[3] * s[4] * 64 * b,
@@ -393,8 +472,9 @@ VAE_FAMILIES = {
                           ("fp16", "bf16", "fp32")),
     "Hunyuan refiner": (32, 16, 4, lambda s, b: 2800 * s[-3] * s[-2] * s[-1] * 256 * b,
                         ("fp16", "bf16", "fp32")),
+    "MiniMax H3": (24, 16, 4, lambda s, b: _minimax_decode(s, b), ("fp16", "fp32")),
     "KL": (4, 8, 1, _kl, ("bf16", "fp32")),
-    "Flux 2": (128, 16, 1, _kl, ("bf16", "fp32")),
+    "Flux 2": (128, 16, 1, _kl, ("fp16", "bf16", "fp32")),
 }
 
 
@@ -405,6 +485,11 @@ def vae_family(tensors: dict) -> tuple[str, int]:
     def shape(name):
         t = tensors.get(name)
         return t.shape if t else ()
+
+    if ("decoder.transformer_blocks.0.scale1" in keys or "decoder.blocks.0.scale1" in keys
+            or "encoder.down.5.block.0.nin_shortcut.weight" in keys
+            or ("blocks.0.scale1" in keys and "x_embedder.weight" in keys)):
+        return "MiniMax H3", 24
 
     if "decoder.middle.0.residual.0.gamma" in keys:
         if "decoder.upsamples.0.upsamples.0.residual.2.weight" in keys:
@@ -458,6 +543,7 @@ class VaeInfo(dict):
             return None
         if self.get("family") == "KL" and self.get("amd"):
             value *= 2.73
+        value *= self.get("decode_factor", 1.0)
         return float(value)
 
 
@@ -472,13 +558,27 @@ def vae_info(mf: ModelFile, tensors: dict | None = None, comfy_env=None) -> VaeI
                    stored_bytes=sum(t.nbytes for t in tensors.values()) or mf.size)
     if family == "Flux 2":
         info["spatial"] = 16
-    info["loaded_bytes"] = loaded_bytes(tensors, dtype_bytes) if tensors else mf.size
+    info["loaded_bytes"] = loaded_bytes(tensors, dtype_bytes, cast_all=True) if tensors else mf.size
+    if family == "Flux 2":
+        info["decode_factor"] = _flux2_factor(dtype_bytes, comfy_env)
     mm = comfy_env.model_management if comfy_env else None
     try:
         info["amd"] = bool(mm and mm.is_amd())
     except Exception:
         info["amd"] = False
     return info
+
+
+def _flux2_factor(dtype_bytes, comfy_env) -> float:
+    """ComfyUI multiplies Flux 2's decode estimate by 4 unless comfy-kitchen's fused norm serves it."""
+    torch_mod = comfy_env.torch if comfy_env else None
+    mm = comfy_env.model_management if comfy_env else None
+    try:
+        from comfy.ldm.modules.diffusionmodules.model import fused_norm_served  # type: ignore
+        dtype = {2: torch_mod.bfloat16, 4: torch_mod.float32}.get(dtype_bytes, torch_mod.bfloat16)
+        return 1.0 if fused_norm_served(mm.vae_device(), dtype) else 4.0
+    except Exception:
+        return 4.0
 
 
 def _vae_dtype_bytes(working, comfy_env) -> int:

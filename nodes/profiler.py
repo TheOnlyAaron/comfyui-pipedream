@@ -120,13 +120,25 @@ def comfy_env() -> ComfyEnv:
         env.attention_fast = (not env.gpu
                               or bool(mm.xformers_enabled() or mm.pytorch_attention_flash_attention()))
         env.reserve = float(mm.minimum_inference_memory())
+        env.os_margin = float(mm.extra_reserved_memory())
+        env.vram_state = getattr(mm.vram_state, "name", str(mm.vram_state))
+        try:
+            import comfy.memory_management as memory  # type: ignore[import-not-found]
+            env.dynamic_vram = bool(getattr(memory, "aimdo_enabled", False))
+        except Exception:
+            env.dynamic_vram = False
     except Exception:
         pass
     return env
 
 
 def make_budget(vram_gb, ram_gb) -> dict:
-    """The memory to budget against: the widgets when set, else this machine."""
+    """The memory to budget against: the widgets when set, else this machine.
+
+    A linked widget (a ``[node, slot]`` pair in an API prompt) counts as unset.
+    """
+    vram_gb = vram_gb if isinstance(vram_gb, (int, float)) else 0
+    ram_gb = ram_gb if isinstance(ram_gb, (int, float)) else 0
     machine = capture.machine()
     vram = float(vram_gb or 0) * GIB or machine["vram"]
     ram = float(ram_gb or 0) * GIB or machine["ram"]
@@ -180,7 +192,7 @@ class PDProfiler:
                     "lazy": True,
                     "tooltip": "Anything. Everything this input reads from is profiled; "
                                "other flows in the graph are ignored. Put it after PD "
-                               "Output or branch it off a flow.",
+                               "Save or branch it off a flow.",
                 }),
             },
             "optional": {
@@ -226,10 +238,6 @@ class PDProfiler:
     def VALIDATE_INPUTS(cls, input_types):
         return True
 
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        return float("nan")
-
     def check_lazy_status(self, source=None, enabled=True, **kwargs):
         return ["source"] if enabled and source is None else []
 
@@ -246,16 +254,17 @@ class PDProfiler:
         run = capture.snapshot(prompt_id) if prompt_id else None
         graph = Graph(prompt or {}, env)
         actual = {"source": describe_source(source), "loaded_models": capture.loaded_models(),
-                  "nodes": []}
+                  "nodes": [], "vram_total": capture.machine()["vram"]}
         timings = {}
         if run is not None:
             for nid in graph.upstream(node_id):
-                entry = run["nodes"].get(nid)
-                if entry is not None:
-                    actual["nodes"].append({"node": nid, "label": graph.label(nid), **entry})
+                # ComfyUI sends no progress events for a node it reuses from cache
+                entry = run["nodes"].get(nid) or {"seconds": 0.0, "cached": True}
+                actual["nodes"].append({"node": nid, "label": graph.label(nid), **entry})
             actual["vram_peak"] = run.get("vram_peak")
             actual["vram_reserved"] = run.get("vram_reserved")
-            actual["vram_total"] = capture.machine()["vram"]
+            actual["device_peak"] = run.get("device_peak")
+            actual["dynamic_peak"] = run.get("dynamic_peak")
             timings = timings_from_run(prompt or {}, node_id, env, run, report)
             report["time"] = estimate_time(report, graph, graph.upstream(node_id), timings)
         else:

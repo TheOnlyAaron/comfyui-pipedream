@@ -18,6 +18,42 @@
   set. The settings summary, token panel and sidecar `sources` say whether
   the facility file came from the variable or a pointer (`"found"`)
 
+### PD Profiler accuracy
+- The node no longer runs on every queue: like any ComfyUI node it re-runs
+  when its widgets or anything upstream change. A PD Save fed by its
+  `exr_metadata` no longer writes (or reports "nothing written") on every
+  queue of an unchanged graph
+- Verdicts follow ComfyUI's `load_models_gpu`: weights get the budget left
+  after the batch-1 sampling estimate and the OS margin. A stage that only
+  fits with cond and uncond run one at a time says so; cfg 1 uses the
+  batch-1 estimate. "over budget" now means the working memory alone
+  doesn't fit; a stage whose weights don't fit "offloads" (or "streams"
+  under Dynamic VRAM) part of them instead
+- The OS margin matches ComfyUI's (400 MB on Linux, 600 MB on Windows, or
+  `--reserve-vram`)
+- VAE decode falls back to tiled only when the decode memory itself
+  doesn't fit; VAE weights are offloaded first (except LTX 2.4's)
+- Models: MiniMax H3 (diffusion, VAE and frame mapping), Flux 2 VAE dtypes,
+  diffusers-layout UNets, LTX-2 audio VAE and vocoder in checkpoints,
+  plain fp8 files upcast on GPUs without fp8 compute, VAEs cast as a whole
+- File-name fallbacks use ComfyUI's memory factors (Wan 14B 2.30, HunyuanVideo
+  1.5 4.0, LTX 5.5, ...)
+- Cached nodes are reported as cached (ComfyUI sends no progress events for
+  them, so they showed as "not measured"). Only prompts with an enabled PD
+  Profiler are watched
+- `Wan22ImageToVideoLatent` applies `batch_size` only with a `start_image`,
+  as ComfyUI does
+- Measured runs also record device memory in use and Dynamic VRAM usage,
+  which include memory PyTorch's allocator doesn't count; the chart uses
+  the larger peak
+- [Profiler accuracy](docs/profiler-accuracy.md): how each number was
+  checked against ComfyUI's code, 73 real model headers, published
+  requirements and measured runs, with sources
+
+### Tools
+- `tools/smoke_workflows.mjs` loads every example workflow in Nodes 2.0
+  and the classic frontend and queues the ones whose models are present
+
 ### PD Output is now PD Save
 - Renamed to pair with PD Load, as ComfyUI's Load Image / Save Image do.
   The node class is now `PDSave`; sidecars record `"node": "PDSave"`

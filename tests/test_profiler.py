@@ -182,13 +182,22 @@ class CrawlTests(ProfilerCase):
         report = self.profile(wan_flow(), budget={"vram": 24 * GIB, "ram": 64 * GIB})
         sample = report["stages"][1]
         self.assertEqual(sample["weights"], 5120 * 2_000_000 * 2 + 5120 * 2)
-        # ComfyUI: area (batch 2) * 2 bytes * 0.01 * memory_usage_factor MiB.
+        # ComfyUI: area (batch 2) * 2 bytes * 0.01 * memory_usage_factor MiB; Wan 14B's
+        # factor is dim / 2222 = 2.30 (the file-name fallback uses ComfyUI's value).
         area = 2 * 21 * 90 * 160
-        self.assertAlmostEqual(sample["working"], area * 2 * 0.01 * 0.9 * 1024 ** 2)
+        batched = area * 2 * 0.01 * 2.30 * 1024 ** 2
+        self.assertAlmostEqual(sample["working_batched"], batched)
+        self.assertAlmostEqual(sample["working_single"], batched / 2)
+        # Weights + the batch-2 estimate don't fit 24 GB, so cond and uncond run one at a
+        # time; the weights get 24 GB - max(reserve, batch-1 estimate + OS margin) - latent.
+        self.assertAlmostEqual(sample["working"], batched / 2)
+        self.assertIn("one at a time", sample["note"])
+        room = 24 * GIB - (batched / 2 + pf.DEFAULT_OS_MARGIN) - sample["extra"]
+        self.assertEqual(sample["verdict"], "offloads")
+        self.assertAlmostEqual(sample["offload"], sample["weights"] - room)
         decode = report["stages"][2]
         self.assertEqual(decode["working"], 7000 * 90 * 160 * 64 * 2)
         self.assertEqual(report["peak"]["node"], max(report["stages"], key=lambda s: s["total"])["node"])
-        self.assertIn(sample["verdict"], ("fits", "offloads", "does not fit"))
         self.assertEqual(report["ram"]["frames_out"], 1280 * 720 * 3 * 4 * 81)
 
     def test_tiled_decode_is_per_tile(self):
@@ -264,6 +273,97 @@ class CheckpointTests(ProfilerCase):
         self.assertEqual(report["latents"][0]["shape"], [2, 4, 128, 128])
         decode = report["stages"][-1]
         self.assertEqual(decode["working"], 2178 * 128 * 128 * 64 * 2)
+
+
+class VerdictTests(ProfilerCase):
+    def verdict(self, vram_gb, **flow):
+        report = self.profile(wan_flow(**flow), budget={"vram": vram_gb * GIB, "ram": 64 * GIB})
+        return report["stages"][1]
+
+    def test_fits_batched_on_big_card(self):
+        sample = self.verdict(80, width=832, height=480)
+        self.assertEqual(sample["verdict"], "fits")
+        self.assertEqual(sample["working"], sample["working_batched"])
+        self.assertNotIn("note", sample)
+
+    def test_cfg_one_uses_single_estimate(self):
+        prompt = wan_flow(width=832, height=480)
+        prompt["7"]["inputs"]["cfg"] = 1.0
+        sample = self.profile(prompt, budget={"vram": 80 * GIB})["stages"][1]
+        self.assertEqual(sample["working"], sample["working_single"])
+        self.assertIn("cfg 1", sample["note"])
+
+    def test_does_not_fit_when_minimum_is_over_card(self):
+        sample = self.verdict(8, width=1920, height=1088, length=121)
+        self.assertGreater(sample["working_single"] + pf.DEFAULT_OS_MARGIN, 8 * GIB)
+        self.assertEqual(sample["verdict"], "does not fit")
+
+    def test_dynamic_vram_streams(self):
+        self.env.dynamic_vram = True
+        sample = self.verdict(24)
+        self.assertEqual(sample["verdict"], "streams")
+        report = self.profile(wan_flow(), budget={"vram": 24 * GIB, "ram": 64 * GIB})
+        self.assertIn("Dynamic VRAM", " ".join(report["notes"]))
+        self.assertIn("streams", pf.format_report(report))
+
+    def test_decode_offloads_weights_before_tiling(self):
+        report = self.profile(wan_flow(), budget={"vram": 12.6 * GIB, "ram": 64 * GIB})
+        decode = report["stages"][2]
+        # decode memory (12.02 GiB) fits next to the OS margin; the 0.24 GB of weights page out.
+        self.assertEqual(decode["verdict"], "offloads")
+        report = self.profile(wan_flow(), budget={"vram": 8 * GIB, "ram": 64 * GIB})
+        self.assertEqual(report["stages"][2]["verdict"], "falls back to tiled decode")
+
+
+class FamilyTests(ProfilerCase):
+    def test_minimax_vae_and_frames(self):
+        vae = {"decoder.transformer_blocks.0.scale1": ("BF16", (1024,)),
+               "encoder.conv_in.weight": ("BF16", (128, 3, 3, 3, 3)),
+               "decoder.big": ("BF16", (1000, 100000))}
+        self.files["h3_vae.safetensors"] = write_safetensors(os.path.join(self.tmp.name, "h3vae.safetensors"), vae)
+        self.files["minimax_h3_fp8.safetensors"] = write_safetensors(
+            os.path.join(self.tmp.name, "h3.safetensors"), {"blocks.0.w": ("F8_E4M3", (5120, 1_000_000))})
+        tensors = {k: mf.Tensor(t, sh, 0) for k, (t, sh) in vae.items()}
+        self.assertEqual(mf.vae_family(tensors), ("MiniMax H3", 24))
+        prompt = wan_flow(unet="minimax_h3_fp8.safetensors", width=1344, height=768, length=120)
+        prompt["3"]["inputs"]["vae_name"] = "h3_vae.safetensors"
+        report = self.profile(prompt)
+        latent = report["latents"][0]
+        # 120 frames snap up to 124 (17k+5); latents are 5k+2: (124 - 5) // 17 * 5 + 2 = 37.
+        self.assertEqual(latent["shape"], [1, 24, 37, 48, 84])
+        self.assertEqual(latent["frames"], 124)
+        self.assertIn("becomes 124 frames", " ".join(report["warnings"]))
+        decode = report["stages"][-1]
+        # Decode memory is capped at one streamed chunk (30 frames) at fp16.
+        self.assertAlmostEqual(decode["working"], (9.5 * 30 * 768 * 1344 + 270_000_000) * 2 * 1.03)
+
+    def test_checkpoint_without_vae_is_not_a_vae(self):
+        self.files["flux_unet_only.safetensors"] = write_safetensors(
+            os.path.join(self.tmp.name, "flux.safetensors"), {"double_blocks.0.w": ("BF16", (3072, 1_000_000))})
+        self.env.node_info = dict(NODES, CheckpointLoaderSimple=pf.NodeInfo(
+            returns=("MODEL", "CLIP", "VAE"), name="Load Checkpoint")).get
+        models = pf.Models(pf.Graph({"1": {"class_type": "CheckpointLoaderSimple",
+                                           "inputs": {"ckpt_name": "flux_unet_only.safetensors"}}}, self.env),
+                           self.env, [])
+        self.assertIsNone(models.vae("1"))
+        self.assertEqual(models.encoders("1"), [])
+        self.assertEqual(models.diffusion("1")["params"], 3072 * 1_000_000)
+
+    def test_ltx2_audio_parts_counted(self):
+        self.files["ltx2.safetensors"] = write_safetensors(os.path.join(self.tmp.name, "ltx2.safetensors"), {
+            "model.diffusion_model.blocks.0.w": ("BF16", (4096, 100_000)),
+            "vae.decoder.up_blocks.0.res_blocks.0.conv1.conv.weight": ("BF16", (512, 512, 3, 3, 3)),
+            "audio_vae.decoder.w": ("BF16", (1000, 100_000)),
+            "vocoder.w": ("BF16", (1000, 50_000)),
+            "text_embedding_projection.w": ("BF16", (4096, 3840)),
+        })
+        self.env.node_info = dict(NODES, CheckpointLoaderSimple=pf.NodeInfo(
+            returns=("MODEL", "CLIP", "VAE"), name="Load Checkpoint")).get
+        models = pf.Models(pf.Graph({"1": {"class_type": "CheckpointLoaderSimple",
+                                           "inputs": {"ckpt_name": "ltx2.safetensors"}}}, self.env), self.env, [])
+        self.assertEqual(models.audio("1")["params"], 1000 * 100_000 + 1000 * 50_000)
+        self.assertEqual(models.vae("1")["family"], "LTX-Video")
+        self.assertEqual(models.encoders("1")[0]["params"], 4096 * 3840)
 
 
 class TimeTests(ProfilerCase):
@@ -353,3 +453,39 @@ class OutputTests(ProfilerCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RobustnessTests(ProfilerCase):
+    def test_capture_only_with_enabled_profiler(self):
+        from core import capture
+
+        class Prompt:
+            def __init__(self, nodes):
+                self.original_prompt = nodes
+        self.assertEqual(capture._profilers(Prompt({"1": {"class_type": "KSampler", "inputs": {}}})), [])
+        off = {"1": {"class_type": "PDProfiler", "inputs": {"enabled": False}}}
+        self.assertEqual(capture._profilers(Prompt(off)), [])
+        on = {"1": {"class_type": "PDProfiler", "inputs": {"vram_per_node": True}}}
+        self.assertEqual(capture._profilers(Prompt(on)), [{"vram_per_node": True}])
+
+    def test_malformed_safetensors_header(self):
+        path = os.path.join(self.tmp.name, "bad.safetensors")
+        body = json.dumps({"a": "not a tensor"}).encode()
+        with open(path, "wb") as fh:
+            fh.write(struct.pack("<Q", len(body)) + body)
+        with self.assertRaises(mf.HeaderError):
+            mf.read_header(path)
+
+    def test_wan22_latent_batch_needs_start_image(self):
+        NODES["Wan22ImageToVideoLatent"] = pf.NodeInfo(
+            inputs={"vae": "VAE", "start_image": "IMAGE"}, returns=("LATENT",), name="Wan22 Latent")
+        NODES["LoadImage"] = pf.NodeInfo(returns=("IMAGE", "MASK"), name="Load Image")
+        self.addCleanup(NODES.pop, "Wan22ImageToVideoLatent")
+        self.addCleanup(NODES.pop, "LoadImage")
+        prompt = wan_flow()
+        prompt["6"] = {"class_type": "Wan22ImageToVideoLatent", "inputs": {
+            "vae": ["3", 0], "width": 1280, "height": 704, "length": 121, "batch_size": 3}}
+        self.assertEqual(self.profile(prompt)["latents"][0]["shape"][0], 1)
+        prompt["5"] = {"class_type": "LoadImage", "inputs": {"image": "a.png"}}
+        prompt["6"]["inputs"]["start_image"] = ["5", 0]
+        self.assertEqual(self.profile(prompt)["latents"][0]["shape"][0], 3)

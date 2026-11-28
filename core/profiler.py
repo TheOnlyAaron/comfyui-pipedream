@@ -9,7 +9,7 @@ turns it into the text shown on the node and ``build_chart`` into the
 data for the chart (``web/pd_profiler_chart.js``).  See docs/profiler.md.
 
 The walk follows links; at a PD Wedge only the selected row's input is
-followed (the queued row, else the solo row, else row 1), so one wedge
+followed (the solo row if set, else the queued row, else row 1), so one wedge
 job is profiled.  Socket types come from the node classes, which is how
 the walk finds, without a list of node names:
 
@@ -22,11 +22,14 @@ the walk finds, without a list of node names:
 * latent sources: the end of a LATENT chain; its width, height, length and
   batch widgets give the latent shape with ComfyUI's floor rounding.
 
-Memory is split into stages, because ComfyUI frees one model before the
-next loads: each text encoder, each sampler (weights + ComfyUI's
-``memory_required`` for a batch of two + the latent) and each VAE decode
-(weights + ComfyUI's ``memory_used_decode``).  The peak is the largest
-stage.  API nodes count as zero and are flagged.
+Memory is split into stages, because ComfyUI frees only as much as the
+next model load needs (models stay resident while there is room): each
+text encoder, each sampler (weights + ComfyUI's ``memory_required``, for a
+batch of two when it fits next to the weights, else one + the latent) and
+each VAE decode (weights + ComfyUI's ``memory_used_decode``).  The peak is
+the largest stage; verdicts follow ``load_models_gpu`` (see ``_verdicts``).
+API nodes count as zero and are flagged.  How each number was checked
+against ComfyUI and published models: docs/profiler-accuracy.md.
 
 ``env`` is a :class:`ComfyEnv`; outside ComfyUI (tests) it is built from
 plain callables.  Nothing here imports torch or ComfyUI directly.
@@ -59,7 +62,10 @@ from .wedge import (
 PROFILE_DIR = "pipedream_profiles"
 GIB = 1024 ** 3
 MIB = 1024 ** 2
-DEFAULT_RESERVE = 0.8 * GIB
+# ComfyUI's minimum_inference_memory: 0.8 GiB plus an OS margin (extra_reserved_memory:
+# 400 MB, 600 MB on Windows; --reserve-vram replaces the margin).
+DEFAULT_OS_MARGIN = (600 if os.name == "nt" else 400) * MIB
+DEFAULT_RESERVE = 0.8 * GIB + DEFAULT_OS_MARGIN
 FILE_INPUTS = {
     "unet_name": ("diffusion_models", "unet", "unet_gguf"),
     "ckpt_name": ("checkpoints",),
@@ -107,7 +113,10 @@ class ComfyEnv:
     torch: object = None
     attention_fast: bool = True
     reserve: float = DEFAULT_RESERVE
+    os_margin: float = DEFAULT_OS_MARGIN
     gpu: bool = True
+    dynamic_vram: bool = False
+    vram_state: str = "NORMAL_VRAM"
 
 
 # ---------------------------------------------------------------------------
@@ -293,9 +302,22 @@ class Models:
             if name not in names or mf is None:
                 continue
             if name == "ckpt_name":
-                return mf, mf.subset(mfiles.CHECKPOINT_PREFIXES[role], strip=role == "vae"), filename
+                part = mf.subset(mfiles.CHECKPOINT_PREFIXES[role], strip=role in ("vae", "audio"))
+                if not part and mf.tensors:
+                    # No such section: ComfyUI loads a prefix-less file as the diffusion
+                    # model, and the checkpoint has no VAE / text encoder / audio part.
+                    return (mf, None, filename) if role == "diffusion" else (None, None, None)
+                return mf, part, filename
             return mf, None, filename
         return None, None, None
+
+    def audio(self, nid) -> dict | None:
+        """A checkpoint's bundled audio VAE and vocoder (LTX-2), as weights only."""
+        mf, tensors, filename = self._part(nid, "audio", ("ckpt_name",))
+        if mf is None or not tensors:
+            return None
+        return {"node": nid, "file": filename, "path": mf.path, "format": mf.format,
+                **mfiles.encoder_info(mf, tensors, self.env)}
 
     def diffusion(self, nid) -> dict | None:
         mf, tensors, filename = self._part(nid, "diffusion", ("unet_name", "ckpt_name"))
@@ -340,19 +362,26 @@ class Models:
 # Memory formulas
 # ---------------------------------------------------------------------------
 
-def sampling_bytes(latent_shape, model: dict, env: ComfyEnv) -> float:
+def sampling_bytes(latent_shape, model: dict, env: ComfyEnv, batch: int = 2) -> float:
     """
-    ComfyUI's ``BaseModel.memory_required`` for a batch of two (the
-    estimate ``sampler_helpers.estimate_memory`` loads models against).
+    ComfyUI's ``BaseModel.memory_required`` for the latent batch times
+    *batch*.  ``sampler_helpers.estimate_memory`` computes it for 2 (cond
+    and uncond together; it decides which other models to evict) and 1
+    (the minimum; the model's weights are loaded against this one).
     """
     if not latent_shape:
         return 0.0
-    shape = [latent_shape[0] * 2] + list(latent_shape[1:])
+    shape = [latent_shape[0] * batch] + list(latent_shape[1:])
     area = shape[0] * math.prod(shape[2:])
     factor = model.get("memory_usage_factor", 1.0)
     if env.attention_fast:
         return area * model.get("inference_bytes", 2) * 0.01 * factor * MIB
     return area * 0.15 * factor * MIB
+
+
+def _minimax(model, vae) -> bool:
+    family = str((model or {}).get("family", "")) + " " + str((vae or {}).get("family", ""))
+    return "MiniMax" in family
 
 
 def latent_scales(model: dict | None, vae: dict | None) -> tuple:
@@ -451,6 +480,8 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
     w, h = graph.value(nid, "width"), graph.value(nid, "height")
     length = graph.value(nid, "length", graph.value(nid, "video_frames", graph.value(nid, "num_frames")))
     batch = graph.value(nid, "batch_size", 1)
+    if graph.cls(nid) == "Wan22ImageToVideoLatent" and not any(n == "start_image" for n, _, _ in graph.links(nid)):
+        batch = 1  # without start_image the node ignores batch_size (nodes_wan.py)
     source = "widgets"
     if not (isinstance(w, (int, float)) and isinstance(h, (int, float))):
         pixels = _input_named(graph, nid, "IMAGE")
@@ -473,6 +504,18 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
     frames_out = 1
     if dims == 3:
         length = int(length) if isinstance(length, (int, float)) and length > 0 else 1
+        if _minimax(model, vae):
+            # MiniMax H3: frames snap up to 17k+5; latents are 5k+2 (nodes_minimax_h3.py).
+            frames_out = length if length <= 5 else length + (-(length - 5)) % 17
+            frames_out = max(5, frames_out)
+            lt = 2 if frames_out <= 5 else (frames_out - 5) // 17 * 5 + 2
+            shape.append(lt)
+            if frames_out != length:
+                warnings.append(f"{graph.label(nid)}: length {length} becomes {frames_out} frames "
+                                "(MiniMax H3 snaps frame counts up to 17k+5).")
+            shape += [h // spatial, w // spatial]
+            return _latent_result(nid, source, shape, spatial, temporal, batch, frames_out, w, h,
+                                  graph, warnings)
         lt = (length - 1) // temporal + 1
         shape.append(lt)
         frames_out = (lt - 1) * temporal + 1
@@ -481,14 +524,19 @@ def latent_of(graph, nid, model, vae, notes, warnings, depth=0) -> dict | None:
                             f"(frame counts are {temporal}k+1); use {frames_out} or "
                             f"{frames_out + temporal}.")
     shape += [h // spatial, w // spatial]
+    return _latent_result(nid, source, shape, spatial, temporal if dims == 3 else 1, batch,
+                          frames_out if dims == 3 else batch, w, h, graph, warnings)
+
+
+def _latent_result(nid, source, shape, spatial, temporal, batch, frames, w, h, graph, warnings):
+    """The latent entry of a report, warning when the size loses pixels."""
     out_w, out_h = shape[-1] * spatial, shape[-2] * spatial
     for side, asked, got in (("width", w, out_w), ("height", h, out_h)):
         if asked != got:
             warnings.append(f"{graph.label(nid)}: {side} {asked} decodes to {got}: ComfyUI drops "
                             f"the last {asked - got} px. Use {got + spatial} (crop after) or {got}.")
     return {"node": nid, "source": source, "shape": shape, "width": out_w, "height": out_h,
-            "frames": frames_out if dims == 3 else batch, "batch": batch, "spatial": spatial,
-            "temporal": temporal if dims == 3 else 1}
+            "frames": frames, "batch": batch, "spatial": spatial, "temporal": temporal}
 
 
 def _apply_latent_op(graph, nid, latent):
@@ -519,7 +567,7 @@ def _tile_shape(graph, nid, shape, vae) -> list:
         shape[-2], shape[-1] = min(shape[-2], side), min(shape[-1], side)
     temporal = graph.value(nid, "temporal_size")
     if len(shape) == 5 and isinstance(temporal, int) and temporal > 0 and vae["temporal"] > 1:
-        shape[2] = min(shape[2], max(1, temporal // vae["temporal"]))
+        shape[2] = min(shape[2], max(2, temporal // vae["temporal"]))
     return shape
 
 
@@ -595,6 +643,14 @@ def build_profile(prompt: dict, node_id, env: ComfyEnv, budget: dict | None = No
               "warnings": warnings, "api_nodes": [], "models": [], "latents": [],
               "stages": [], "loras": []}
 
+    if env.dynamic_vram:
+        notes.append("Dynamic VRAM is on: weights page in from RAM as needed, so an offload "
+                     "verdict means streaming (slower), not a failure.")
+    if env.vram_state in ("HIGH_VRAM", "SHARED"):
+        notes.append("--highvram / --gpu-only: models stay on the GPU and are not partly "
+                     "loaded, so a stage that doesn't fit runs out of memory instead of offloading.")
+    elif env.vram_state == "NO_VRAM":
+        notes.append("--novram: nearly all weights stream from RAM.")
     if not env.gpu:
         notes.append("No GPU on this machine: memory uses ComfyUI's GPU formulas and 16-bit "
                      "weights. Set vram_gb to budget against a card.")
@@ -634,9 +690,11 @@ def build_profile(prompt: dict, node_id, env: ComfyEnv, budget: dict | None = No
         weights = (model or {}).get("loaded_bytes", 0)
         shape = latent["shape"] if latent else None
         working = sampling_bytes(shape, model, env) if model and shape else 0
+        single = sampling_bytes(shape, model, env, batch=1) if model and shape else 0
         latent_bytes = math.prod(shape) * 4 if shape else 0
         stage = {"kind": "sample", "node": nid, "label": graph.label(nid),
                  "weights": weights, "working": working, "extra": latent_bytes,
+                 "working_batched": working, "working_single": single,
                  "steps": _steps(graph, nid), "cfg": _cfg(graph, nid),
                  "tokens": _tokens(shape, model), "model": loader}
         if model is None:
@@ -666,10 +724,12 @@ def build_profile(prompt: dict, node_id, env: ComfyEnv, budget: dict | None = No
                 one = _tile_shape(graph, nid, one, vae)
             decode = vae["_info"].decode_bytes(one)
         frames = latent["frames"] * (latent["batch"] if len(shape or []) == 5 else 1) if latent else 0
-        out_bytes = latent["width"] * latent["height"] * 3 * 4 * frames if latent else 0
+        channels = 4 if (vae or {}).get("family") == "Qwen-Image 2.1" else 3
+        out_bytes = latent["width"] * latent["height"] * channels * 4 * frames if latent else 0
         stage = {"kind": "decode", "node": nid, "label": graph.label(nid),
                  "weights": (vae or {}).get("loaded_bytes", 0), "working": decode or 0,
                  "extra": 0, "frames_out": out_bytes, "tiled": tiled,
+                 "vae_family": (vae or {}).get("family", ""),
                  "pixels": [latent["width"], latent["height"], frames] if latent else None}
         if vae is None:
             stage["unknown"] = "VAE file"
@@ -702,46 +762,90 @@ def build_profile(prompt: dict, node_id, env: ComfyEnv, budget: dict | None = No
                                             "weights": sum(f["loaded_bytes"] for f in files),
                                             "working": 0, "extra": 0})
 
+    for loader in diffusion_by_loader:
+        audio = models.audio(loader)
+        if audio:
+            report["models"].append(dict(audio, role="audio vae"))
     report["models"] = (
         [dict(m, role="diffusion") for m in diffusion_by_loader.values() if m]
         + [{k: v for k, v in dict(m, role="vae").items() if k != "_info"}
            for m in vae_by_loader.values() if m]
         + report["models"])
     _verdicts(report, env)
-    report["ram"] = _ram(report)
+    report["ram"] = _ram(report, env)
     report["wedge"] = _wedge(prompt, node_id, graph, up)
     report["time"] = estimate_time(report, graph, up, timings or {})
     return report
 
 
 def _verdicts(report, env):
+    """
+    Each stage's verdict against the VRAM budget, following ComfyUI's
+    ``load_models_gpu``: a model's weights get the budget minus
+    max(minimum_inference_memory, batch-1 estimate + OS margin); when the
+    batch-2 estimate doesn't fit next to them, cond and uncond run one at a
+    time (samplers.py).  VAE weights are offloaded or paged before a decode
+    falls back to tiling; only an actual out-of-memory error tiles.
+    """
     budget = report["budget"].get("vram") or 0
-    available = max(0.0, budget - env.reserve) if budget else 0
+    margin = env.os_margin
+    stream = "streams" if env.dynamic_vram else "offloads"
     peak = None
     for stage in report["stages"]:
+        if stage["kind"] == "sample" and stage.get("working_single"):
+            single, batched = stage["working_single"], stage["working_batched"]
+            cfg = stage.get("cfg")
+            if isinstance(cfg, (int, float)) and cfg == 1.0:
+                stage["working"] = single
+                stage["note"] = "cfg 1: one pass per step"
+            elif budget and stage["weights"] + batched + stage["extra"] + margin > budget:
+                stage["working"] = single
+                stage["note"] = "cond and uncond run one at a time (both don't fit)"
         stage["total"] = stage["weights"] + stage["working"] + stage["extra"]
-        if not budget:
-            continue
-        need_working = stage["working"] + stage["extra"]
-        if stage["kind"] == "decode" and stage["working"] and stage["total"] > available:
-            stage["verdict"] = "tiled" if stage.get("tiled") else "falls back to tiled decode"
-        elif need_working > available:
-            stage["verdict"] = "does not fit"
-        elif stage["total"] > available:
-            stage["offload"] = stage["total"] - available
-            stage["verdict"] = "offloads"
-        else:
-            stage["verdict"] = "fits"
+        if budget:
+            if stage["kind"] == "decode":
+                _decode_verdict(stage, budget, env, stream)
+            else:
+                reserve = max(env.reserve, stage["working"] + margin)
+                room = budget - reserve - stage["extra"]
+                if stage["working"] + stage["extra"] + margin > budget:
+                    stage["verdict"] = "does not fit"
+                elif stage["weights"] > room:
+                    stage["offload"] = stage["weights"] - max(0.0, room)
+                    stage["verdict"] = stream
+                else:
+                    stage["verdict"] = "fits"
         if peak is None or stage["total"] > peak["total"]:
             peak = stage
-    if peak is None and report["stages"]:
-        peak = max(report["stages"], key=lambda s: s["total"])
     report["peak"] = {"bytes": peak["total"], "node": peak["node"], "label": peak["label"],
                       "kind": peak["kind"]} if peak else None
 
 
-def _ram(report) -> dict:
-    weights = sum(m.get("loaded_bytes", 0) for m in report["models"])
+def _decode_verdict(stage, budget, env, stream):
+    """VAE decode: weights may be offloaded (not LTX 2.4's); the decode itself must fit."""
+    decode = stage["working"]
+    fixed = stage.get("vae_family") == "LTX 2.4"
+    room = budget - env.os_margin - decode
+    if not decode:
+        stage["verdict"] = "fits" if stage["weights"] <= budget - env.reserve else stream
+    elif decode + env.os_margin > budget or (fixed and stage["total"] + env.os_margin > budget):
+        stage["verdict"] = "tiled" if stage.get("tiled") else "falls back to tiled decode"
+    elif stage["weights"] > room:
+        stage["offload"] = stage["weights"] - max(0.0, room)
+        stage["verdict"] = stream
+    else:
+        stage["verdict"] = "fits"
+
+
+def _ram(report, env=None) -> dict:
+    """
+    System RAM: model weights plus decoded frames (float32).  With Dynamic
+    VRAM the weights are the memory-mapped files (stored size, reclaimable
+    page cache); otherwise ComfyUI holds the loaded weights in RAM when a
+    model is offloaded or between runs.
+    """
+    key = "stored_bytes" if env is not None and env.dynamic_vram else "loaded_bytes"
+    weights = sum(m.get(key, m.get("loaded_bytes", 0)) for m in report["models"])
     frames = sum(s.get("frames_out", 0) for s in report["stages"])
     offload = max((s.get("offload", 0) for s in report["stages"]), default=0)
     total = weights + frames
@@ -866,6 +970,17 @@ def timings_from_run(prompt, node_id, env, run: dict, report: dict) -> dict:
     return out
 
 
+def measured_peak(actual: dict | None):
+    """
+    The run's VRAM peak for the chart: the larger of torch's allocator peak
+    and the device memory in use at node ends (which also counts memory
+    Dynamic VRAM holds outside PyTorch's allocator, and other processes).
+    """
+    actual = actual or {}
+    values = [v for v in (actual.get("vram_peak"), actual.get("device_peak")) if v]
+    return max(values) if values else None
+
+
 def build_chart(report: dict, timings: dict | None = None, actual: dict | None = None) -> dict:
     """
     The memory chart drawn on the node (``web/pd_profiler.js``).
@@ -890,13 +1005,14 @@ def build_chart(report: dict, timings: dict | None = None, actual: dict | None =
             "label": s["label"], "models": s["weights"], "working": s["working"],
             "latents": latents, "total": s.get("total", s["weights"] + s["working"] + latents),
             "seconds": seconds, "verdict": s.get("verdict", ""), "offload": s.get("offload", 0),
+            "note": s.get("note", ""),
             "unknown": s.get("unknown", ""),
         })
     ram = report.get("ram") or {}
     return {"vram": budget.get("vram") or 0, "ram": budget.get("ram") or 0,
             "emulated": bool(budget.get("emulated")), "stages": stages,
             "ram_use": {"models": ram.get("weights", 0), "pixels": ram.get("frames_out", 0)},
-            "measured_peak": (actual or {}).get("vram_peak")}
+            "measured_peak": measured_peak(actual)}
 
 
 def profile_metadata(report: dict, actual: dict | None = None, prefix: str = "pipedream/",
@@ -969,6 +1085,8 @@ def profile_metadata(report: dict, actual: dict | None = None, prefix: str = "pi
             put("time_upstream_s", float(sum(n["seconds"] for n in ran)))
         if actual.get("vram_peak"):
             put("measured_peak_vram_gb", gb(actual["vram_peak"]))
+        if actual.get("device_peak"):
+            put("measured_device_vram_gb", gb(actual["device_peak"]))
         put("wedge_job", actual.get("job"))
     return ExrMetadata([table])
 
@@ -1076,7 +1194,8 @@ def format_report(report: dict, actual: dict | None = None) -> str:
             if m.get("params"):
                 detail.append(f"{_params(m['params'])} params")
             if m.get("dtype"):
-                detail.append(str(m["dtype"]))
+                detail.append(str(m["dtype"]) + (" (upcast to 16-bit: this GPU has no fp8 compute)"
+                                                 if m.get("fp8_upcast") else ""))
             detail.append(f"{fmt_bytes(m.get('loaded_bytes'))} loaded")
             lines.append(f"  {'':<13}" + " · ".join(detail))
         for lora in report.get("loras", []):
@@ -1094,7 +1213,7 @@ def format_report(report: dict, actual: dict | None = None) -> str:
 
     if report.get("stages"):
         lines.append("")
-        lines.append("Stages   VRAM; ComfyUI frees each model before the next, so the peak is the largest")
+        lines.append("Stages   VRAM; ComfyUI frees what the next model needs, so the peak is the largest")
         for i, s in enumerate(report["stages"], 1):
             name = STAGE_NAMES.get(s["kind"], s["kind"])
             if s.get("unknown"):
@@ -1112,13 +1231,17 @@ def format_report(report: dict, actual: dict | None = None) -> str:
                 if s.get("tokens"):
                     extra.append(f"{s['tokens']:,} tokens")
             verdict = s.get("verdict", "")
-            if s.get("offload"):
-                verdict = f"offloads {fmt_bytes(s['offload'])} to RAM (slower)"
+            if s.get("offload") and verdict == "streams":
+                verdict = f"streams {fmt_bytes(s['offload'])} of the weights from RAM (slower)"
+            elif s.get("offload"):
+                verdict = f"offloads {fmt_bytes(s['offload'])} of the weights to RAM (slower)"
             elif verdict == "does not fit":
-                verdict = ("over budget: ComfyUI runs it with the weights offloaded (slower); "
-                           "far over, it can run out of memory")
+                verdict = ("over budget: even with every weight offloaded, ComfyUI's minimum "
+                           "estimate is over the card; likely out of memory")
             lines.append(f"  {i} {name:<12}{s['label']}  {parts} = {fmt_bytes(s['total'])}"
                          + (f"  {verdict}" if verdict else ""))
+            if s.get("note"):
+                extra.append(s["note"])
             if extra:
                 lines.append(f"    {'':<12}" + " · ".join(extra))
         peak = report.get("peak")
@@ -1177,11 +1300,17 @@ def _format_actual(actual: dict) -> list:
         reserved = f", reserved {fmt_bytes(actual['vram_reserved'])}" if actual.get("vram_reserved") else ""
         lines.append(f"  peak VRAM {fmt_bytes(actual['vram_peak'])} allocated{reserved} "
                      f"(this machine: {fmt_bytes(actual.get('vram_total'))})")
+    if actual.get("device_peak"):
+        lines.append(f"  device memory in use, highest at a node end: {fmt_bytes(actual['device_peak'])} "
+                     "(includes memory outside PyTorch)")
+    if actual.get("dynamic_peak") is not None:
+        lines.append(f"  Dynamic VRAM held, highest at a node end: {fmt_bytes(actual['dynamic_peak'])} "
+                     "(weights paged in outside PyTorch's count)")
     if actual.get("job"):
         lines.append(f"  wedge job {actual['job']}")
     for m in actual.get("loaded_models", []):
-        lines.append(f"  loaded now: {m['name']} {fmt_bytes(m['size'])}, "
-                     f"{fmt_bytes(m['on_gpu'])} on the GPU")
+        where = f", {fmt_bytes(m['on_gpu'])} on the GPU" if actual.get("vram_total") else ""
+        lines.append(f"  loaded now: {m['name']} {fmt_bytes(m['size'])}{where}")
     source = actual.get("source")
     if source:
         lines.append(f"  input: {source}")

@@ -91,6 +91,7 @@ Drag a `workflow.json` from [workflows/](workflows/) onto the canvas. 01–06 ru
 - [EXR metadata](docs/exr-metadata.md): reading, setting, merging and writing header attributes.
 - [Alpha and premultiplication](docs/alpha.md): conventions per format, and mask polarity against core ComfyUI.
 - [Profiler](docs/profiler.md): how each number is worked out, the sidecar, use without the browser.
+- [Profiler accuracy](docs/profiler-accuracy.md): how each number was checked against ComfyUI's source, 73 published model files and published requirements.
 - [Settings](docs/settings.md): facility and user defaults in TOML.
 - [Installation](docs/install.md): Manager, comfy-cli, git clone, updating.
 
